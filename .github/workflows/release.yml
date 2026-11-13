@@ -1,0 +1,79 @@
+name: Release
+
+# Pushing a tag v<major>.<minor>.<patch> builds a signed release APK and publishes it as a
+# GitHub release. The signing key lives only in repository secrets (see README "Releases").
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Signed APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write # create the release and upload the APK
+    defaults:
+      run:
+        working-directory: clients/android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install compile SDK
+        run: sdkmanager "platforms;android-37.0"
+
+      - name: Restore the signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SWAYCONNECT_KEYSTORE_B64 }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "secret SWAYCONNECT_KEYSTORE_B64 is missing"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Test and build the signed APK
+        env:
+          SWAYCONNECT_KEYSTORE: ${{ runner.temp }}/release.jks
+          SWAYCONNECT_KEYSTORE_PASSWORD: ${{ secrets.SWAYCONNECT_KEYSTORE_PASSWORD }}
+          SWAYCONNECT_KEY_ALIAS: ${{ secrets.SWAYCONNECT_KEY_ALIAS }}
+          SWAYCONNECT_KEY_PASSWORD: ${{ secrets.SWAYCONNECT_KEY_PASSWORD }}
+          TAG: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :protocol:test :app:testDebugUnitTest :app:assembleRelease \
+            -PversionName="${TAG#v}" -PversionCode="$RUN_NUMBER"
+          rm -f "$SWAYCONNECT_KEYSTORE"
+          APK="swayconnect-${TAG}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/$APK"
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs "$RUNNER_TEMP/$APK" | head -3
+          (cd "$RUNNER_TEMP" && sha256sum "$APK" > "$APK.sha256")
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --title "swayconnect $TAG" --generate-notes \
+            "$RUNNER_TEMP/swayconnect-${TAG}.apk" "$RUNNER_TEMP/swayconnect-${TAG}.apk.sha256"

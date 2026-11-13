@@ -174,6 +174,22 @@ Tests use a fake sway on a temporary Unix socket. No test connects to a real swa
 
 Android, from `clients/android`, with an Android SDK (`platforms;android-37.0`) and a JDK (Temurin 25 is tested; `android.yml` pins 21, untested): `./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`. Rules for contributors and coding agents are in [`AGENTS.md`](AGENTS.md).
 
+## Releases
+
+Each release on the [Releases page](https://github.com/worxbend/swayconnect/releases) carries a signed `swayconnect-vX.Y.Z.apk` and its SHA-256. To install it on the phone:
+
+1. Open the release page in the phone's browser.
+2. Download the APK.
+3. Allow your browser to install unknown apps when Android asks.
+
+A release-signed APK cannot update a debug build of the app. Uninstall the debug build first. You will then need to pair again.
+
+To publish a release, push a tag: `git tag v0.2.0 && git push origin v0.2.0`. `.github/workflows/release.yml` then tests the app, builds the APK, signs it and creates the release.
+
+The signing key is in the repository secrets `SWAYCONNECT_KEYSTORE_B64`, `SWAYCONNECT_KEYSTORE_PASSWORD`, `SWAYCONNECT_KEY_ALIAS` and `SWAYCONNECT_KEY_PASSWORD`. To build a signed APK locally, export the same values, with `SWAYCONNECT_KEYSTORE` pointing to the `.jks` file, then run `./gradlew :app:assembleRelease`.
+
+Keep the keystore backed up. If it is lost, the phone cannot install newer releases over the old one.
+
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
