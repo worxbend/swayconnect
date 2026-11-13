@@ -6,7 +6,7 @@ use super::{
     Auth, Bye, ErrorBody, Evt, Hello, JsonObject, Message, Pair, Reject, Req, Res, Welcome,
 };
 use crate::fingerprint::encode_base64url;
-use crate::json::object_of;
+use crate::json::{self, object_of};
 
 pub(super) fn message(message: &Message) -> JsonObject {
     match message {
@@ -90,6 +90,10 @@ fn welcome(welcome: &Welcome) -> JsonObject {
         ("limits", limits.into()),
     ]);
     insert_optional(&mut object, "confirm_code", welcome.confirm_code.as_deref());
+    let known_scopes = welcome.known_scopes.clone().map(Value::from);
+    let known_ops = welcome.known_ops.clone().map(Value::from);
+    json::insert_present(&mut object, "known_scopes", known_scopes);
+    json::insert_present(&mut object, "known_ops", known_ops);
     object
 }
 

@@ -1,0 +1,1380 @@
+{
+  "op_table": {
+    "ping": {
+      "scope": null,
+      "action": false
+    },
+    "state.subscribe": {
+      "scope": "state.read",
+      "action": false
+    },
+    "icon.get": {
+      "scope": "state.read",
+      "action": false
+    },
+    "workspace.focus": {
+      "scope": "control",
+      "action": true
+    },
+    "window.focus": {
+      "scope": "control",
+      "action": true
+    },
+    "window.fullscreen": {
+      "scope": "control",
+      "action": true
+    },
+    "window.move": {
+      "scope": "control",
+      "action": true
+    },
+    "window.floating": {
+      "scope": "control",
+      "action": true
+    },
+    "window.layout": {
+      "scope": "control",
+      "action": true
+    },
+    "window.scratchpad": {
+      "scope": "control",
+      "action": true
+    },
+    "scratchpad.show": {
+      "scope": "control",
+      "action": true
+    },
+    "session.lock": {
+      "scope": "control",
+      "action": true
+    },
+    "window.close": {
+      "scope": "destructive",
+      "action": true
+    },
+    "keep_awake.set": {
+      "scope": "idle.inhibit",
+      "action": true
+    },
+    "audio.set_volume": {
+      "scope": "audio",
+      "action": true
+    },
+    "audio.set_mute": {
+      "scope": "audio",
+      "action": true
+    },
+    "audio.set_default": {
+      "scope": "audio",
+      "action": true
+    },
+    "media.play_pause": {
+      "scope": "media",
+      "action": true
+    },
+    "media.next": {
+      "scope": "media",
+      "action": true
+    },
+    "media.previous": {
+      "scope": "media",
+      "action": true
+    },
+    "app.launch": {
+      "scope": "launch",
+      "action": true
+    },
+    "launcher.open": {
+      "scope": "launch",
+      "action": true
+    },
+    "input.text": {
+      "scope": "input.text",
+      "action": true
+    },
+    "input.key": {
+      "scope": "input.keys",
+      "action": true
+    }
+  },
+  "frames": [
+    {
+      "name": "01-spec-example",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\",\"idle.inhibit\",\"audio\"],\"ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"window.move\",\"window.floating\",\"window.layout\",\"window.scratchpad\",\"scratchpad.show\",\"session.lock\",\"keep_awake.set\",\"audio.set_volume\",\"audio.set_mute\",\"audio.set_default\"],\"topics\":[\"desktop\",\"session\",\"audio\"],\"known_scopes\":[\"state.read\",\"state.titles\",\"control\",\"idle.inhibit\",\"destructive\",\"audio\",\"audio.capture\",\"media\",\"launch\",\"launch.risky\",\"input.keys\",\"input.text\"],\"known_ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"window.move\",\"window.floating\",\"window.layout\",\"window.scratchpad\",\"scratchpad.show\",\"session.lock\",\"window.close\",\"keep_awake.set\",\"audio.set_volume\",\"audio.set_mute\",\"audio.set_default\",\"media.play_pause\",\"media.next\",\"media.previous\",\"app.launch\",\"launcher.open\",\"input.text\",\"input.key\"],\"read_only\":false,\"server\":{\"name\":\"worxbox\",\"version\":\"0.2.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}",
+      "expect": {
+        "fields": {
+          "scopes": [
+            "state.read",
+            "state.titles",
+            "control",
+            "idle.inhibit",
+            "audio"
+          ],
+          "ops": [
+            "ping",
+            "state.subscribe",
+            "icon.get",
+            "workspace.focus",
+            "window.focus",
+            "window.fullscreen",
+            "window.move",
+            "window.floating",
+            "window.layout",
+            "window.scratchpad",
+            "scratchpad.show",
+            "session.lock",
+            "keep_awake.set",
+            "audio.set_volume",
+            "audio.set_mute",
+            "audio.set_default"
+          ],
+          "known_scopes": [
+            "state.read",
+            "state.titles",
+            "control",
+            "idle.inhibit",
+            "destructive",
+            "audio",
+            "audio.capture",
+            "media",
+            "launch",
+            "launch.risky",
+            "input.keys",
+            "input.text"
+          ],
+          "known_ops": [
+            "ping",
+            "state.subscribe",
+            "icon.get",
+            "workspace.focus",
+            "window.focus",
+            "window.fullscreen",
+            "window.move",
+            "window.floating",
+            "window.layout",
+            "window.scratchpad",
+            "scratchpad.show",
+            "session.lock",
+            "window.close",
+            "keep_awake.set",
+            "audio.set_volume",
+            "audio.set_mute",
+            "audio.set_default",
+            "media.play_pause",
+            "media.next",
+            "media.previous",
+            "app.launch",
+            "launcher.open",
+            "input.text",
+            "input.key"
+          ],
+          "read_only": false
+        }
+      }
+    },
+    {
+      "name": "02-m1-server-read-only",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\"],\"ops\":[\"ping\",\"state.subscribe\",\"icon.get\"],\"topics\":[\"desktop\"],\"known_scopes\":[\"state.read\",\"state.titles\",\"control\"],\"known_ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\"],\"read_only\":true,\"server\":{\"name\":\"desk\",\"version\":\"0.2.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}",
+      "expect": {
+        "fields": {
+          "scopes": [
+            "state.read",
+            "state.titles",
+            "control"
+          ],
+          "ops": [
+            "ping",
+            "state.subscribe",
+            "icon.get"
+          ],
+          "known_scopes": [
+            "state.read",
+            "state.titles",
+            "control"
+          ],
+          "known_ops": [
+            "ping",
+            "state.subscribe",
+            "icon.get",
+            "workspace.focus",
+            "window.focus",
+            "window.fullscreen"
+          ],
+          "read_only": true
+        }
+      }
+    },
+    {
+      "name": "03-older-server-without-known-lists",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\"],\"ops\":[\"ping\",\"state.subscribe\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\"],\"topics\":[\"desktop\"],\"read_only\":false,\"server\":{\"name\":\"desk\",\"version\":\"0.1.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}",
+      "expect": {
+        "fields": {
+          "scopes": [
+            "state.read",
+            "state.titles",
+            "control"
+          ],
+          "ops": [
+            "ping",
+            "state.subscribe",
+            "workspace.focus",
+            "window.focus",
+            "window.fullscreen"
+          ],
+          "known_scopes": null,
+          "known_ops": null,
+          "read_only": false
+        }
+      }
+    },
+    {
+      "name": "04-unknown-names-kept-and-ignored",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\"],\"ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"clipboard.get\"],\"topics\":[\"desktop\"],\"known_scopes\":[\"state.read\",\"state.titles\",\"control\",\"clipboard\"],\"known_ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"clipboard.get\",\"commands.run\"],\"read_only\":false,\"server\":{\"name\":\"desk\",\"version\":\"0.2.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}",
+      "expect": {
+        "fields": {
+          "scopes": [
+            "state.read",
+            "state.titles",
+            "control"
+          ],
+          "ops": [
+            "ping",
+            "state.subscribe",
+            "icon.get",
+            "workspace.focus",
+            "window.focus",
+            "window.fullscreen",
+            "clipboard.get"
+          ],
+          "known_scopes": [
+            "state.read",
+            "state.titles",
+            "control",
+            "clipboard"
+          ],
+          "known_ops": [
+            "ping",
+            "state.subscribe",
+            "icon.get",
+            "workspace.focus",
+            "window.focus",
+            "window.fullscreen",
+            "clipboard.get",
+            "commands.run"
+          ],
+          "read_only": false
+        }
+      }
+    },
+    {
+      "name": "05-known-ops-null",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\",\"idle.inhibit\",\"audio\"],\"ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"window.move\",\"window.floating\",\"window.layout\",\"window.scratchpad\",\"scratchpad.show\",\"session.lock\",\"keep_awake.set\",\"audio.set_volume\",\"audio.set_mute\",\"audio.set_default\"],\"topics\":[\"desktop\",\"session\",\"audio\"],\"known_scopes\":[\"state.read\",\"state.titles\",\"control\",\"idle.inhibit\",\"destructive\",\"audio\",\"audio.capture\",\"media\",\"launch\",\"launch.risky\",\"input.keys\",\"input.text\"],\"known_ops\":null,\"read_only\":false,\"server\":{\"name\":\"worxbox\",\"version\":\"0.2.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}",
+      "expect": "bad"
+    },
+    {
+      "name": "06-known-scopes-not-an-array",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\",\"idle.inhibit\",\"audio\"],\"ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"window.move\",\"window.floating\",\"window.layout\",\"window.scratchpad\",\"scratchpad.show\",\"session.lock\",\"keep_awake.set\",\"audio.set_volume\",\"audio.set_mute\",\"audio.set_default\"],\"topics\":[\"desktop\",\"session\",\"audio\"],\"known_scopes\":\"control\",\"known_ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"window.move\",\"window.floating\",\"window.layout\",\"window.scratchpad\",\"scratchpad.show\",\"session.lock\",\"window.close\",\"keep_awake.set\",\"audio.set_volume\",\"audio.set_mute\",\"audio.set_default\",\"media.play_pause\",\"media.next\",\"media.previous\",\"app.launch\",\"launcher.open\",\"input.text\",\"input.key\"],\"read_only\":false,\"server\":{\"name\":\"worxbox\",\"version\":\"0.2.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}",
+      "expect": "bad"
+    },
+    {
+      "name": "07-known-ops-item-not-a-string",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\",\"idle.inhibit\",\"audio\"],\"ops\":[\"ping\",\"state.subscribe\",\"icon.get\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\",\"window.move\",\"window.floating\",\"window.layout\",\"window.scratchpad\",\"scratchpad.show\",\"session.lock\",\"keep_awake.set\",\"audio.set_volume\",\"audio.set_mute\",\"audio.set_default\"],\"topics\":[\"desktop\",\"session\",\"audio\"],\"known_scopes\":[\"state.read\",\"state.titles\",\"control\",\"idle.inhibit\",\"destructive\",\"audio\",\"audio.capture\",\"media\",\"launch\",\"launch.risky\",\"input.keys\",\"input.text\"],\"known_ops\":[\"ping\",7],\"read_only\":false,\"server\":{\"name\":\"worxbox\",\"version\":\"0.2.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}",
+      "expect": "bad"
+    }
+  ],
+  "availability": [
+    {
+      "name": "01-in-ops",
+      "op": "keep_awake.set",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": false,
+      "expect": "available"
+    },
+    {
+      "name": "02-icon-get-in-ops",
+      "op": "icon.get",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": false,
+      "expect": "available"
+    },
+    {
+      "name": "03-locked-destructive",
+      "op": "window.close",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": false,
+      "expect": "locked",
+      "scope": "destructive"
+    },
+    {
+      "name": "04-locked-media",
+      "op": "media.play_pause",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": false,
+      "expect": "locked",
+      "scope": "media"
+    },
+    {
+      "name": "05-locked-input-keys",
+      "op": "input.key",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": false,
+      "expect": "locked",
+      "scope": "input.keys"
+    },
+    {
+      "name": "06-not-in-known-ops",
+      "op": "clipboard.get",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": false,
+      "expect": "unsupported"
+    },
+    {
+      "name": "07-read-only-scope-held",
+      "op": "workspace.focus",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": true,
+      "expect": "read_only"
+    },
+    {
+      "name": "08-read-only-non-action-still-available",
+      "op": "icon.get",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": true,
+      "expect": "available"
+    },
+    {
+      "name": "09-read-only-scope-missing-is-locked",
+      "op": "window.close",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": true,
+      "expect": "locked",
+      "scope": "destructive"
+    },
+    {
+      "name": "10-older-server-op-in-ops",
+      "op": "workspace.focus",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "known_scopes": null,
+      "known_ops": null,
+      "read_only": false,
+      "expect": "available"
+    },
+    {
+      "name": "11-older-server-op-not-in-ops",
+      "op": "icon.get",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "known_scopes": null,
+      "known_ops": null,
+      "read_only": false,
+      "expect": "unsupported"
+    },
+    {
+      "name": "12-m1-server-op-not-implemented",
+      "op": "window.move",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "read_only": true,
+      "expect": "unsupported"
+    },
+    {
+      "name": "13-m1-server-read-only",
+      "op": "window.fullscreen",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "read_only": true,
+      "expect": "read_only"
+    },
+    {
+      "name": "14-in-ops-but-not-in-known-ops",
+      "op": "icon.get",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe"
+      ],
+      "read_only": false,
+      "expect": "available"
+    },
+    {
+      "name": "15-ping",
+      "op": "ping",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ],
+      "known_scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "read_only": false,
+      "expect": "available"
+    }
+  ],
+  "server_ops": [
+    {
+      "name": "01-spec-example",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "read_only": false,
+      "expect_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default"
+      ]
+    },
+    {
+      "name": "02-spec-example-read-only",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "audio"
+      ],
+      "read_only": true,
+      "expect_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ]
+    },
+    {
+      "name": "03-m1-v1-scopes",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "read_only": false,
+      "expect_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ]
+    },
+    {
+      "name": "04-m1-read-only",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "read_only": true,
+      "expect_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ]
+    },
+    {
+      "name": "05-m1-state-read-only",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "scopes": [
+        "state.read"
+      ],
+      "read_only": false,
+      "expect_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get"
+      ]
+    },
+    {
+      "name": "06-m1-control-only",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "scopes": [
+        "control"
+      ],
+      "read_only": false,
+      "expect_ops": [
+        "ping",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ]
+    },
+    {
+      "name": "07-after-pair-no-scopes",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen"
+      ],
+      "scopes": [],
+      "read_only": false,
+      "expect_ops": [
+        "ping"
+      ]
+    },
+    {
+      "name": "08-every-scope",
+      "known_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ],
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+      ],
+      "read_only": false,
+      "expect_ops": [
+        "ping",
+        "state.subscribe",
+        "icon.get",
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set",
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key"
+      ]
+    }
+  ],
+  "bye": [
+    {
+      "name": "01-scopes-changed",
+      "payload": "{\"type\":\"bye\",\"code\":\"scopes_changed\",\"message\":\"scopes of this device changed\"}",
+      "expect": "reconnect_now"
+    },
+    {
+      "name": "02-shutdown",
+      "payload": "{\"type\":\"bye\",\"code\":\"shutdown\",\"message\":\"daemon is shutting down\"}",
+      "expect": "reconnect_backoff"
+    },
+    {
+      "name": "03-unknown-code-like-shutdown",
+      "payload": "{\"type\":\"bye\",\"code\":\"moved_house\",\"message\":\"?\"}",
+      "expect": "reconnect_backoff"
+    },
+    {
+      "name": "04-revoked",
+      "payload": "{\"type\":\"bye\",\"code\":\"revoked\",\"message\":\"device revoked\"}",
+      "expect": "forget"
+    }
+  ]
+}

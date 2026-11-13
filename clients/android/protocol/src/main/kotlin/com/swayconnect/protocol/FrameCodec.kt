@@ -20,6 +20,13 @@ object FrameCodec {
     private const val MIN_PAYLOAD_BYTES = 2
 
     /**
+     * Deepest array and object nesting read. The JSON parser recurses per level, so a 1 MiB frame of brackets
+     * would overflow the stack. The deepest message of the protocol, a `desktop` state with a layout of 16
+     * container levels (17.17), nests about 40 levels.
+     */
+    const val MAX_NESTING = 64
+
+    /**
      * Reads one frame. Returns null when the stream ends cleanly before a frame starts.
      * The length is checked against [limit] before the payload is read or allocated.
      */
@@ -53,6 +60,7 @@ object FrameCodec {
 
     private fun parse(payload: ByteArray): JsonObject {
         val text = decodeUtf8OrNull(payload) ?: throw FrameException(FrameException.Kind.BAD, "payload is not UTF-8")
+        if (nestsDeeperThan(payload, MAX_NESTING)) throw FrameException(FrameException.Kind.BAD, "payload nests too deep")
         val element =
             try {
                 Json.parseToJsonElement(text)
@@ -61,6 +69,25 @@ object FrameCodec {
                 throw FrameException(FrameException.Kind.BAD, "payload is not JSON")
             }
         return element as? JsonObject ?: throw FrameException(FrameException.Kind.BAD, "payload is not a JSON object")
+    }
+
+    /** Counts brackets outside strings. Bytes of multi-byte UTF-8 characters are 0x80 or more and never match. */
+    private fun nestsDeeperThan(payload: ByteArray, limit: Int): Boolean {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (byte in payload) {
+            val char = byte.toInt().toChar()
+            when {
+                escaped -> escaped = false
+                inString && char == '\\' -> escaped = true
+                char == '"' -> inString = !inString
+                inString -> Unit
+                char == '{' || char == '[' -> if (++depth > limit) return true
+                char == '}' || char == ']' -> depth--
+            }
+        }
+        return false
     }
 
     /** Fills [buffer] unless the stream ends first. Returns the number of bytes read. */

@@ -80,6 +80,8 @@ fn welcome(object: &JsonObject) -> Member<Welcome> {
         scopes: known_scopes(object)?,
         ops: json::string_array(object, "ops")?,
         topics: json::string_array(object, "topics")?,
+        known_scopes: json::optional_string_array(object, "known_scopes")?,
+        known_ops: json::optional_string_array(object, "known_ops")?,
         read_only: json::boolean(object, "read_only")?,
         server: ServerInfo {
             name: display_name(server, "name")?,

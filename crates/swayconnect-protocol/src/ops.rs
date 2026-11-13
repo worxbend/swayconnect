@@ -1,21 +1,24 @@
-//! Operations, their arguments and results, and event payloads (`docs/PROTOCOL.md` 7 and 8).
+//! Operations, their arguments and results, and event payloads (`docs/PROTOCOL.md` 7, 8, 17).
 
 use serde_json::Value;
 
 use crate::code::wire_names;
+use crate::icon::IconHash;
 use crate::json::{self, InvalidMember, Member, object_of};
-use crate::limits::{MAX_FOCUS_NUMBER, MAX_TOPICS_PER_SUBSCRIBE};
+use crate::limits::{MAX_FOCUS_NUMBER, MAX_ICON_HASHES, MAX_TOPICS_PER_SUBSCRIBE};
 use crate::message::{JsonObject, Req, Scope};
 
 pub const TOPIC_DESKTOP: &str = "desktop";
 pub const EVENT_STATE_CHANGED: &str = "state.changed";
 pub const EVENT_PAIRING_CONFIRMED: &str = "pairing.confirmed";
 
-/// The operation table of spec 7.2.
+/// The operation table of spec 7.2, and the operations of section 17 this version knows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
     Ping,
     StateSubscribe,
+    /// Spec 17.5. Not an action; it has its own rate class `icons`.
+    IconGet,
     WorkspaceFocus,
     WindowFocus,
     WindowFullscreen,
@@ -24,6 +27,7 @@ pub enum Operation {
 wire_names!(Operation {
     Ping => "ping",
     StateSubscribe => "state.subscribe",
+    IconGet => "icon.get",
     WorkspaceFocus => "workspace.focus",
     WindowFocus => "window.focus",
     WindowFullscreen => "window.fullscreen",
@@ -33,10 +37,21 @@ wire_names!(Operation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Args {
     Ping,
-    StateSubscribe { topics: Vec<String> },
+    StateSubscribe {
+        topics: Vec<String>,
+    },
+    /// 1 to 8 distinct hashes.
+    IconGet {
+        hashes: Vec<IconHash>,
+    },
     WorkspaceFocus(WorkspaceTarget),
-    WindowFocus { window_id: u64 },
-    WindowFullscreen { window_id: u64, enabled: bool },
+    WindowFocus {
+        window_id: u64,
+    },
+    WindowFullscreen {
+        window_id: u64,
+        enabled: bool,
+    },
 }
 
 /// Exactly one of the two arguments of `workspace.focus`.
@@ -51,7 +66,7 @@ impl Operation {
     pub const fn required_scope(self) -> Option<Scope> {
         match self {
             Operation::Ping => None,
-            Operation::StateSubscribe => Some(Scope::StateRead),
+            Operation::StateSubscribe | Operation::IconGet => Some(Scope::StateRead),
             Operation::WorkspaceFocus | Operation::WindowFocus | Operation::WindowFullscreen => {
                 Some(Scope::Control)
             }
@@ -80,6 +95,9 @@ impl Operation {
             Operation::StateSubscribe => Ok(Args::StateSubscribe {
                 topics: decode_topics(args)?,
             }),
+            Operation::IconGet => Ok(Args::IconGet {
+                hashes: decode_hashes(args)?,
+            }),
             Operation::WorkspaceFocus => decode_workspace_target(args).map(Args::WorkspaceFocus),
             Operation::WindowFocus => Ok(Args::WindowFocus {
                 window_id: json::int(args, "window_id")?,
@@ -97,6 +115,7 @@ impl Args {
         match self {
             Args::Ping => Operation::Ping,
             Args::StateSubscribe { .. } => Operation::StateSubscribe,
+            Args::IconGet { .. } => Operation::IconGet,
             Args::WorkspaceFocus(_) => Operation::WorkspaceFocus,
             Args::WindowFocus { .. } => Operation::WindowFocus,
             Args::WindowFullscreen { .. } => Operation::WindowFullscreen,
@@ -116,6 +135,10 @@ impl Args {
         match self {
             Args::Ping => None,
             Args::StateSubscribe { topics } => Some(object_of([("topics", topics.clone().into())])),
+            Args::IconGet { hashes } => {
+                let hashes: Vec<Value> = hashes.iter().map(|hash| hash.encode_value()).collect();
+                Some(object_of([("hashes", hashes.into())]))
+            }
             Args::WorkspaceFocus(WorkspaceTarget::Id(id)) => {
                 Some(object_of([("workspace_id", (*id).into())]))
             }
@@ -137,15 +160,33 @@ impl Args {
 fn decode_topics(args: &JsonObject) -> Member<Vec<String>> {
     const NAME: &str = "topics";
     let topics = json::string_array(args, NAME)?;
-    let has_duplicate = topics
-        .iter()
-        .enumerate()
-        .any(|(index, topic)| topics[..index].contains(topic));
-    if (1..=MAX_TOPICS_PER_SUBSCRIBE).contains(&topics.len()) && !has_duplicate {
+    if (1..=MAX_TOPICS_PER_SUBSCRIBE).contains(&topics.len()) && !has_duplicate(&topics) {
         Ok(topics)
     } else {
         Err(InvalidMember(NAME))
     }
+}
+
+/// 1 to 8 distinct canonical hashes (17.5). A string that is not one is a bad request; a
+/// well-formed hash the server never issued is answered in `missing`.
+fn decode_hashes(args: &JsonObject) -> Member<Vec<IconHash>> {
+    const NAME: &str = "hashes";
+    let hashes = json::array(args, NAME)?
+        .iter()
+        .map(|hash| IconHash::decode_value(hash, NAME))
+        .collect::<Member<Vec<IconHash>>>()?;
+    if (1..=MAX_ICON_HASHES).contains(&hashes.len()) && !has_duplicate(&hashes) {
+        Ok(hashes)
+    } else {
+        Err(InvalidMember(NAME))
+    }
+}
+
+fn has_duplicate<T: PartialEq>(entries: &[T]) -> bool {
+    entries
+        .iter()
+        .enumerate()
+        .any(|(index, entry)| entries[..index].contains(entry))
 }
 
 fn decode_workspace_target(args: &JsonObject) -> Member<WorkspaceTarget> {
@@ -268,6 +309,30 @@ mod tests {
     }
 
     #[test]
+    fn icon_hashes_count_duplicates_and_form() {
+        let decode = |hashes: Value| {
+            Operation::IconGet.decode_args(Some(&serde_json::json!({ "hashes": hashes })))
+        };
+        let hash = |index: u8| IconHash::of(&[index]).to_string();
+        let eight: Vec<String> = (0..8).map(hash).collect();
+        let nine: Vec<String> = (0..9).map(hash).collect();
+        assert!(decode(eight.into()).is_ok());
+        let refused = [
+            nine.into(),
+            Value::Array(Vec::new()),
+            serde_json::json!([hash(1), hash(1)]),
+            serde_json::json!(["firefox"]),
+            serde_json::json!([null]),
+            Value::Null,
+            hash(1).into(),
+        ];
+        for bad in refused {
+            assert_eq!(decode(bad.clone()), Err(InvalidMember("hashes")), "{bad}");
+        }
+        assert!(Operation::IconGet.decode_args(None).is_err());
+    }
+
+    #[test]
     fn fullscreen_needs_a_real_boolean() {
         let decode = |text: &str| Operation::WindowFullscreen.decode_args(Some(&args_of(text)));
         assert!(decode(r#"{"window_id":5,"enabled":false}"#).is_ok());
@@ -281,6 +346,9 @@ mod tests {
             Args::Ping,
             Args::StateSubscribe {
                 topics: vec![TOPIC_DESKTOP.to_owned()],
+            },
+            Args::IconGet {
+                hashes: vec![IconHash::of(b"a"), IconHash::of(b"b")],
             },
             Args::WorkspaceFocus(WorkspaceTarget::Id(9)),
             Args::WorkspaceFocus(WorkspaceTarget::Number(2)),
@@ -304,7 +372,14 @@ mod tests {
             Operation::StateSubscribe.required_scope(),
             Some(Scope::StateRead)
         );
-        assert!(!Operation::Ping.is_action() && !Operation::StateSubscribe.is_action());
+        assert_eq!(Operation::IconGet.required_scope(), Some(Scope::StateRead));
+        for read in [
+            Operation::Ping,
+            Operation::StateSubscribe,
+            Operation::IconGet,
+        ] {
+            assert!(!read.is_action(), "{read:?}");
+        }
         for action in [
             Operation::WorkspaceFocus,
             Operation::WindowFocus,

@@ -51,3 +51,23 @@ pub const MAX_LABEL_SCALARS: usize = 128;
 pub const MAX_WORKSPACE_NUMBER: u64 = 2_147_483_647;
 /// Largest `number` argument of `workspace.focus` (spec 7.2).
 pub const MAX_FOCUS_NUMBER: u16 = 999;
+
+/// Version 1 additive extensions (spec 17.14, 17.17).
+///
+/// `icon.get`: hashes per request.
+pub const MAX_ICON_HASHES: usize = 8;
+/// Largest PNG a server sends, before encoding.
+pub const MAX_ICON_PNG_BYTES: usize = 65_536;
+/// Largest PNG side a server sends, in pixels.
+pub const MAX_ICON_SIDE_PX: u32 = 128;
+/// Largest PNG side a client accepts, in pixels (17.5 rule 3).
+pub const MAX_CLIENT_ICON_SIDE_PX: u32 = 256;
+/// Rate class `icons` per device: token bucket.
+pub const ICON_BURST: u32 = 4;
+pub const ICON_REFILL_PER_SECOND: u32 = 2;
+/// Outputs in topic `desktop`.
+pub const MAX_OUTPUTS: usize = 16;
+/// Container levels of a `Layout`.
+pub const MAX_LAYOUT_DEPTH: usize = 16;
+/// Upper end of a basis-point value of `Tile.r`.
+pub const MAX_BASIS_POINTS: u16 = 10_000;

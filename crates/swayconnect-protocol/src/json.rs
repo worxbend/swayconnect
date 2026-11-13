@@ -50,6 +50,37 @@ pub(crate) fn int(object: &JsonObject, name: &'static str) -> Member<u64> {
     object.get(name).and_then(as_int).ok_or(InvalidMember(name))
 }
 
+/// A member of type `int or null`.
+pub(crate) fn nullable_int(object: &JsonObject, name: &'static str) -> Member<Option<u64>> {
+    match object.get(name) {
+        Some(Value::Null) => Ok(None),
+        Some(value) => as_int(value).map(Some).ok_or(InvalidMember(name)),
+        None => Err(InvalidMember(name)),
+    }
+}
+
+/// The type `sint` (spec 17.1 rule 6): no fraction, no exponent, -(2^53 - 1) to 2^53 - 1.
+pub(crate) fn sint(object: &JsonObject, name: &'static str) -> Member<i64> {
+    object
+        .get(name)
+        .and_then(Value::as_i64)
+        .filter(|number| number.unsigned_abs() <= MAX_INT)
+        .ok_or(InvalidMember(name))
+}
+
+/// An array of exactly `N` values of type `int`.
+pub(crate) fn int_array<const N: usize>(
+    object: &JsonObject,
+    name: &'static str,
+) -> Member<[u64; N]> {
+    let numbers = array(object, name)?
+        .iter()
+        .map(as_int)
+        .collect::<Option<Vec<u64>>>()
+        .ok_or(InvalidMember(name))?;
+    <[u64; N]>::try_from(numbers).map_err(|_| InvalidMember(name))
+}
+
 /// An `int` held as `u32`. A larger value is a valid `int`, so it is not refused here; it
 /// becomes `u32::MAX`, which no version range and no real limit reaches.
 pub(crate) fn saturating_u32(object: &JsonObject, name: &'static str) -> Member<u32> {
@@ -61,6 +92,41 @@ pub(crate) fn boolean(object: &JsonObject, name: &'static str) -> Member<bool> {
         .get(name)
         .and_then(Value::as_bool)
         .ok_or(InvalidMember(name))
+}
+
+/// A member of type `bool` that is optional: absent is `None`, `null` is an error.
+pub(crate) fn optional_boolean(object: &JsonObject, name: &'static str) -> Member<Option<bool>> {
+    match object.get(name) {
+        None => Ok(None),
+        Some(value) => value.as_bool().map(Some).ok_or(InvalidMember(name)),
+    }
+}
+
+/// A member of type `T or null`, decoded by `decode` when it is not `null`.
+pub(crate) fn nullable<T>(
+    object: &JsonObject,
+    name: &'static str,
+    decode: impl FnOnce(&Value) -> Member<T>,
+) -> Member<Option<T>> {
+    match object.get(name) {
+        Some(Value::Null) => Ok(None),
+        Some(value) => decode(value).map(Some),
+        None => Err(InvalidMember(name)),
+    }
+}
+
+/// A member that is optional and of type `T or null`: absent is `None`, `null` is `Some(None)`.
+/// The two stay apart so that a state re-encodes to the same JSON value.
+pub(crate) fn optional_nullable<T>(
+    object: &JsonObject,
+    name: &'static str,
+    decode: impl FnOnce(&Value) -> Member<T>,
+) -> Member<Option<Option<T>>> {
+    if object.contains_key(name) {
+        nullable(object, name, decode).map(Some)
+    } else {
+        Ok(None)
+    }
 }
 
 pub(crate) fn object<'a>(object: &'a JsonObject, name: &'static str) -> Member<&'a JsonObject> {
@@ -110,6 +176,38 @@ pub(crate) fn object_array<T>(
         .iter()
         .map(|entry| decode(entry.as_object().ok_or(InvalidMember(name))?))
         .collect()
+}
+
+/// An optional member whose entries are all objects: absent is `None`, `null` is an error.
+pub(crate) fn optional_object_array<T>(
+    object: &JsonObject,
+    name: &'static str,
+    decode: impl Fn(&JsonObject) -> Member<T>,
+) -> Member<Option<Vec<T>>> {
+    if object.contains_key(name) {
+        object_array(object, name, decode).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+/// An optional member of type `string[]`: absent is `None`, `null` is an error.
+pub(crate) fn optional_string_array(
+    object: &JsonObject,
+    name: &'static str,
+) -> Member<Option<Vec<String>>> {
+    if object.contains_key(name) {
+        string_array(object, name).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+/// Inserts `value` under `name` when it is `Some`; leaves the member out otherwise.
+pub(crate) fn insert_present(object: &mut JsonObject, name: &str, value: Option<Value>) {
+    if let Some(value) = value {
+        object.insert(name.to_owned(), value);
+    }
 }
 
 /// The types `bytes32` and `bytes16`.

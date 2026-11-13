@@ -26,6 +26,7 @@ Contents:
 14. Limits (all numbers in one place)
 15. Conformance vectors
 16. Client implementation checklist
+17. Version 1 additive extensions (v2 features). Draft, optional capabilities; see 17.1.
 
 ---
 
@@ -1153,3 +1154,584 @@ How to get the leaf certificate DER and keep the signature check in common stack
 | Python | `ssl.SSLSocket.getpeercert(binary_form=True)` |
 | Go | `tls.ConnectionState.PeerCertificates[0].Raw` |
 | Swift | `SecTrustCopyCertificateChain`, then `SecCertificateCopyData` on the first entry |
+
+---
+
+## 17. Version 1 additive extensions (v2 features)
+
+Status: **draft**. Revision 2026-11-13 (review 2). Written for `docs/V2_PLAN.md`. Nothing in this section is implemented yet.
+
+Every item here is an addition allowed by 13.1: new optional fields, new operations, new topics, new scopes, new error and `bye` codes. Protocol stays `1`. ALPN stays `swayconnect/1`. No existing field, message or rule of sections 1 to 16 changes meaning.
+
+Milestones (informative): **M1** = 17.3, 17.4, 17.5 and `bye` `scopes_changed` (17.15). **M2a** = 17.6, 17.7, 17.8. **M2b** = 17.9 to 17.13.
+
+### 17.1 Rules for this section
+
+1. Every operation and topic of this section is an optional capability. A server that does not implement one leaves it out of `welcome.ops`, `welcome.known_ops` and `welcome.topics` and answers it with `unknown_op` or `unknown_topic`. Such a server is still conformant.
+2. A client MUST NOT call an operation of this section unless `welcome.ops` lists it (13.2 rule 7). It MUST NOT subscribe to a topic unless `welcome.topics` lists it.
+3. A client MUST ignore an unknown value in an enum-like string of this section and use the fallback given in its table.
+4. Every new field added to an object of section 9 is optional. Old clients ignore it (13.2 rule 1).
+5. Every string a client sends in this section is either a closed enum defined here or an id that the server itself issued in a topic. The server matches it exactly against its own current state. It never interprets it, never puts it into a shell and never puts it into a sway command. The one exception is `input.text` (17.13), whose text goes only to the server's virtual keyboard.
+6. One new type is used: `sint`, a JSON number with no fraction and no exponent, in the range -9007199254740991 to 9007199254740991.
+7. Every string the server sends in a topic or result of this section follows 9.3 rules 2 to 4: no control or format character (2.4), cut to the stated length, untrusted. A string with no stated length is cut to 128 Unicode scalar values.
+8. Binary data (icons) uses base64url without padding (2.2), with the same strictness rules.
+9. Size rule for every topic of this section: the server MUST keep the state object, as it encodes it, at or under 262144 bytes. Each topic below states its count caps and its cut rule. A state that was cut carries `truncated: true`.
+
+### 17.2 New scopes
+
+All new scopes are off unless the owner grants them by name at the desktop (`swayconnectd pair --scopes`, or `swayconnectd devices grant`). No preset and no default pairing holds any of them. A client cannot ask for a scope (7.1).
+
+| Scope | Grants | Risk tier | Milestone |
+|---|---|---|---|
+| `idle.inhibit` | op `keep_awake.set` | 2 (stops the auto-lock for a limited time) | M2a |
+| `destructive` | op `window.close` | 2 | M2a |
+| `audio` | topic `audio`; ops `audio.set_volume`, `audio.set_mute`, `audio.set_default` on sinks; `audio.set_mute` with `muted: true` on sources | 1 | M2b |
+| `audio.capture` | together with `audio`: every write to a source other than muting it (unmute, volume, set default source) | 2 (can open the microphone) | M2b |
+| `media` | topic `media`, ops `media.*` | 1 | M2b |
+| `launch` | topic `apps`, op `launcher.open`, op `app.launch` for entries with `risky: false` | 2 (starts programs) | M2b |
+| `launch.risky` | together with `launch`: `app.launch` for entries with `risky: true` | 2 (terminals: code execution) | M2b |
+| `input.keys` | op `input.key` | 2 (code-execution equivalent) | M2b |
+| `input.text` | op `input.text` | 2 (code-execution equivalent) | M2b |
+| `commands`, `input.pointer` | reserved, no operation in this revision | | |
+
+Existing scope `control` additionally grants `window.move`, `window.floating`, `window.layout`, `window.scratchpad`, `scratchpad.show` and `session.lock` (M2a). Existing scope `state.read` additionally grants `icon.get` (M1) and topic `session` (M2a).
+
+A scope that a check after 10.2 step 3 needs (`audio.capture`, `launch.risky`) is checked at 17.16. Its refusal is `forbidden` with `detail.scope` naming it.
+
+### 17.3 `welcome` additions
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `known_scopes` | string[] | no | every scope name this server knows, granted or not |
+| `known_ops` | string[] | no | every operation this server implements and is configured for, as it would list them in `ops` for a device with every scope and with read-only mode off |
+
+A client MUST NOT treat `known_scopes` or `known_ops` as granted. Granted scopes are `scopes` only, callable operations are `ops` only.
+
+Client rule for one operation `op` (the basis of the Android `FeatureAvailability`):
+
+| Condition | State |
+|---|---|
+| `op` in `ops` | available |
+| `op` in `known_ops`, its scope in `scopes`, `read_only` is `true` | read-only (show disabled) |
+| `op` in `known_ops`, its scope not in `scopes` | locked (show the scope name) |
+| `op` not in `known_ops` | unsupported (hide) |
+| `known_ops` absent (older server) | unsupported, unless `op` is in `ops` |
+
+### 17.4 Topic `desktop` additions
+
+Required scope: `state.read`, as before.
+
+#### 17.4.1 New fields
+
+| Object | Field | Type | Required | Meaning |
+|---|---|---|---|---|
+| state object (9.1) | `outputs` | Output[] | no | the outputs, in sway's tree order. Sway-internal outputs are not listed. At most 16. |
+| state object | `scratchpad` | ScratchpadWindow[] | no | windows hidden in the scratchpad. A scratchpad window that is shown is a normal entry of `windows`. |
+| state object | `layouts_cut` | bool | no | `true` when the server set every `Workspace.layout` to `null` to respect the size limit (17.4.5) |
+| `Workspace` (9.2) | `rect` | Rect or null | no | the workspace area in global logical pixels, without the bar. `null` when unknown. |
+| `Workspace` | `layout` | Layout or null | no | the tiling layout (17.4.3). `null` when the server dropped it (then `layouts_cut` is true), or when the workspace has no measurable area (a missing or 0 × 0 rect, for example on a disabled output; `layouts_cut` stays false). |
+| `Window` (9.3) | `icon` | string or null | no | content hash of the app icon (17.5). `null` when the server has no icon. Equal for windows of the same app. |
+
+A `Window` keeps every rule of 9.3. Scratchpad windows stay out of `windows` (9.3 rule 1) and appear only in `scratchpad`.
+
+#### 17.4.2 `Rect`, `Output`, `ScratchpadWindow`
+
+`Rect`:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `x`, `y` | sint | yes | top left corner, global logical pixels |
+| `w`, `h` | int | yes | size in logical pixels |
+
+`Output`:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `name` | string | yes | output name, for example `"DP-1"`. At most 128 Unicode scalar values. Equals `Workspace.output` of its workspaces. |
+| `model` | string or null | yes | monitor make and model text, for display only. At most 128 scalar values. |
+| `rect` | Rect | yes | output area in global logical pixels |
+| `scale_milli` | int | yes | scale times 1000, for example `1250` |
+| `transform` | string | yes | `normal`, `90`, `180`, `270`, `flipped`, `flipped-90`, `flipped-180`, `flipped-270`. Unknown value: treat as `normal`. |
+| `active` | bool | yes | the output is enabled |
+| `power` | bool | yes | the output is powered on |
+| `current_workspace_id` | int or null | yes | `id` of the workspace it shows |
+
+`ScratchpadWindow`:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `id` | int | yes | window id, same id space as 9.3 |
+| `app_id` | string or null | yes | as in 9.3 |
+| `title` | string or null | yes | as in 9.3, `null` without `state.titles` |
+| `icon` | string or null | yes | as `Window.icon` |
+
+#### 17.4.3 `Layout` and `Tile`
+
+`Layout`:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `size` | int[] | yes | exactly 2 values: workspace width and height in logical pixels. Gives the aspect ratio. |
+| `fullscreen` | int or null | yes | `id` of the window that is fullscreen on this workspace, else `null` |
+| `tiled` | Tile or null | yes | the root of the tiled tree. `null` when the workspace has no tiled window. |
+| `floating` | Tile[] | yes | floating windows and floating containers, bottom first, top last |
+
+`Tile` is one of two shapes. A receiver tells them apart by the member `w`.
+
+Window tile:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `w` | int | yes | window `id`. It is the `id` of an entry of `windows` with this workspace's `id` as `workspace_id`. |
+| `r` | int[] | yes | exactly 4 values `[x, y, w, h]` in basis points of the workspace (0 to 10000), relative to `Workspace.rect`. Clamped to 0..10000. |
+
+Container tile:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `k` | string | yes | `h` split horizontal, `v` split vertical, `t` tabbed, `s` stacked. Unknown value: treat as `h`. |
+| `r` | int[] | yes | as above |
+| `c` | Tile[] | yes | children in sway order, 1 or more |
+| `a` | int | no | for `t` and `s`: index into `c` of the child shown. Absent or out of range: treat as 0. |
+
+Server rules:
+
+1. A split container with exactly one child is replaced by that child, except the root.
+2. Depth is at most 16 container levels. Below that, the server puts the remaining window tiles directly into the deepest container. Every tile still has its own `r`, so no geometry is lost.
+3. A window id appears at most once in all layouts together.
+4. The workspace's own `fullscreen_mode` is ignored. `fullscreen` names a window whose own fullscreen mode is not 0.
+5. A window in `windows` may be missing from the layout (for example after a cut). A client lists it beside the map.
+6. `a` is the position in `c` of the first id of the container's sway `focus` list that is one of its children.
+
+Client rules:
+
+1. A client MUST tolerate a `w` that is not in `windows` (skip the tile) and an `r` outside 0..10000 (clamp).
+2. A client MUST NOT treat the layout as a reason to call an operation. It is for display.
+
+#### 17.4.4 Freshness (informative)
+
+Sway sends no event for a resize. While at least one client subscribes to `desktop`, the server re-reads the tree every 2 s and on sway `binding` events, and publishes only when the state differs. A layout can lag a resize by up to about 2 s.
+
+#### 17.4.5 Size rule
+
+9.1's limit of 262144 bytes still holds. When the state is too large, the server first sets every `Workspace.layout` to `null` and sets `layouts_cut`. Then it drops `scratchpad` entries from the end. Then it applies 9.1 (windows, then workspaces) and sets `truncated`.
+
+### 17.5 Icons
+
+#### `icon.get`
+
+Scope: `state.read`. Not an action: allowed in read-only mode. It has its own rate class `icons` (17.14), which applies in read-only mode too.
+
+| Arg | Type | Required | Meaning |
+|---|---|---|---|
+| `hashes` | string[] | yes | 1 to 8 distinct icon hashes from `Window.icon`, `ScratchpadWindow.icon`, `Player.icon` or `App.icon` |
+
+| Result field | Type | Meaning |
+|---|---|---|
+| `icons` | object[] | one entry per hash the server has, in request order |
+| `icons[].hash` | string | the hash |
+| `icons[].png` | string | base64url of a PNG image, at most 128 x 128 pixels, at most 65536 bytes before encoding |
+| `missing` | string[] | hashes the server does not have |
+
+Rules:
+
+1. A hash is base64url of the first 16 bytes of SHA-256 over the PNG bytes: 22 characters.
+2. The server answers only from PNGs it produced itself. The operation takes no path and no name.
+3. A client MUST check `SHA-256(png)` against the hash and drop a mismatch. It MUST decode the PNG as untrusted input: read the bounds first, refuse more than 256 x 256 pixels.
+4. A client MAY cache icons by hash across connections and servers.
+5. Size (informative): 8 icons of 65536 bytes encode to 8 x 87382 characters, about 700 KB with JSON. The result always fits `max_frame_s2c`.
+
+Errors: `bad_request`, `forbidden`, `rate_limited`.
+
+### 17.6 Window and session operations (scope `control`)
+
+All are actions (7.2): rate limited, refused in read-only mode, `ok` means sway (or the lock command) accepted.
+
+| `op` | Args | Sway command (server side, informative) | Errors beyond 7.2's usual set |
+|---|---|---|---|
+| `window.move` | `window_id` int, and exactly one of `workspace_id` int or `number` int 0..999 | `[con_id=<id>] move container to workspace number <n>` | `unsupported_target` (workspace without a usable number, as in `workspace.focus`) |
+| `window.floating` | `window_id` int, `enabled` bool | `[con_id=<id>] floating enable` or `disable` | |
+| `window.layout` | `window_id` int, `layout` one of `splith`, `splitv`, `tabbed`, `stacking` | `[con_id=<id>] layout <layout>`. It changes the window's parent container. | |
+| `window.scratchpad` | `window_id` int | `[con_id=<id>] move scratchpad` | |
+| `scratchpad.show` | `window_id` int, an `id` from `scratchpad` | `[con_id=<id>] scratchpad show` | `not_found` when the id is not in `scratchpad` |
+| `session.lock` | none | none: the server runs its configured lock command | `backend_unavailable`, `spawn_failed` |
+
+Result of each: `{}`, except `session.lock`: `{already_locked: bool}`.
+
+`session.lock` rules:
+
+1. It is in `known_ops` and `ops` only when the owner configured a lock command.
+2. When topic `session` says `locked: true`, or the lock command the server started last is still running, the server starts nothing and returns `{already_locked: true}`.
+3. At most one lock command runs at a time. When lock state is unknown (`locked: null`) and none runs, the server starts it (locking is the safe direction).
+
+Note for clients: the owner may run tools that change the layout again (for example autotiling). A layout change may look undone.
+
+### 17.7 `window.close` (scope `destructive`)
+
+| Arg | Type | Required | Meaning |
+|---|---|---|---|
+| `window_id` | int | yes | `id` of an entry of `windows` |
+
+Action. Result `{}`. Sway asks the application to close. The application may refuse or ask to save.
+A client MUST ask the user to confirm before it sends this.
+
+### 17.8 Keep awake (scope `idle.inhibit`)
+
+#### `keep_awake.set`
+
+Action. The server holds at most one keep-awake, shared by all devices. The last `true` sets the expiry.
+
+| Arg | Type | Required | Meaning |
+|---|---|---|---|
+| `enabled` | bool | yes | `true` starts it or replaces the expiry, `false` ends it |
+| `duration_s` | int, 60 to `max_duration_s` | no | how long from now. Default `default_duration_s` of topic `session`. Ignored when `enabled` is `false`. |
+
+| Result field | Type | Meaning |
+|---|---|---|
+| `remaining_ms` | int or null | time left, `null` when off |
+
+Rules:
+
+1. On `true` the server holds a logind idle inhibitor (mode `block`) that ends by itself at the expiry, even if the server stops. The expiry is now + `duration_s`, shortened so that rule 5 holds. A replace sets a new expiry; it does not reset the count of rule 5.
+2. If an active output has `power` `false`, the server turns all outputs on after it takes the inhibitor.
+3. `false` ends it, whichever device started it.
+4. The holder is the device that sent the last `true`.
+5. Continuous cap. The server counts on-time since the last break. A break is an off period of at least `cooldown_s`. A shorter off period does not reset the count. When the count reaches `max_continuous_s`, the server ends keep-awake and refuses `true` with `limit_reached` until it has been off for `cooldown_s`. The server config MUST give `cooldown_s` larger than the longest idle timeout of the desktop (default 900 s against swayidle's 300 s and 600 s here).
+6. It also ends on revoke of the holder, on read-only mode (SIGUSR1) and on daemon stop. It does not end when the client disconnects.
+7. Every `true` that starts keep-awake shows a desktop notice with the holder's short device id.
+
+Errors: `bad_request`, `forbidden`, `read_only`, `rate_limited`, `limit_reached` (`detail.retry_after_ms`), `backend_unavailable`, `spawn_failed`.
+
+#### Topic `session`
+
+Scope: `state.read`. Full snapshots with `rev`, as section 8.
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `keep_awake` | object | yes | |
+| `keep_awake.active` | bool | yes | |
+| `keep_awake.remaining_ms` | int or null | yes | at the moment the state was built. The client counts down locally. |
+| `keep_awake.holder` | string or null | yes | `this_device`, `other_device`, or `null` when off. Unknown value: `other_device`. |
+| `keep_awake.default_duration_s` | int | yes | |
+| `keep_awake.max_duration_s` | int | yes | |
+| `keep_awake.max_continuous_s` | int | yes | the cap of rule 5 |
+| `keep_awake.cooldown_remaining_ms` | int or null | yes | set while `limit_reached` applies |
+| `windows_inhibiting` | int | yes | number of windows that keep the desktop awake by themselves (sway `inhibit_idle`), for example a fullscreen video |
+| `locked` | bool or null | yes | `true` when the server believes the screen is locked, `null` when it cannot tell. Re-checked at least every 2 s while a client subscribes. |
+| `input` | object | no | present when the server offers `input.*` (17.13) |
+| `input.active` | bool | yes | a remote keyboard session is armed on the server |
+| `input.holder` | string or null | yes | as `keep_awake.holder` |
+| `launcher` | object | no | present when the server offers `launcher.open` (17.11) |
+| `launcher.open` | bool | yes | a launcher started by the server is running |
+| `launcher.holder` | string or null | yes | the device that opened it, as `keep_awake.holder` |
+
+Because `holder` depends on the device, the server builds this state per device.
+
+### 17.9 Audio (scope `audio`)
+
+#### Topic `audio`
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `available` | bool | yes | `false` when the sound server cannot be reached. Then both lists are empty. |
+| `max_volume_pct` | int | yes | highest value a client may send, 100 to 150 |
+| `default_sink` | int or null | yes | `id` of the default output device |
+| `default_source` | int or null | yes | `id` of the default input device |
+| `sinks` | Device[] | yes | output devices, at most 64 |
+| `sources` | Device[] | yes | input devices, at most 64. Monitor sources are not listed. |
+| `truncated` | bool | yes | `true` when the server dropped devices for a cap |
+
+`Device`:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `id` | int | yes | issued by the server. Stable while the server runs and the device exists. |
+| `description` | string | yes | human name, at most 128 scalar values |
+| `kind` | string | yes | `speaker`, `headphones`, `hdmi`, `bluetooth`, `usb`, `microphone`, `other`. Unknown value: `other`. |
+| `volume_pct` | int | yes | current volume, highest channel, 0 to 1000 |
+| `muted` | bool | yes | |
+| `available` | bool | yes | `false` when its port is unplugged |
+
+Size (informative): 128 devices of about 700 bytes each stay far under 17.1 rule 9. Cut rule: drop devices from the end of `sources`, then of `sinks`.
+
+#### Audio operations
+
+All are actions. `audio.set_volume` uses the `continuous` rate class (17.14), the others the `actions` class.
+
+| `op` | Args | Result |
+|---|---|---|
+| `audio.set_volume` | `device_id` int, `volume_pct` int 0 to `max_volume_pct` | `{}` |
+| `audio.set_mute` | `device_id` int, `muted` bool | `{}` |
+| `audio.set_default` | `device_id` int (a sink or a source) | `{}` |
+
+Capture rule: when `device_id` is a source, every op except `audio.set_mute` with `muted: true` also needs `audio.capture` (17.16 step 8a). When a source is unmuted from a device, the server shows a desktop notice with the device's short id.
+
+Errors: `bad_request` (out of range), `not_found` (id not in the current `audio` state), `forbidden`, `read_only`, `rate_limited`, `backend_unavailable`, `timeout`.
+
+### 17.10 Media (scope `media`)
+
+#### Topic `media`
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `players` | Player[] | yes | MPRIS players, at most 16 |
+| `active_player_id` | int or null | yes | the player a simple client controls: the last one that played |
+| `truncated` | bool | yes | `true` when the server dropped players for the cap |
+
+`Player`:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `id` | int | yes | issued by the server |
+| `name` | string | yes | player identity, for example `"Chromium"`. At most 64 scalar values. |
+| `app_id` | string or null | yes | icon hint, at most 128 scalar values |
+| `icon` | string or null | yes | icon hash |
+| `status` | string | yes | `playing`, `paused`, `stopped`. Unknown: `stopped`. |
+| `title`, `artist`, `album` | string or null | yes | at most 200 scalar values each. `null` without scope `state.titles`. |
+| `can_play`, `can_pause`, `can_next`, `can_previous` | bool | yes | |
+
+No album art, no position and no seek in this revision. Cut rule: drop players from the end, never the active one.
+
+#### Media operations
+
+Actions, `actions` rate class. Arg `player_id` int on each. Result `{}`.
+
+| `op` | Extra args |
+|---|---|
+| `media.play_pause` | none |
+| `media.next` | none |
+| `media.previous` | none |
+
+Errors: `bad_request`, `not_found`, `unsupported_target` (the player does not allow it), `forbidden`, `read_only`, `rate_limited`, `backend_unavailable`, `timeout`.
+
+### 17.11 Apps and launcher (scope `launch`)
+
+#### Topic `apps`
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `apps` | App[] | yes | sorted by `name`, at most 512 |
+| `recent` | string[] | yes | up to 8 `entry_id`s, most recent first |
+| `truncated` | bool | yes | `true` when the server cut the state (rule below) |
+
+`App`:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `entry_id` | string | yes | desktop entry id, 1 to 255 bytes of `A-Z a-z 0-9 . _ -` |
+| `name` | string | yes | at most 128 scalar values |
+| `generic_name` | string or null | yes | at most 128 scalar values |
+| `keywords` | string[] | yes | at most 16, each at most 64 scalar values, together at most 512 bytes of UTF-8 |
+| `icon` | string or null | yes | icon hash |
+| `terminal` | bool | yes | runs in a terminal |
+| `risky` | bool | yes | the owner marked it, or it is a terminal. Launching it needs `launch.risky`. |
+
+The topic never carries the Exec line or a file path.
+
+Cut rule (17.1 rule 9): first set every `keywords` to `[]`, then every `generic_name` to `null`, then drop apps from the end of `apps` (and their ids from `recent`), until the state fits. Set `truncated`.
+
+#### Launch operations
+
+Actions in the `launch` rate class.
+
+| `op` | Args | Result | Notes |
+|---|---|---|---|
+| `app.launch` | `entry_id` string (required), `number` int 0..999 (optional) | `{}` | `entry_id` MUST be in the current `apps` state. A `risky` entry also needs `launch.risky` (17.16 step 8b). With `number`, the server focuses that workspace first. `ok` means started, not that a window appeared. |
+| `launcher.open` | none | `{already_open: bool}` | runs the configured launcher (for example fuzzel). At most one runs. The caller becomes `session.launcher.holder` unless one was already open. |
+
+There is no close operation: the launcher closes on Escape at the desktop, or by `input.key` `Escape` with target `launcher`.
+
+Errors: `bad_request`, `not_found`, `forbidden`, `read_only`, `rate_limited`, `backend_unavailable`, `spawn_failed`.
+
+### 17.12 Owner buttons
+
+Not in this revision. Scope name `commands` is reserved for it.
+
+### 17.13 Remote keyboard (scopes `input.text`, `input.keys`)
+
+Both are actions in the `input` rate classes.
+
+Target: exactly one of these args:
+
+| Arg | Type | Meaning |
+|---|---|---|
+| `window_id` | int | the window the user saw as focused. It MUST be the focused window when each part of the input is delivered. |
+| `launcher` | bool, only `true` | the launcher this device opened (`session.launcher.holder` is `this_device`) |
+
+#### `input.text`
+
+| Arg | Type | Required | Meaning |
+|---|---|---|---|
+| target | see above | yes | |
+| `text` | string | yes | 1 to 1024 bytes of UTF-8. No control or format character (2.4), except U+200C and U+200D (needed by emoji sequences and some scripts). So no newline, no tab. |
+
+Result `{delivered_chars: int}`. Enter is never part of text; it is `input.key` `Return`. A client with longer text splits it at character boundaries into requests of at most 1024 bytes, sends them in order and stops at the first error.
+
+#### `input.key`
+
+| Arg | Type | Required | Meaning |
+|---|---|---|---|
+| target | see above | yes | |
+| `key` | string | yes | one of `Escape`, `Tab`, `Return`, `BackSpace`, `Delete`, `Insert`, `Left`, `Right`, `Up`, `Down`, `Home`, `End`, `Page_Up`, `Page_Down`, `space`, `F1` to `F12`, or one ASCII letter `a`-`z` or digit `0`-`9` |
+| `modifiers` | string[] | no | distinct values from `ctrl`, `alt`, `shift`, `super`. `ctrl` and `alt` together with `F1` to `F12` is refused with `bad_request` (VT switch). |
+| `repeat` | int 1 to 32 | no | default 1 |
+
+Result `{}`.
+
+Server rules (both ops):
+
+1. The server cuts text into parts of at most 16 characters. A key press is one part.
+2. Before each part the server checks, in order: the screen is not locked (else `locked`; unknown lock state also refuses with `locked`); for target `launcher`, the launcher this device opened is still running (else `launcher_closed`); no keyboard-grabbing surface runs other than that launcher (else `keyboard_grabbed`); the focused window, read from sway at that moment, is the target `window_id`, or for target `launcher` the window that was focused when `launcher.open` ran (else `focus_changed`).
+3. The focus read of rule 2 is a synchronous request to sway made after the previous part was fully processed by the compositor. The server does not reuse an earlier answer.
+4. It stops at the first failed check and reports how much was delivered.
+5. It releases every key and modifier after each request and when the connection closes.
+6. The first input of a connection arms an input session and shows a notice on the desktop.
+
+New errors with `detail`:
+
+| Code | `detail` |
+|---|---|
+| `focus_changed` | `{"delivered_chars": int, "focused_window_id": int or null}` |
+| `locked` | `{"delivered_chars": int}` |
+| `keyboard_grabbed` | `{"delivered_chars": int}` |
+| `launcher_closed` | `{"delivered_chars": int}` |
+
+### 17.14 Rate classes
+
+Each device has one bucket per class, shared by its connections. Version 1's action bucket is the `actions` class.
+
+| Class | Ops | Bucket |
+|---|---|---|
+| `actions` | `workspace.focus`, `window.*`, `scratchpad.show`, `session.lock`, `keep_awake.set`, `audio.set_mute`, `audio.set_default`, `media.*` | burst 5, refill 2 per second (unchanged) |
+| `continuous` | `audio.set_volume` | burst 10, refill 10 per second |
+| `launch` | `app.launch`, `launcher.open` | burst 3, refill 1 per 5 s |
+| `input` | `input.key` | burst 20, refill 10 per second |
+| `input_text` | `input.text` | burst 4, refill 1 per second, and at most 4096 characters per minute |
+| `icons` | `icon.get` (also in read-only mode) | burst 4, refill 2 per second |
+
+`rate_limited` keeps its `detail.retry_after_ms`.
+
+### 17.15 New error and `bye` codes
+
+| Code | Where | Meaning | Retry |
+|---|---|---|---|
+| `focus_changed` | `res.error` | the focused window is not the target | no; show the user the new focus |
+| `locked` | `res.error` | the screen is locked, or lock state is unknown | no |
+| `keyboard_grabbed` | `res.error` | another surface takes the keyboard (launcher, menu, lock screen) | no |
+| `launcher_closed` | `res.error` | no launcher this device opened is running | no |
+| `limit_reached` | `res.error` | a server cap applies; `detail.retry_after_ms` | after the delay |
+| `backend_unavailable` | `res.error` | the system service behind the op is missing or down | later |
+| `spawn_failed` | `res.error` | the server could not start the program | no |
+| `scopes_changed` | `bye` | the owner changed this device's scopes | reconnect at once, without backoff; `welcome` lists the new scopes |
+
+Old clients treat `scopes_changed` like `shutdown` (13.2 rule 5) and unknown error codes as non-retryable failures (13.2 rule 4).
+
+### 17.16 Check order additions
+
+10.2 holds. Step 5 uses the op's rate class and also applies to `icon.get`. After step 8:
+
+8a. audio ops on a source, except `audio.set_mute` with `muted: true`: scope `audio.capture` (`forbidden`).
+8b. `app.launch` of a `risky` entry: scope `launch.risky` (`forbidden`).
+8c. `input.*`: the checks of 17.13 rule 2, in its order (`locked`, `launcher_closed`, `keyboard_grabbed`, `focus_changed`).
+
+### 17.17 Limits additions
+
+| Limit | Value |
+|---|---|
+| Hashes per `icon.get` | 8 |
+| PNG per icon | 128 x 128 px, 65536 bytes |
+| Encoded state of every topic of section 17 | 262144 bytes |
+| Outputs in `desktop` | 16 |
+| `input.text` length | 1024 bytes |
+| Characters per input part | 16 |
+| Layout depth | 16 container levels |
+| `keep_awake.set` `duration_s` | 60 to `max_duration_s` (default 7200) |
+| Keep-awake continuous cap and cooldown | server config; defaults 14400 s and 900 s |
+| Sinks, sources in `audio` | 64 each |
+| Players in `media` | 16 |
+| Apps in `apps` | 512 |
+| Keywords per app | 16, together 512 bytes |
+
+### 17.18 Example frames (informative)
+
+Payloads only; the 4-byte length prefix is left out. Normative vectors land in `protocol/vectors/v1/ext/` with each slice.
+
+`welcome` after `auth`, for a device that was granted `idle.inhibit` and `audio` by name:
+
+```
+{"type":"welcome","protocol":1,"device_id":"wMHCw8TFxsfIycrLzM3Ozw","server_proof":"...","scopes":["state.read","state.titles","control","idle.inhibit","audio"],"ops":["ping","state.subscribe","icon.get","workspace.focus","window.focus","window.fullscreen","window.move","window.floating","window.layout","window.scratchpad","scratchpad.show","session.lock","keep_awake.set","audio.set_volume","audio.set_mute","audio.set_default"],"topics":["desktop","session","audio"],"known_scopes":["state.read","state.titles","control","idle.inhibit","destructive","audio","audio.capture","media","launch","launch.risky","input.keys","input.text"],"known_ops":["ping","state.subscribe","icon.get","workspace.focus","window.focus","window.fullscreen","window.move","window.floating","window.layout","window.scratchpad","scratchpad.show","session.lock","window.close","keep_awake.set","audio.set_volume","audio.set_mute","audio.set_default","media.play_pause","media.next","media.previous","app.launch","launcher.open","input.text","input.key"],"read_only":false,"server":{"name":"worxbox","version":"0.2.0"},"limits":{"max_frame_c2s":16384,"max_frame_s2c":1048576,"idle_timeout_ms":90000}}
+```
+
+A `desktop` state with a layout (one workspace of the live desktop, titles shortened):
+
+```
+{"sway":{"online":true,"version":"1.12"},"outputs":[{"name":"DP-1","model":"Dell P3223QE","rect":{"x":0,"y":0,"w":3072,"h":1728},"scale_milli":1250,"transform":"normal","active":true,"power":true,"current_workspace_id":20}],"workspaces":[{"id":20,"number":3,"name":"3","output":"DP-1","focused":true,"visible":true,"urgent":false,"rect":{"x":2,"y":28,"w":3068,"h":1698},"layout":{"size":[3068,1698],"fullscreen":null,"tiled":{"k":"h","r":[0,0,10000,10000],"c":[{"w":24,"r":[0,0,4997,10000]},{"w":29,"r":[5003,0,4997,10000]}]},"floating":[{"w":23,"r":[4876,3510,244,2980]}]}}],"windows":[{"id":24,"workspace_id":20,"app_id":"Emulator","title":"Android Emulator","focused":false,"urgent":false,"floating":false,"fullscreen":false,"icon":null},{"id":29,"workspace_id":20,"app_id":"google-chrome","title":"Docs","focused":true,"urgent":false,"floating":false,"fullscreen":false,"icon":"q83vEjRWeJCrze8SNFZ4kA"},{"id":23,"workspace_id":20,"app_id":"Emulator","title":"Extended controls","focused":false,"urgent":false,"floating":true,"fullscreen":false,"icon":null}],"scratchpad":[],"truncated":false}
+```
+
+`icon.get`:
+
+```
+C: {"type":"req","id":7,"op":"icon.get","args":{"hashes":["q83vEjRWeJCrze8SNFZ4kA","AAAAAAAAAAAAAAAAAAAAAA"]}}
+S: {"type":"res","id":7,"ok":true,"result":{"icons":[{"hash":"q83vEjRWeJCrze8SNFZ4kA","png":"iVBORw0KGgo..."}],"missing":["AAAAAAAAAAAAAAAAAAAAAA"]}}
+```
+
+Keep awake for one hour, then the `session` state (a server without input and launcher ops):
+
+```
+C: {"type":"req","id":8,"op":"keep_awake.set","args":{"enabled":true,"duration_s":3600}}
+S: {"type":"res","id":8,"ok":true,"result":{"remaining_ms":3600000}}
+S: {"type":"evt","event":"state.changed","data":{"topic":"session","rev":3,"data":{"keep_awake":{"active":true,"remaining_ms":3600000,"holder":"this_device","default_duration_s":3600,"max_duration_s":7200,"max_continuous_s":14400,"cooldown_remaining_ms":null},"windows_inhibiting":0,"locked":false}}}
+```
+
+Lock while already locked:
+
+```
+C: {"type":"req","id":9,"op":"session.lock","args":{}}
+S: {"type":"res","id":9,"ok":true,"result":{"already_locked":true}}
+```
+
+Volume while dragging, then a refusal, then a mic unmute without `audio.capture`:
+
+```
+C: {"type":"req","id":10,"op":"audio.set_volume","args":{"device_id":1,"volume_pct":55}}
+S: {"type":"res","id":10,"ok":true,"result":{}}
+C: {"type":"req","id":11,"op":"audio.set_volume","args":{"device_id":1,"volume_pct":180}}
+S: {"type":"res","id":11,"ok":false,"error":{"code":"bad_request","message":"volume_pct above max_volume_pct"}}
+C: {"type":"req","id":12,"op":"audio.set_mute","args":{"device_id":2,"muted":false}}
+S: {"type":"res","id":12,"ok":false,"error":{"code":"forbidden","message":"needs audio.capture","detail":{"scope":"audio.capture"}}}
+```
+
+Typing cut short by a focus change:
+
+```
+C: {"type":"req","id":13,"op":"input.text","args":{"window_id":29,"text":"git status --short"}}
+S: {"type":"res","id":13,"ok":false,"error":{"code":"focus_changed","message":"focus moved","detail":{"delivered_chars":16,"focused_window_id":24}}}
+```
+
+Typing while locked:
+
+```
+C: {"type":"req","id":14,"op":"input.key","args":{"window_id":29,"key":"Return"}}
+S: {"type":"res","id":14,"ok":false,"error":{"code":"locked","message":"screen is locked","detail":{"delivered_chars":0}}}
+```
+
+Enter for a launcher that already closed:
+
+```
+C: {"type":"req","id":15,"op":"input.key","args":{"launcher":true,"key":"Return"}}
+S: {"type":"res","id":15,"ok":false,"error":{"code":"launcher_closed","message":"launcher is not running","detail":{"delivered_chars":0}}}
+```
+
+Scopes changed at the desktop:
+
+```
+S: {"type":"bye","code":"scopes_changed","message":"scopes of this device changed"}
+```
+
+### 17.19 Client checklist additions
+
+16. Calls an operation of section 17 only when `welcome.ops` lists it. Shows the others by the table of 17.3: read-only, locked with the scope name, or hidden.
+17. Checks the hash of every icon and decodes it as untrusted. Asks for at most 8 icons per request and waits `retry_after_ms` after `rate_limited`.
+18. Asks before `window.close` and before `app.launch` of a `risky` app.
+19. Never puts Enter into `input.text`. Splits text above 1024 bytes. Shows `delivered_chars` after `focus_changed`, `locked`, `keyboard_grabbed` or `launcher_closed`. Offers target `launcher` only when `session.launcher.holder` is `this_device`.
+20. Reconnects at once on `bye` `scopes_changed`.

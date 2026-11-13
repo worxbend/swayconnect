@@ -56,7 +56,13 @@ class Welcome(
     @SerialName("read_only") val readOnly: Boolean,
     val server: ServerInfo,
     val limits: FrameLimits,
+    /** Every scope the server knows (17.3). Not granted: granted scopes are [scopes] only. Null from an older server. */
+    @SerialName("known_scopes") val knownScopes: List<String>? = null,
+    /** Every op the server implements and is configured for (17.3). Callable ops are [ops] only. */
+    @SerialName("known_ops") val knownOps: List<String>? = null,
 ) : ServerMessage
+
+private val welcomeSerializer = AbsentOrNotNullSerializer(Welcome.serializer(), setOf("known_scopes", "known_ops"))
 
 @Serializable
 data class ServerInfo(val name: String, val version: String)
@@ -108,7 +114,31 @@ object RejectCode {
 }
 
 object ByeCode {
+    const val SHUTDOWN = "shutdown"
     const val REVOKED = "revoked"
+    const val SCOPES_CHANGED = "scopes_changed"
+}
+
+/** What a client does after `bye` (6.4, 13.2 rule 5, 17.15). */
+enum class ByeReaction {
+    /** `scopes_changed`: the new `welcome` lists the new scopes. */
+    RECONNECT_NOW,
+
+    /** `shutdown` and every code this client does not know. */
+    RECONNECT_BACKOFF,
+
+    /** `revoked`: forget the credential. */
+    FORGET,
+    ;
+
+    companion object {
+        fun of(code: String): ByeReaction =
+            when (code) {
+                ByeCode.SCOPES_CHANGED -> RECONNECT_NOW
+                ByeCode.REVOKED -> FORGET
+                else -> RECONNECT_BACKOFF
+            }
+    }
 }
 
 object ErrorCode {
@@ -122,6 +152,7 @@ object Op {
     const val WORKSPACE_FOCUS = "workspace.focus"
     const val WINDOW_FOCUS = "window.focus"
     const val WINDOW_FULLSCREEN = "window.fullscreen"
+    const val ICON_GET = "icon.get"
 }
 
 object Topic {
@@ -160,7 +191,7 @@ object Wire {
             ?: throw MalformedMessageException("frame has no string member \"type\"")
         return when (type) {
             "hello" -> decode(Hello.serializer(), frame)
-            "welcome" -> decode(Welcome.serializer(), frame)
+            "welcome" -> decode(welcomeSerializer, frame)
             "reject" -> decode(Reject.serializer(), frame)
             "res" -> decode(Res.serializer(), frame)
             "evt" -> decode(Evt.serializer(), frame)

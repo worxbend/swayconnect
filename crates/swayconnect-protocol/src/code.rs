@@ -1,4 +1,4 @@
-//! Error, reject and bye codes (`docs/PROTOCOL.md` 5.2, 6.4, 10.1).
+//! Error, reject and bye codes (`docs/PROTOCOL.md` 5.2, 6.4, 10.1, 17.15).
 //!
 //! The wire form of each variant is its name in `snake_case`.
 
@@ -86,6 +86,8 @@ pub enum ByeCode {
     BadFrame,
     TooLarge,
     ProtocolError,
+    /// The owner changed this device's scopes: reconnect at once (17.15).
+    ScopesChanged,
 }
 
 wire_names!(ByeCode {
@@ -95,4 +97,5 @@ wire_names!(ByeCode {
     BadFrame => "bad_frame",
     TooLarge => "too_large",
     ProtocolError => "protocol_error",
+    ScopesChanged => "scopes_changed",
 });

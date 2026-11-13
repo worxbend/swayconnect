@@ -28,6 +28,11 @@ pub fn decode_base64url<const N: usize>(text: &str) -> Result<[u8; N], Base64Url
     <[u8; N]>::try_from(decoded).map_err(|_| Base64UrlError)
 }
 
+/// Decodes any number of bytes, with the same strictness as [`decode_base64url`].
+pub fn decode_base64url_bytes(text: &str) -> Result<Vec<u8>, Base64UrlError> {
+    URL_SAFE_NO_PAD.decode(text).map_err(|_| Base64UrlError)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

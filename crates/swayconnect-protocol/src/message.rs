@@ -107,6 +107,10 @@ pub struct Welcome {
     pub scopes: Vec<Scope>,
     pub ops: Vec<String>,
     pub topics: Vec<String>,
+    /// Every scope name the server knows, granted or not (17.3). `None` when absent.
+    pub known_scopes: Option<Vec<String>>,
+    /// Every operation the server implements and is configured for (17.3). `None` when absent.
+    pub known_ops: Option<Vec<String>>,
     pub read_only: bool,
     pub server: ServerInfo,
     pub limits: Limits,
@@ -283,6 +287,8 @@ impl fmt::Debug for Welcome {
             .field("scopes", &self.scopes)
             .field("ops", &self.ops)
             .field("topics", &self.topics)
+            .field("known_scopes", &self.known_scopes)
+            .field("known_ops", &self.known_ops)
             .field("read_only", &self.read_only)
             .field("server", &self.server)
             .field("limits", &self.limits)

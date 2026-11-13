@@ -16,13 +16,16 @@ object Base64Url {
      * Returns the decoded bytes, or null when [text] is not the canonical encoding of exactly [size] bytes.
      * The Java decoder accepts padding and non-zero trailing bits, so the text is compared with its re-encoding.
      */
-    fun decode(text: String, size: Int): ByteArray? {
+    fun decode(text: String, size: Int): ByteArray? = decodeAny(text)?.takeIf { it.size == size }
+
+    /** Like [decode] for a value of any length: null unless [text] is canonical. */
+    fun decodeAny(text: String): ByteArray? {
         val bytes =
             try {
                 Base64.getUrlDecoder().decode(text)
             } catch (e: IllegalArgumentException) {
                 return null
             }
-        return bytes.takeIf { it.size == size && encode(it) == text }
+        return bytes.takeIf { encode(it) == text }
     }
 }

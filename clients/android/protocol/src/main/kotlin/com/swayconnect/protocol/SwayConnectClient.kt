@@ -295,7 +295,10 @@ class Session internal constructor(
     private var appliedDesktopRev: Long? = null
     private val desktopState = MutableStateFlow<Desktop?>(null)
 
-    /** The newest `desktop` state of this connection. Null until [subscribeDesktop] has an answer. */
+    /**
+     * The newest `desktop` state of this connection, after the client rules of 17.4 ([normalized]).
+     * Null until [subscribeDesktop] has an answer.
+     */
     val desktop: StateFlow<Desktop?> = desktopState.asStateFlow()
 
     /** Reads frames until the connection ends. [onReady] and the keepalive run in [scope] next to it. */
@@ -360,6 +363,23 @@ class Session internal constructor(
             put("enabled", enabled)
         }
         request(Op.WINDOW_FULLSCREEN, args)
+    }
+
+    /**
+     * Fetches icons by the hashes of [Window.icon] or [ScratchpadWindow.icon] (docs/PROTOCOL.md 17.5).
+     * Each kept icon matched its hash and its PNG header is within 256 x 256; decode it as untrusted input still.
+     * After `rate_limited`, wait `detail.retry_after_ms` before the next call.
+     *
+     * @param hashes 1 to 8 distinct values for which [IconHash.isValid] holds.
+     * @throws MalformedMessageException when the result breaks the wire format.
+     */
+    @Throws(IOException::class)
+    suspend fun iconGet(hashes: List<String>): IconBatch {
+        require(hashes.size in 1..IconHash.MAX_PER_REQUEST) { "icon.get takes 1 to ${IconHash.MAX_PER_REQUEST} hashes" }
+        require(hashes.toSet().size == hashes.size) { "icon hashes must be distinct" }
+        require(hashes.all(IconHash::isValid)) { "an icon hash is not a canonical 16-byte base64url value" }
+        val args = buildJsonObject { putJsonArray("hashes") { hashes.forEach { add(it) } } }
+        return readIconResult(hashes, request(Op.ICON_GET, args))
     }
 
     private suspend fun call(op: String, args: JsonObject?): JsonObject {
@@ -447,7 +467,7 @@ class Session internal constructor(
             if (state.topic != Topic.DESKTOP || !desktopWanted) return
             val applied = appliedDesktopRev
             if (applied != null && state.rev <= applied) return
-            desktopState.value = Wire.decode(Desktop.serializer(), state.data)
+            desktopState.value = Wire.decode(DesktopSerializer, state.data).normalized()
             appliedDesktopRev = state.rev
         }
     }
