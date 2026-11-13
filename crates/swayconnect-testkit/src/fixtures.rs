@@ -1,7 +1,13 @@
 //! Default replies of the fake sway: one output, two workspaces, two windows.
+//! [`layout_tree`] and its siblings add geometry for the v2 desktop additions.
 //! Every name and title is invented.
 
+mod layout;
+
 use serde_json::{Value, json};
+
+pub use crate::xdg_data::{NOTES_APP_ID, NOTES_DESKTOP_ENTRY, NOTES_ICON_PNG};
+pub use layout::{binding_event, layout_tree, layout_tree_resized, layout_workspaces};
 
 /// Default `GET_VERSION` reply.
 pub fn version() -> String {

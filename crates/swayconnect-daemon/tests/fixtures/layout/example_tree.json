@@ -1,0 +1,291 @@
+{
+ "id": 1,
+ "type": "root",
+ "name": "root",
+ "window": null,
+ "fullscreen_mode": 0,
+ "focused": false,
+ "urgent": false,
+ "rect": {
+  "x": 0,
+  "y": 0,
+  "width": 3072,
+  "height": 1728
+ },
+ "layout": "splith",
+ "focus": [
+  3
+ ],
+ "scratchpad_state": null,
+ "nodes": [
+  {
+   "id": 2147483647,
+   "type": "output",
+   "name": "__i3",
+   "window": null,
+   "fullscreen_mode": 0,
+   "focused": false,
+   "urgent": false,
+   "rect": {
+    "x": 0,
+    "y": 0,
+    "width": 3072,
+    "height": 1728
+   },
+   "layout": "output",
+   "focus": [
+    2147483646
+   ],
+   "scratchpad_state": null,
+   "nodes": [
+    {
+     "id": 2147483646,
+     "type": "workspace",
+     "name": "__i3_scratch",
+     "window": null,
+     "fullscreen_mode": 1,
+     "focused": false,
+     "urgent": false,
+     "rect": {
+      "x": 0,
+      "y": 0,
+      "width": 3072,
+      "height": 1728
+     },
+     "layout": "splith",
+     "focus": [],
+     "scratchpad_state": null,
+     "nodes": [],
+     "floating_nodes": []
+    }
+   ],
+   "floating_nodes": []
+  },
+  {
+   "id": 3,
+   "type": "output",
+   "name": "DP-1",
+   "window": null,
+   "fullscreen_mode": 0,
+   "focused": false,
+   "urgent": false,
+   "rect": {
+    "x": 0,
+    "y": 0,
+    "width": 3072,
+    "height": 1728
+   },
+   "layout": "output",
+   "focus": [
+    20
+   ],
+   "scratchpad_state": null,
+   "active": true,
+   "power": true,
+   "scale": 1.25,
+   "transform": "normal",
+   "make": "Dell Inc.",
+   "model": "DELL P3223QE",
+   "current_workspace": "3",
+   "nodes": [
+    {
+     "id": 20,
+     "type": "workspace",
+     "name": "3",
+     "num": 3,
+     "output": "DP-1",
+     "window": null,
+     "fullscreen_mode": 1,
+     "focused": false,
+     "urgent": false,
+     "rect": {
+      "x": 2,
+      "y": 28,
+      "width": 3068,
+      "height": 1698
+     },
+     "layout": "splith",
+     "focus": [
+      25,
+      23
+     ],
+     "scratchpad_state": null,
+     "nodes": [
+      {
+       "id": 25,
+       "type": "con",
+       "name": null,
+       "window": null,
+       "fullscreen_mode": 0,
+       "focused": false,
+       "urgent": false,
+       "rect": {
+        "x": 2,
+        "y": 28,
+        "width": 3068,
+        "height": 1698
+       },
+       "layout": "splith",
+       "focus": [
+        31,
+        30
+       ],
+       "scratchpad_state": "none",
+       "nodes": [
+        {
+         "id": 31,
+         "type": "con",
+         "name": null,
+         "window": null,
+         "fullscreen_mode": 0,
+         "focused": false,
+         "urgent": false,
+         "rect": {
+          "x": 2,
+          "y": 28,
+          "width": 1533,
+          "height": 1698
+         },
+         "layout": "splitv",
+         "focus": [
+          24
+         ],
+         "scratchpad_state": "none",
+         "nodes": [
+          {
+           "id": 24,
+           "type": "con",
+           "name": "Android Emulator",
+           "app_id": null,
+           "pid": 1024,
+           "window": 4194328,
+           "window_properties": {
+            "class": "Emulator"
+           },
+           "fullscreen_mode": 0,
+           "focused": false,
+           "urgent": false,
+           "rect": {
+            "x": 2,
+            "y": 28,
+            "width": 1533,
+            "height": 1698
+           },
+           "layout": "none",
+           "focus": [],
+           "scratchpad_state": "none",
+           "inhibit_idle": false,
+           "nodes": [],
+           "floating_nodes": []
+          }
+         ],
+         "floating_nodes": []
+        },
+        {
+         "id": 30,
+         "type": "con",
+         "name": null,
+         "window": null,
+         "fullscreen_mode": 0,
+         "focused": false,
+         "urgent": false,
+         "rect": {
+          "x": 1537,
+          "y": 28,
+          "width": 1533,
+          "height": 1698
+         },
+         "layout": "splitv",
+         "focus": [
+          55
+         ],
+         "scratchpad_state": "none",
+         "nodes": [
+          {
+           "id": 55,
+           "type": "con",
+           "name": null,
+           "window": null,
+           "fullscreen_mode": 0,
+           "focused": false,
+           "urgent": false,
+           "rect": {
+            "x": 1537,
+            "y": 28,
+            "width": 1533,
+            "height": 1698
+           },
+           "layout": "splith",
+           "focus": [
+            29
+           ],
+           "scratchpad_state": "none",
+           "nodes": [
+            {
+             "id": 29,
+             "type": "con",
+             "name": "Docs",
+             "app_id": "google-chrome",
+             "pid": 1029,
+             "window": null,
+             "fullscreen_mode": 0,
+             "focused": true,
+             "urgent": false,
+             "rect": {
+              "x": 1537,
+              "y": 28,
+              "width": 1533,
+              "height": 1698
+             },
+             "layout": "none",
+             "focus": [],
+             "scratchpad_state": "none",
+             "inhibit_idle": false,
+             "nodes": [],
+             "floating_nodes": []
+            }
+           ],
+           "floating_nodes": []
+          }
+         ],
+         "floating_nodes": []
+        }
+       ],
+       "floating_nodes": []
+      }
+     ],
+     "floating_nodes": [
+      {
+       "id": 23,
+       "type": "floating_con",
+       "name": "Extended controls",
+       "app_id": null,
+       "pid": 1023,
+       "window": 4194327,
+       "window_properties": {
+        "class": "Emulator"
+       },
+       "fullscreen_mode": 0,
+       "focused": false,
+       "urgent": false,
+       "rect": {
+        "x": 1498,
+        "y": 624,
+        "width": 75,
+        "height": 506
+       },
+       "layout": "none",
+       "focus": [],
+       "scratchpad_state": "none",
+       "inhibit_idle": false,
+       "nodes": [],
+       "floating_nodes": []
+      }
+     ]
+    }
+   ],
+   "floating_nodes": []
+  }
+ ],
+ "floating_nodes": []
+}

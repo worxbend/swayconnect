@@ -5,6 +5,7 @@
 
 mod args;
 mod error;
+mod layout_map;
 mod render;
 mod run;
 mod state;

@@ -53,6 +53,7 @@ fn published(rev: u64) -> Arc<Published> {
         urgent: false,
         floating: false,
         fullscreen: false,
+        icon: None,
     };
     let desktop = Desktop {
         sway: SwayStatus {
@@ -62,6 +63,9 @@ fn published(rev: u64) -> Arc<Published> {
         workspaces: Vec::new(),
         windows: vec![window],
         truncated: false,
+        outputs: None,
+        scratchpad: None,
+        layouts_cut: None,
     };
     Arc::new(Published { rev, desktop })
 }
@@ -93,6 +97,7 @@ impl Bench {
             server_name: Arc::from("desk"),
             read_only: Arc::new(AtomicBool::new(false)),
             shutdown: shutdown_reader,
+            icons: None,
         };
         Bench {
             _dirs: dirs,

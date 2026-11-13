@@ -7,33 +7,36 @@ use swayconnect_sway::SwayTarget;
 use swayconnect_testkit::TestDirs;
 use tokio::io::DuplexStream;
 
+use super::wire::{LENGTH_PREFIX_BYTES, READ_CHUNK_BYTES};
 use super::*;
 use crate::config::Config;
 use crate::pairing::PendingNotice;
 use crate::paths::Paths;
+use swayconnect_protocol::frame::{FrameDecoder, encode_frame};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
 const PIPE_BYTES: usize = 1 << 20;
 const CLIENT_NONCE: [u8; 32] = [7; 32];
 const WINDOW_LIFETIME: Duration = Duration::from_secs(300);
 const TITLE: &str = "Packing list for the lake trip";
-const EVERY_SCOPE: [Scope; 3] = [Scope::StateRead, Scope::StateTitles, Scope::Control];
+pub(super) const EVERY_SCOPE: [Scope; 3] = [Scope::StateRead, Scope::StateTitles, Scope::Control];
 
-struct Daemon {
-    _dirs: TestDirs,
-    shared: Shared,
-    desktop: watch::Sender<Arc<Published>>,
+pub(super) struct Daemon {
+    pub(super) dirs: TestDirs,
+    pub(super) shared: Shared,
+    pub(super) desktop: watch::Sender<Arc<Published>>,
     shutdown: watch::Sender<bool>,
 }
 
 /// The client end of one connection.
-struct Client {
+pub(super) struct Client {
     stream: DuplexStream,
     decoder: FrameDecoder,
 }
 
 /// A credential, as a client holds it after a confirmed pairing.
-struct Device {
-    id: DeviceId,
+pub(super) struct Device {
+    pub(super) id: DeviceId,
     key: [u8; 32],
 }
 
@@ -45,7 +48,7 @@ struct PendingClient {
     device: Device,
 }
 
-fn published(rev: u64) -> Arc<Published> {
+pub(super) fn published(rev: u64) -> Arc<Published> {
     let window = Window {
         id: 6,
         workspace_id: 4,
@@ -55,6 +58,7 @@ fn published(rev: u64) -> Arc<Published> {
         urgent: false,
         floating: false,
         fullscreen: false,
+        icon: None,
     };
     let desktop = Desktop {
         sway: SwayStatus {
@@ -64,6 +68,9 @@ fn published(rev: u64) -> Arc<Published> {
         workspaces: Vec::new(),
         windows: vec![window],
         truncated: false,
+        outputs: None,
+        scratchpad: None,
+        layouts_cut: None,
     };
     Arc::new(Published { rev, desktop })
 }
@@ -73,16 +80,16 @@ fn frame(message: &Value) -> Vec<u8> {
     encode_frame(object, u32::MAX).expect("frame")
 }
 
-fn ping(id: u64) -> Value {
+pub(super) fn ping(id: u64) -> Value {
     json!({"type": "req", "id": id, "op": "ping"})
 }
 
-fn subscribe(id: u64) -> Value {
+pub(super) fn subscribe(id: u64) -> Value {
     json!({"type": "req", "id": id, "op": "state.subscribe", "args": {"topics": ["desktop"]}})
 }
 
 impl Daemon {
-    fn start() -> Daemon {
+    pub(super) fn start() -> Daemon {
         let dirs = TestDirs::new();
         let paths = Paths {
             config_file: dirs.config_file(),
@@ -104,9 +111,10 @@ impl Daemon {
             server_name: Arc::from("desk"),
             read_only: Arc::new(AtomicBool::new(false)),
             shutdown: shutdown_reader,
+            icons: None,
         };
         Daemon {
-            _dirs: dirs,
+            dirs,
             shared,
             desktop,
             shutdown,
@@ -170,7 +178,7 @@ impl Daemon {
     }
 
     /// A stored device with `scopes`: paired and confirmed by the owner.
-    async fn paired_device(&self, scopes: &[Scope]) -> Device {
+    pub(super) async fn paired_device(&self, scopes: &[Scope]) -> Device {
         let mut pending = self.pair(scopes).await;
         pending.notice.answer.send(true).expect("answer taken");
         assert_eq!(pending.client.receive().await["event"], "pairing.confirmed");
@@ -189,7 +197,7 @@ impl Daemon {
     }
 
     /// A connection of `device` in state `READY`, and its `welcome`.
-    async fn ready(&self, device: &Device) -> (Client, JsonObject) {
+    pub(super) async fn ready(&self, device: &Device) -> (Client, JsonObject) {
         let mut client = self.connect();
         let hello = client.receive().await;
         let auth = Message::Auth(self.auth(device, &hello)).encode();
@@ -201,7 +209,7 @@ impl Daemon {
 }
 
 impl Client {
-    async fn send(&mut self, message: &Value) {
+    pub(super) async fn send(&mut self, message: &Value) {
         self.send_bytes(&frame(message)).await;
     }
 
@@ -223,12 +231,12 @@ impl Client {
         }
     }
 
-    async fn receive(&mut self) -> JsonObject {
+    pub(super) async fn receive(&mut self) -> JsonObject {
         self.next().await.expect("a frame, not a close")
     }
 
     /// Asserts the last frame is `kind` with `code` and that the server then closes.
-    async fn expect_last(&mut self, kind: &str, code: &str) {
+    pub(super) async fn expect_last(&mut self, kind: &str, code: &str) {
         let last = self.receive().await;
         assert_eq!((&last["type"], &last["code"]), (&json!(kind), &json!(code)));
         assert_eq!(self.next().await, None, "the server closes after `{kind}`");
@@ -261,9 +269,12 @@ async fn auth_gets_welcome_with_scopes_ops_topics_and_limits() {
         "state.subscribe",
         "workspace.focus",
         "window.focus",
-        "window.fullscreen"
+        "window.fullscreen",
+        "icon.get"
     ]);
     assert_eq!(welcome["ops"], ops);
+    assert_eq!(welcome["known_ops"], ops);
+    assert_eq!(welcome["known_scopes"], welcome["scopes"]);
     assert_eq!(welcome["topics"], json!(["desktop"]));
     assert_eq!(welcome["read_only"], false);
     assert_eq!(welcome["server"]["name"], "desk");

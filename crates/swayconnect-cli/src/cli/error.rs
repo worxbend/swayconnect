@@ -31,6 +31,17 @@ pub enum CliError {
     NoDesktopState,
     #[error("the server sent an invalid desktop state: member `{}`", .0.0)]
     InvalidState(InvalidMember),
+    /// The state has no workspace with this number or id.
+    #[error("no workspace {0} in the desktop state")]
+    NoWorkspace(String),
+    #[error("several workspaces have number {0}: choose one with --id")]
+    SeveralWorkspaces(u32),
+    #[error("the server sends no layout for this workspace: {0}")]
+    NoLayout(&'static str),
+    #[error("the server has no icon for this hash")]
+    NoIcon,
+    #[error("the server sent an invalid icon: {0}")]
+    InvalidIcon(String),
     #[error("cannot {action}: {source}")]
     Io {
         action: &'static str,
@@ -44,9 +55,16 @@ impl CliError {
             CliError::Usage(_) | CliError::Uri(_) | CliError::Store(_) => EXIT_USAGE_OR_PROFILE,
             CliError::Client(error) => client_exit_code(error),
             CliError::NotConfirmed => EXIT_REJECTED,
+            // Like the server's `not_found`: the command reached the server, its target is not
+            // there.
+            CliError::NoWorkspace(_)
+            | CliError::SeveralWorkspaces(_)
+            | CliError::NoLayout(_)
+            | CliError::NoIcon => EXIT_SERVER_ERROR,
             CliError::Timeout(_)
             | CliError::NoDesktopState
             | CliError::InvalidState(_)
+            | CliError::InvalidIcon(_)
             | CliError::Io { .. } => EXIT_CONNECTION,
         }
     }
@@ -148,6 +166,11 @@ mod tests {
             (CliError::Client(ClientError::BadWelcome("server_proof")), 4),
             (bye(ByeCode::Revoked), 4),
             (CliError::NotConfirmed, 4),
+            (CliError::NoWorkspace("3".to_owned()), 1),
+            (CliError::SeveralWorkspaces(3), 1),
+            (CliError::NoLayout("dropped"), 1),
+            (CliError::NoIcon, 1),
+            (CliError::InvalidIcon("hash".to_owned()), 3),
         ];
         for (error, exit_code) in cases {
             assert_eq!(error.exit_code(), exit_code, "{error}");

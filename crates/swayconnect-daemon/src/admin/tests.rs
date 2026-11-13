@@ -408,3 +408,104 @@ async fn shutdown_removes_the_socket() {
         .expect("no panic");
     assert!(!fixture.paths.admin_socket().exists());
 }
+
+impl Fixture {
+    /// Pairs one device with `state.read` and returns its id.
+    async fn paired_device(&self) -> DeviceId {
+        let mut client = self.client().await;
+        let uri = client.open_pairing(&request(None)).await.expect("window");
+        let admitted = self.present(&uri).expect("pair");
+        client
+            .pending_device()
+            .await
+            .expect("reply")
+            .expect("pending");
+        client.answer(true).await.expect("answer");
+        let result = client.pairing_result().await.expect("result");
+        assert!(matches!(result, PairingResult::Paired(_)), "{result:?}");
+        admitted.device_id
+    }
+}
+
+#[tokio::test]
+async fn grant_and_deny_by_prefix_change_the_scopes_a_session_watches() {
+    let fixture = Fixture::start();
+    let device = fixture.paired_device().await;
+    let held = BTreeSet::from([Scope::StateRead]);
+    let mut watch = fixture.security.scope_watch(&device).expect("stored");
+    let mut client = fixture.client().await;
+    let prefix = &device.as_str()[..4];
+
+    let granted = client
+        .change_scopes(
+            prefix,
+            ScopeChange::Grant,
+            &BTreeSet::from([Scope::Control]),
+        )
+        .await
+        .expect("grant");
+
+    assert_eq!(granted.device_id, device.as_str());
+    assert_eq!(granted.scopes, ["state.read", "control"]);
+    assert!(granted.changed);
+    tokio::time::timeout(WAIT, crate::devices::scopes_changed(&mut watch, &held))
+        .await
+        .expect("the session sees the change");
+    let again = client
+        .change_scopes(
+            prefix,
+            ScopeChange::Grant,
+            &BTreeSet::from([Scope::Control]),
+        )
+        .await
+        .expect("grant again");
+    assert!(!again.changed);
+    let denied = client
+        .change_scopes(
+            device.as_str(),
+            ScopeChange::Deny,
+            &BTreeSet::from([Scope::Control]),
+        )
+        .await
+        .expect("deny");
+    assert_eq!(denied.scopes, ["state.read"]);
+    assert_eq!(*watch.borrow(), held);
+    assert_eq!(
+        client.devices().await.expect("list")[0].scopes,
+        ["state.read"]
+    );
+}
+
+#[tokio::test]
+async fn a_bad_scope_change_gets_an_error_and_changes_nothing() {
+    let fixture = Fixture::start();
+    let device = fixture.paired_device().await;
+    let mut client = fixture.client().await;
+    let control = BTreeSet::from([Scope::Control]);
+    for (prefix, scopes, expected) in [
+        (&device.as_str()[..3], &control, "at least 4"),
+        ("zzzz", &control, "no device"),
+        (device.as_str(), &BTreeSet::new(), "at least one scope"),
+    ] {
+        match client
+            .change_scopes(prefix, ScopeChange::Grant, scopes)
+            .await
+        {
+            Err(AdminError::Daemon(message)) => assert!(message.contains(expected), "{message}"),
+            other => panic!("accepted a bad change ({expected}): {other:?}"),
+        }
+    }
+    let unknown = Request::DevicesGrant {
+        prefix: device.as_str().to_owned(),
+        scopes: vec!["root".to_owned()],
+    };
+    client.channel.send(&unknown).await.expect("send");
+    match client.reply().await {
+        Err(AdminError::Daemon(message)) => assert!(message.contains("unknown scope"), "{message}"),
+        _ => panic!("accepted an unknown scope"),
+    }
+    assert_eq!(
+        client.devices().await.expect("list")[0].scopes,
+        ["state.read"]
+    );
+}

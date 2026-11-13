@@ -269,7 +269,7 @@ async fn sigusr1_switches_a_running_daemon_to_read_only() {
 
     let later = connect().await.expect("authenticated");
     assert!(later.welcome().read_only);
-    assert_eq!(later.welcome().ops, ["ping", "state.subscribe"]);
+    assert_eq!(later.welcome().ops, ["ping", "state.subscribe", "icon.get"]);
 
     send_signal(&daemon, "-TERM");
     assert_eq!(daemon.exit_status().code(), Some(0));

@@ -44,12 +44,13 @@ impl Request {
     }
 }
 
-/// The events the daemon subscribes to (`docs/DESIGN.md` 4.3).
+/// The events the daemon subscribes to (`docs/DESIGN.md` 4.3; `binding` since 11.3 rule 5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
     Workspace = 0,
     Output = 1,
     Window = 3,
+    Binding = 5,
     Shutdown = 6,
 }
 
@@ -59,6 +60,7 @@ impl Event {
             Self::Workspace => "workspace",
             Self::Output => "output",
             Self::Window => "window",
+            Self::Binding => "binding",
             Self::Shutdown => "shutdown",
         }
     }

@@ -9,10 +9,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use swayconnect_protocol::frame::{FrameDecoder, FrameError, encode_frame};
+use swayconnect_protocol::frame::FrameError;
 use swayconnect_protocol::limits::{
-    FIRST_FRAME_DEADLINE_MS, IDLE_TIMEOUT_MS, MAX_FRAME_C2S_BEFORE_WELCOME_BYTES,
-    MAX_FRAME_C2S_BYTES, MAX_FRAME_S2C_BYTES, MAX_FRAME_S2C_HANDSHAKE_BYTES, PROTOCOL_VERSION,
+    FIRST_FRAME_DEADLINE_MS, IDLE_TIMEOUT_MS, MAX_FRAME_C2S_BYTES, MAX_FRAME_S2C_BYTES,
+    PROTOCOL_VERSION,
 };
 use swayconnect_protocol::ops::{
     EVENT_PAIRING_CONFIRMED, EVENT_STATE_CHANGED, TOPIC_DESKTOP, TopicState,
@@ -20,22 +20,24 @@ use swayconnect_protocol::ops::{
 };
 use swayconnect_protocol::proof::random_bytes;
 use swayconnect_protocol::{
-    Bye, ByeCode, DecodeError, DeviceId, Evt, Hello, JsonObject, Limits, Message, ProtocolRange,
-    Reject, RejectCode, Req, Res, Scope, ServerInfo, Welcome,
+    Bye, ByeCode, DecodeError, DeviceId, Evt, Hello, IconGetResult, IconHash, JsonObject, Limits,
+    Message, ProtocolRange, Reject, RejectCode, Req, Res, Scope, ServerInfo, Welcome,
 };
-use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{oneshot, watch};
 use tokio::time::{Instant, sleep_until, timeout};
 
+use self::wire::{FirstFrameError, Unwritable, Wire};
+use crate::devices;
 use crate::dispatch::{self, Caller, Decision};
+use crate::icons::IconService;
 use crate::security::{Admitted, ConnectionPermit, Handshake, Security};
-use crate::sway_handle::{Published, SwayHandle};
+use crate::sway_handle::{DesktopInterest, Published, SwayHandle};
+
+mod wire;
 
 const FIRST_FRAME_DEADLINE: Duration = Duration::from_millis(FIRST_FRAME_DEADLINE_MS);
 const IDLE_TIMEOUT: Duration = Duration::from_millis(IDLE_TIMEOUT_MS);
-const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
-const LENGTH_PREFIX_BYTES: usize = 4;
-const READ_CHUNK_BYTES: usize = 4096;
 
 /// What every session of one daemon shares. Clones are cheap.
 #[derive(Clone)]
@@ -48,99 +50,15 @@ pub struct Shared {
     /// Set at start from the config, or later by the panic switch (`docs/DESIGN.md` 4.7).
     pub read_only: Arc<AtomicBool>,
     pub shutdown: watch::Receiver<bool>,
+    /// Answers `icon.get`. `None`: the daemon runs without icon lookup, so it holds no PNG
+    /// and every hash is `missing`.
+    pub icons: Option<Arc<IconService>>,
 }
 
 /// Resolves when the daemon stops: on `true` and when the sender is gone. Cancel safe.
 pub async fn stopped(shutdown: &mut watch::Receiver<bool>) {
     // Both outcomes mean stop.
     let _ = shutdown.wait_for(|stop| *stop).await;
-}
-
-/// The connection cannot be written to any more: close without another frame.
-struct Unwritable;
-
-enum FirstFrameError {
-    /// The client closed, or the stream failed.
-    Gone,
-    /// Bad or too large, or more bytes than one frame (spec 5.1 rule 6).
-    Refused,
-}
-
-struct Wire<S> {
-    stream: S,
-    decoder: FrameDecoder,
-    send_limit: u32,
-}
-
-impl<S: AsyncRead + AsyncWrite + Unpin> Wire<S> {
-    fn new(stream: S) -> Wire<S> {
-        Wire {
-            stream,
-            decoder: FrameDecoder::new(MAX_FRAME_C2S_BEFORE_WELCOME_BYTES),
-            send_limit: MAX_FRAME_S2C_HANDSHAKE_BYTES,
-        }
-    }
-
-    async fn send(&mut self, message: Message) -> Result<(), Unwritable> {
-        let frame = encode_frame(&message.encode(), self.send_limit).map_err(|error| {
-            tracing::error!(%error, "frame not sent");
-            Unwritable
-        })?;
-        let write = async {
-            self.stream.write_all(&frame).await?;
-            self.stream.flush().await
-        };
-        match timeout(WRITE_TIMEOUT, write).await {
-            Ok(Ok(())) => Ok(()),
-            Ok(Err(_)) | Err(_) => Err(Unwritable),
-        }
-    }
-
-    /// Sends the last frame of the connection and closes it.
-    async fn send_last(&mut self, message: Message) {
-        if self.send(message).await.is_ok() {
-            // The peer may be gone already; there is nobody left to tell.
-            let _ = timeout(WRITE_TIMEOUT, self.stream.shutdown()).await;
-        }
-    }
-
-    /// Reads once into the decoder. `Ok(0)`: the client closed. Cancel safe.
-    async fn fill(&mut self) -> io::Result<usize> {
-        let mut chunk = [0u8; READ_CHUNK_BYTES];
-        let length = self.stream.read(&mut chunk).await?;
-        self.decoder.push(&chunk[..length]);
-        Ok(length)
-    }
-
-    /// The one frame a client may send before `welcome`.
-    async fn first_frame(&mut self) -> Result<JsonObject, FirstFrameError> {
-        let mut prefix = Vec::with_capacity(LENGTH_PREFIX_BYTES);
-        let mut received = 0usize;
-        loop {
-            let mut chunk = [0u8; READ_CHUNK_BYTES];
-            let length = match self.stream.read(&mut chunk).await {
-                Ok(0) | Err(_) => return Err(FirstFrameError::Gone),
-                Ok(length) => length,
-            };
-            let missing = LENGTH_PREFIX_BYTES - prefix.len();
-            prefix.extend(chunk[..length].iter().take(missing));
-            received += length;
-            self.decoder.push(&chunk[..length]);
-            match self.decoder.next_frame() {
-                Ok(None) => {}
-                Ok(Some(frame)) if received == frame_bytes(&prefix) => return Ok(frame),
-                Ok(Some(_)) | Err(_) => return Err(FirstFrameError::Refused),
-            }
-        }
-    }
-}
-
-/// Length on the wire of the frame that starts with `prefix`. 0 without a whole prefix.
-fn frame_bytes(prefix: &[u8]) -> usize {
-    let Ok(prefix) = <[u8; LENGTH_PREFIX_BYTES]>::try_from(prefix) else {
-        return 0;
-    };
-    usize::try_from(u32::from_be_bytes(prefix)).map_or(0, |payload| LENGTH_PREFIX_BYTES + payload)
 }
 
 /// Serves one client from `hello` to the close. `permit` is held until the end, because it
@@ -160,6 +78,8 @@ where
         pending,
         ..
     } = admitted;
+    // `None` for a pending pairing: its scopes stay empty whatever the owner grants.
+    let scope_watch = shared.security.scope_watch(&device_id);
     let session = Session {
         wire,
         security: shared.security,
@@ -167,12 +87,14 @@ where
         sway: shared.sway,
         read_only: shared.read_only,
         shutdown: shared.shutdown,
+        icons: shared.icons,
         device_id,
         scopes,
+        scope_watch,
         revoked,
         is_unconfirmed_pairing: pending.is_some(),
         confirmed: pending.map(|pending| pending.confirmed),
-        is_subscribed: false,
+        desktop_interest: None,
     };
     session.run().await;
 }
@@ -289,6 +211,8 @@ fn welcome(admitted: &Admitted, shared: &Shared) -> Welcome {
         scopes: admitted.scopes.iter().copied().collect(),
         ops: dispatch::offered_ops(&admitted.scopes, is_read_only),
         topics: dispatch::offered_topics(&admitted.scopes),
+        known_scopes: Some(dispatch::known_scopes()),
+        known_ops: Some(dispatch::known_ops()),
         read_only: is_read_only,
         server: ServerInfo {
             name: shared.server_name.to_string(),
@@ -307,6 +231,7 @@ enum Wake {
     Bytes(io::Result<usize>),
     DesktopChanged,
     Revoked,
+    ScopesChanged,
     /// The owner's answer arrived; `true` is a yes.
     PairingAnswered(bool),
     Shutdown,
@@ -329,15 +254,19 @@ struct Session<S> {
     sway: Arc<SwayHandle>,
     read_only: Arc<AtomicBool>,
     shutdown: watch::Receiver<bool>,
+    icons: Option<Arc<IconService>>,
     device_id: DeviceId,
     scopes: BTreeSet<Scope>,
+    /// The device's scopes as the owner changes them. `None` for a pending pairing.
+    scope_watch: Option<watch::Receiver<BTreeSet<Scope>>>,
     revoked: watch::Receiver<bool>,
     /// The connection began with `pair` and the owner has not said yes.
     is_unconfirmed_pairing: bool,
     /// `Some` while the owner has not answered a pairing. Dropping it tells the security
     /// half that the client is gone.
     confirmed: Option<oneshot::Receiver<()>>,
-    is_subscribed: bool,
+    /// `Some` once the device subscribed to `desktop`: the supervisor polls while one lives.
+    desktop_interest: Option<DesktopInterest>,
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
@@ -350,6 +279,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
                 Wake::Bytes(Ok(_)) => self.answer_frames(&mut idle_deadline).await,
                 Wake::DesktopChanged => self.push_desktop().await,
                 Wake::Revoked => Flow::Bye(ByeCode::Revoked),
+                Wake::ScopesChanged => Flow::Bye(ByeCode::ScopesChanged),
                 Wake::PairingAnswered(is_confirmed) => self.end_pending(is_confirmed).await,
                 Wake::Shutdown => Flow::Bye(ByeCode::Shutdown),
                 Wake::Idle => Flow::Bye(ByeCode::Idle),
@@ -372,15 +302,26 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
                 None => std::future::pending().await,
             }
         };
+        let (scope_watch, held) = (&mut self.scope_watch, &self.scopes);
+        // A grant before the watch was taken resolves at once: the value differs from
+        // `held`. After a revoke it never resolves; the revoke signal ends the session.
+        let scopes_changed = async {
+            match scope_watch {
+                Some(scope_watch) => devices::scopes_changed(scope_watch, held).await,
+                None => std::future::pending().await,
+            }
+        };
+        let is_subscribed = self.desktop_interest.is_some();
         tokio::select! {
             read = self.wire.fill() => Wake::Bytes(read),
-            changed = self.desktop.changed(), if self.is_subscribed => match changed {
+            changed = self.desktop.changed(), if is_subscribed => match changed {
                 Ok(()) => Wake::DesktopChanged,
                 // The supervisor only ends when the daemon stops.
                 Err(_) => Wake::Shutdown,
             },
             // `true` and a closed channel both mean revoked.
             _ = self.revoked.wait_for(|is_revoked| *is_revoked) => Wake::Revoked,
+            () = scopes_changed => Wake::ScopesChanged,
             is_confirmed = pairing_answer => Wake::PairingAnswered(is_confirmed),
             () = stopped(&mut self.shutdown) => Wake::Shutdown,
             () = sleep_until(idle_deadline) => Wake::Idle,
@@ -420,16 +361,30 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
             Decision::Refuse(error) => Res::failure(request.id, error),
             Decision::Pong => Res::success(request.id, JsonObject::new()),
             Decision::SubscribeDesktop => {
-                self.is_subscribed = true;
+                let sway = &self.sway;
+                self.desktop_interest
+                    .get_or_insert_with(|| sway.watch_desktop());
                 let states = [self.desktop_state()];
                 Res::success(request.id, encode_subscribe_result(&states))
             }
+            Decision::Icons(hashes) => Res::success(request.id, self.icons(hashes).encode()),
             Decision::Act(action) => match self.sway.act(action).await {
                 Ok(()) => Res::success(request.id, JsonObject::new()),
                 Err(error) => Res::failure(request.id, dispatch::action_refusal(action, error)),
             },
         };
         self.send(Message::Res(response)).await
+    }
+
+    /// The `icon.get` result. Never waits for the icon worker.
+    fn icons(&self, hashes: Vec<IconHash>) -> IconGetResult {
+        match &self.icons {
+            Some(service) => service.icons(&hashes),
+            None => IconGetResult {
+                icons: Vec::new(),
+                missing: hashes,
+            },
+        }
     }
 
     async fn push_desktop(&mut self) -> Flow {
@@ -471,6 +426,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
             ByeCode::BadFrame => "bad frame",
             ByeCode::TooLarge => "frame too large",
             ByeCode::ProtocolError => "only req frames are allowed after welcome",
+            ByeCode::ScopesChanged => "scopes of this device changed",
         };
         Bye {
             code,
@@ -488,6 +444,9 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
             for window in &mut desktop.windows {
                 window.title = None;
             }
+            for window in desktop.scratchpad.iter_mut().flatten() {
+                window.title = None;
+            }
             desktop.encode()
         };
         TopicState {
@@ -498,5 +457,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
     }
 }
 
+#[cfg(test)]
+mod ext_tests;
 #[cfg(test)]
 mod tests;

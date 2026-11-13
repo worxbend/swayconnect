@@ -19,7 +19,7 @@ use std::time::Duration;
 use swayconnect_cli::client::{ClientError, Connector, Event, PendingPairing, Profile, Session};
 use swayconnect_daemon::admin::{AdminClient, PairingRequest, PairingResult};
 use swayconnect_daemon::config::Config;
-use swayconnect_daemon::daemon::{Daemon, DaemonHandle};
+use swayconnect_daemon::daemon::{Daemon, DaemonHandle, IconSources};
 use swayconnect_daemon::paths::Paths;
 use swayconnect_protocol::ops::TOPIC_DESKTOP;
 use swayconnect_protocol::uri::PairingUri;
@@ -64,6 +64,27 @@ impl Harness {
 
     /// `prepare` scripts the fake sway before the daemon first connects to it.
     pub async fn start_prepared(extra_config: &str, prepare: impl FnOnce(&FakeSway)) -> Harness {
+        Harness::launch(extra_config, prepare, |_dirs| None).await
+    }
+
+    /// [`Harness::start_prepared`] with the icon service. It searches only the temp data
+    /// directories of the testkit and rasterises with this package's `swayconnectd`.
+    pub async fn start_with_icons(extra_config: &str, prepare: impl FnOnce(&FakeSway)) -> Harness {
+        let sources = |dirs: &TestDirs| {
+            Some(IconSources {
+                search_dirs: vec![dirs.data_home(), dirs.data_dirs()],
+                cache_dir: dirs.cache_home().join("swayconnect"),
+                raster_program: env!("CARGO_BIN_EXE_swayconnectd").into(),
+            })
+        };
+        Harness::launch(extra_config, prepare, sources).await
+    }
+
+    async fn launch(
+        extra_config: &str,
+        prepare: impl FnOnce(&FakeSway),
+        icons: impl FnOnce(&TestDirs) -> Option<IconSources>,
+    ) -> Harness {
         let dirs = TestDirs::new();
         let sway = start_sway(&dirs);
         prepare(&sway);
@@ -75,9 +96,11 @@ impl Harness {
         let config = format!("listen = [\"127.0.0.1:0\"]\nserver_name = \"desk\"\n{extra_config}");
         let config = Config::from_toml(&config).expect("config");
         let target = SwayTarget::Explicit(dirs.sway_socket());
-        let daemon = Daemon::start(config, paths.clone(), target)
-            .await
-            .expect("daemon starts");
+        let daemon = match icons(&dirs) {
+            Some(sources) => Daemon::start_with_icons(config, paths.clone(), target, sources).await,
+            None => Daemon::start(config, paths.clone(), target).await,
+        };
+        let daemon = daemon.expect("daemon starts");
         Harness {
             paths,
             daemon,

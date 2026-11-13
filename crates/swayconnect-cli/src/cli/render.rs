@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 use swayconnect_protocol::text::{escape_for_terminal, is_control_or_format};
-use swayconnect_protocol::{Desktop, Scope, Welcome, Window, Workspace};
+use swayconnect_protocol::{Desktop, Scope, ScratchpadWindow, Welcome, Window, Workspace};
 
 use super::state::DesktopState;
 
@@ -31,14 +31,48 @@ fn workspace_row(workspace: &Workspace) -> Vec<String> {
     ]
 }
 
-/// The title is the last column because it is the long one.
+/// The title is the last column because it is the long one. Windows hidden in the
+/// scratchpad follow, with no workspace.
 pub fn windows_table(desktop: &Desktop) -> String {
     let rows = desktop
         .windows
         .iter()
         .map(|window| window_row(window, desktop))
+        .chain(scratchpad_windows(desktop).map(scratchpad_row))
         .collect();
     table(&["ID", "WORKSPACE", "APP", "FLAGS", "TITLE"], rows)
+}
+
+/// One wire object per window, with every member the server sent (`icon` among them), then
+/// one per scratchpad window with the added member `"scratchpad": true`.
+pub fn windows_json(desktop: &Desktop) -> Vec<Value> {
+    let encoded = desktop.encode();
+    let listed = encoded["windows"].as_array().cloned().unwrap_or_default();
+    let hidden = encoded
+        .get("scratchpad")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|mut window| {
+            window["scratchpad"] = Value::Bool(true);
+            window
+        });
+    listed.into_iter().chain(hidden).collect()
+}
+
+fn scratchpad_windows(desktop: &Desktop) -> impl Iterator<Item = &ScratchpadWindow> {
+    desktop.scratchpad.iter().flatten()
+}
+
+fn scratchpad_row(window: &ScratchpadWindow) -> Vec<String> {
+    vec![
+        window.id.to_string(),
+        ABSENT.to_owned(),
+        or_absent(window.app_id.as_ref()),
+        "scratchpad".to_owned(),
+        or_absent(window.title.as_ref()),
+    ]
 }
 
 fn window_row(window: &Window, desktop: &Desktop) -> Vec<String> {
@@ -169,7 +203,7 @@ fn escaped(server_texts: &[String]) -> Vec<String> {
         .collect()
 }
 
-fn or_absent(text: Option<&String>) -> String {
+pub(super) fn or_absent(text: Option<&String>) -> String {
     text.map_or_else(|| ABSENT.to_owned(), Clone::clone)
 }
 
@@ -186,7 +220,7 @@ fn set_flags(flags: &[(bool, &str)]) -> String {
 }
 
 /// Left-aligned columns, padded by scalar count. The last column is not padded.
-fn table(headers: &[&str], rows: Vec<Vec<String>>) -> String {
+pub(super) fn table(headers: &[&str], rows: Vec<Vec<String>>) -> String {
     let header_row = headers.iter().map(|&header| header.to_owned()).collect();
     let all_rows: Vec<Vec<String>> = std::iter::once(header_row).chain(rows).collect();
     let widths: Vec<usize> = (0..headers.len())
@@ -222,7 +256,7 @@ fn table_line(row: &[String], widths: &[usize]) -> String {
 #[cfg(test)]
 mod tests {
     use swayconnect_protocol::ops::TopicState;
-    use swayconnect_protocol::{DeviceId, Limits, ServerInfo, SwayStatus};
+    use swayconnect_protocol::{DeviceId, IconHash, Limits, ServerInfo, SwayStatus};
 
     use super::*;
 
@@ -235,6 +269,8 @@ mod tests {
             focused: id == 4,
             visible: id == 4,
             urgent: false,
+            rect: None,
+            layout: None,
         }
     }
 
@@ -248,6 +284,7 @@ mod tests {
             urgent: false,
             floating: id == 10,
             fullscreen: id == 10,
+            icon: None,
         }
     }
 
@@ -266,6 +303,9 @@ mod tests {
                 window(10, None, None),
             ],
             truncated: false,
+            outputs: None,
+            scratchpad: None,
+            layouts_cut: None,
         }
     }
 
@@ -278,6 +318,8 @@ mod tests {
             scopes: vec![Scope::StateRead, Scope::StateTitles],
             ops: vec!["ping".to_owned(), "state.subscribe".to_owned()],
             topics: vec!["desktop".to_owned()],
+            known_scopes: None,
+            known_ops: None,
             read_only: true,
             server: ServerInfo {
                 name: "desk\u{1b}[31m".to_owned(),
@@ -309,6 +351,37 @@ ID  WORKSPACE  APP   FLAGS                TITLE
 10  1:web      -     floating,fullscreen  -";
 
         assert_eq!(windows_table(&desktop()), expected);
+    }
+
+    #[test]
+    fn scratchpad_windows_follow_the_listed_ones_and_are_marked() {
+        let mut desktop = desktop();
+        let hash = IconHash::of(b"png");
+        desktop.windows[0].icon = Some(Some(hash));
+        desktop.windows[1].icon = Some(None);
+        desktop.scratchpad = Some(vec![ScratchpadWindow {
+            id: 30,
+            app_id: Some("music".to_owned()),
+            title: None,
+            icon: Some(hash),
+        }]);
+
+        let table = windows_table(&desktop);
+        assert!(
+            table.ends_with("\n30  -          music  scratchpad           -"),
+            "{table}"
+        );
+
+        let lines = windows_json(&desktop);
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[0]["icon"], hash.to_string());
+        assert_eq!(lines[1]["icon"], Value::Null);
+        assert_eq!(lines[1].get("scratchpad"), None);
+        let expected = json!({
+            "id": 30, "app_id": "music", "title": null, "icon": hash.to_string(),
+            "scratchpad": true,
+        });
+        assert_eq!(lines[2], expected);
     }
 
     #[test]

@@ -1,5 +1,6 @@
-//! Connection bucket per address, slots before `welcome`, action bucket per device, and the
-//! budget of the log lines that a peer can cause. Written by slice S6a.
+//! Connection bucket per address, slots before `welcome`, the rate classes of a device
+//! (`docs/PROTOCOL.md` 17.14), and the budget of the log lines that a peer can cause.
+//! Written by slice S6a.
 //!
 //! Nothing here counts failures: there is no lockout (`docs/PROTOCOL.md` section 14 note 4).
 
@@ -9,7 +10,7 @@ use std::time::Duration;
 
 use swayconnect_protocol::limits::{
     ACTION_BURST, ACTION_REFILL_PER_SECOND, CONNECTION_BURST, CONNECTION_REFILL_INTERVAL_MS,
-    MAX_CONNECTIONS, MAX_CONNECTIONS_BEFORE_WELCOME,
+    ICON_BURST, ICON_REFILL_PER_SECOND, MAX_CONNECTIONS, MAX_CONNECTIONS_BEFORE_WELCOME,
 };
 use tokio::sync::watch;
 use tokio::time::Instant;
@@ -34,6 +35,10 @@ impl Rate {
         burst: ACTION_BURST,
         refill_interval: Duration::from_millis(1000 / ACTION_REFILL_PER_SECOND as u64),
     };
+    pub const ICONS: Rate = Rate {
+        burst: ICON_BURST,
+        refill_interval: Duration::from_millis(1000 / ICON_REFILL_PER_SECOND as u64),
+    };
 
     /// Takes one token. The whole bucket state is `full_again_at`: the instant at which the
     /// bucket is full again. `Err` holds the delay until one token is available.
@@ -47,6 +52,25 @@ impl Rate {
                 *full_again_at = refill_start + self.refill_interval;
                 Ok(())
             }
+        }
+    }
+}
+
+/// A rate class of spec 17.14: each device has one bucket per class, shared by its
+/// connections.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RateClass {
+    /// The version 1 action bucket.
+    Actions,
+    /// `icon.get`, in read-only mode too.
+    Icons,
+}
+
+impl RateClass {
+    pub const fn rate(self) -> Rate {
+        match self {
+            RateClass::Actions => Rate::ACTIONS,
+            RateClass::Icons => Rate::ICONS,
         }
     }
 }
@@ -353,6 +377,23 @@ mod tests {
                 .take(&mut full_again_at, Instant::now())
                 .is_err()
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn the_icon_bucket_has_burst_4_and_refills_two_per_second() {
+        let rate = RateClass::Icons.rate();
+        let mut full_again_at = Instant::now();
+        for _ in 0..4 {
+            assert_eq!(rate.take(&mut full_again_at, Instant::now()), Ok(()));
+        }
+        let half_second = Duration::from_millis(500);
+        assert_eq!(
+            rate.take(&mut full_again_at, Instant::now()),
+            Err(half_second)
+        );
+        tokio::time::advance(half_second).await;
+        assert_eq!(rate.take(&mut full_again_at, Instant::now()), Ok(()));
+        assert!(rate.take(&mut full_again_at, Instant::now()).is_err());
     }
 
     #[test]

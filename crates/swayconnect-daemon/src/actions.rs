@@ -128,6 +128,8 @@ mod tests {
             focused: false,
             visible: false,
             urgent: false,
+            rect: None,
+            layout: None,
         }
     }
 
@@ -141,6 +143,7 @@ mod tests {
             urgent: false,
             floating: false,
             fullscreen: false,
+            icon: None,
         }
     }
 
@@ -153,6 +156,9 @@ mod tests {
             workspaces,
             windows,
             truncated: false,
+            outputs: None,
+            scratchpad: None,
+            layouts_cut: None,
         }
     }
 

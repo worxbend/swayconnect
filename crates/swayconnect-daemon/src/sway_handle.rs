@@ -3,6 +3,7 @@
 //! meanings stay.
 //!
 //! Slice S0 wrote the stubs. Slice S6b wrote the state half, slice S6d the body of `act`.
+//! Slice D-POLL added `watch_desktop` and `windows_inhibiting`.
 
 use std::sync::Arc;
 
@@ -10,7 +11,9 @@ use swayconnect_protocol::Desktop;
 use swayconnect_sway::SwayTarget;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::{model, supervisor};
+use crate::icons::IconService;
+use crate::model;
+use crate::supervisor::{self, Desk};
 
 /// No `Debug`: the desktop holds window titles, which are never logged.
 pub struct Published {
@@ -47,26 +50,82 @@ pub(crate) struct ActionRequest {
 
 pub struct SwayHandle {
     state: watch::Receiver<Arc<Published>>,
+    windows_inhibiting: watch::Receiver<u32>,
+    subscribers: Arc<watch::Sender<usize>>,
     actions: mpsc::Sender<ActionRequest>,
 }
 
+/// While one lives, the supervisor reads the tree again every 2 s, because sway sends no
+/// event for a resize (`docs/DESIGN.md` 11.5). A session holds one while it subscribes to
+/// `desktop` and drops it when it ends.
+#[must_use = "the poll stops when this is dropped"]
+pub struct DesktopInterest {
+    subscribers: Arc<watch::Sender<usize>>,
+}
+
+impl Drop for DesktopInterest {
+    fn drop(&mut self) {
+        self.subscribers.send_modify(|count| *count -= 1);
+    }
+}
+
 impl SwayHandle {
-    /// Starts the supervisor task. It ends when `shutdown` turns `true` or closes.
+    /// Starts the supervisor task. It ends when `shutdown` turns `true` or closes. Every
+    /// window icon is `null`.
     ///
     /// Must be called inside a tokio runtime.
     pub fn spawn(target: SwayTarget, shutdown: watch::Receiver<bool>) -> SwayHandle {
+        SwayHandle::spawn_with_icons(target, shutdown, None)
+    }
+
+    /// [`SwayHandle::spawn`], and with `icons` the windows carry the hash of their app icon
+    /// once the service has it.
+    pub fn spawn_with_icons(
+        target: SwayTarget,
+        shutdown: watch::Receiver<bool>,
+        icons: Option<Arc<IconService>>,
+    ) -> SwayHandle {
         let (publisher, state) = watch::channel(Arc::new(Published {
             rev: 0,
             desktop: model::offline_desktop(),
         }));
         let (actions, queued) = mpsc::channel(ACTION_QUEUE_LEN);
-        tokio::spawn(supervisor::run(target, shutdown, publisher, queued));
-        SwayHandle { state, actions }
+        let (inhibit_publisher, windows_inhibiting) = watch::channel(0);
+        let (subscribers, subscriber_count) = watch::channel(0);
+        let desk = Desk {
+            state: publisher,
+            windows_inhibiting: inhibit_publisher,
+            subscribers: subscriber_count,
+            actions: queued,
+            icon_jobs: icons.as_ref().map(|service| service.finished()),
+            icons,
+        };
+        tokio::spawn(supervisor::run(target, shutdown, desk));
+        SwayHandle {
+            state,
+            windows_inhibiting,
+            subscribers: Arc::new(subscribers),
+            actions,
+        }
     }
 
     /// The newest snapshot. Offline with `rev` 0 until sway is first reached.
     pub fn state(&self) -> watch::Receiver<Arc<Published>> {
         self.state.clone()
+    }
+
+    /// The number of windows that keep the desktop awake by themselves (sway
+    /// `inhibit_idle`), from the newest tree. 0 while sway is offline.
+    pub fn windows_inhibiting(&self) -> watch::Receiver<u32> {
+        self.windows_inhibiting.clone()
+    }
+
+    /// Counts one more desktop subscriber until the result is dropped.
+    pub fn watch_desktop(&self) -> DesktopInterest {
+        self.subscribers.send_modify(|count| *count += 1);
+        DesktopInterest {
+            subscribers: Arc::clone(&self.subscribers),
+        }
     }
 
     /// Asks the supervisor to run `action`. It checks the target against the snapshot it
@@ -254,6 +313,21 @@ mod tests {
         })
         .await;
         assert_eq!(desk.handle.act(FOCUS_WINDOW).await, Ok(()));
+    }
+
+    #[tokio::test]
+    async fn each_desktop_interest_counts_until_it_is_dropped() {
+        let desk = Desk::online().await;
+        let count = || *desk.handle.subscribers.borrow();
+
+        let first = desk.handle.watch_desktop();
+        let second = desk.handle.watch_desktop();
+        assert_eq!(count(), 2);
+
+        drop(first);
+        assert_eq!(count(), 1);
+        drop(second);
+        assert_eq!(count(), 0);
     }
 
     #[tokio::test]

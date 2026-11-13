@@ -1,0 +1,44 @@
+{
+  "sway": { "online": true, "version": "1.12" },
+  "outputs": [
+    {
+      "name": "DP-1", "model": "Dell Inc. DELL P3223QE",
+      "rect": { "x": 0, "y": 0, "w": 3072, "h": 1728 },
+      "scale_milli": 1250, "transform": "normal", "active": true, "power": true,
+      "current_workspace_id": 20
+    }
+  ],
+  "workspaces": [
+    {
+      "id": 20, "number": 3, "name": "3", "output": "DP-1",
+      "focused": true, "visible": true, "urgent": false,
+      "rect": { "x": 2, "y": 28, "w": 3068, "h": 1698 },
+      "layout": {
+        "size": [3068, 1698], "fullscreen": null,
+        "tiled": {
+          "k": "h", "r": [0, 0, 10000, 10000],
+          "c": [ { "w": 24, "r": [0, 0, 4997, 10000] }, { "w": 29, "r": [5003, 0, 4997, 10000] } ]
+        },
+        "floating": [ { "w": 23, "r": [4876, 3510, 244, 2980] } ]
+      }
+    }
+  ],
+  "windows": [
+    {
+      "id": 24, "workspace_id": 20, "app_id": "Emulator", "title": "Android Emulator",
+      "focused": false, "urgent": false, "floating": false, "fullscreen": false, "icon": null
+    },
+    {
+      "id": 29, "workspace_id": 20, "app_id": "google-chrome", "title": "Docs",
+      "focused": true, "urgent": false, "floating": false, "fullscreen": false,
+      "icon": "q83vEjRWeJCrze8SNFZ4kA"
+    },
+    {
+      "id": 23, "workspace_id": 20, "app_id": "Emulator", "title": "Extended controls",
+      "focused": false, "urgent": false, "floating": true, "fullscreen": false, "icon": null
+    }
+  ],
+  "scratchpad": [],
+  "layouts_cut": false,
+  "truncated": false
+}

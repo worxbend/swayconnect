@@ -15,8 +15,9 @@ use qrcode::QrCode;
 use qrcode::render::unicode::Dense1x2;
 use swayconnect_daemon::admin::{AdminClient, AdminError, PairingRequest, PairingResult};
 use swayconnect_daemon::config::Config;
-use swayconnect_daemon::daemon::Daemon;
-use swayconnect_daemon::devices::DeviceInfo;
+use swayconnect_daemon::daemon::{Daemon, IconSources};
+use swayconnect_daemon::devices::{DeviceInfo, ScopeChange};
+use swayconnect_daemon::icons::{self, raster};
 use swayconnect_daemon::paths::{Paths, own_uid};
 use swayconnect_protocol::text::escape_for_terminal;
 use swayconnect_protocol::uri::PairingUri;
@@ -62,10 +63,30 @@ enum Command {
         #[arg(long)]
         host: Option<String>,
     },
-    /// List the paired devices
-    Devices,
+    /// List the paired devices, or change the scopes of one
+    Devices {
+        #[command(subcommand)]
+        change: Option<DevicesChange>,
+    },
     /// Delete a device and drop its sessions
     Revoke { device_id: String },
+}
+
+#[derive(Subcommand)]
+enum DevicesChange {
+    /// Give scopes to a device; its open connections end with `scopes_changed`
+    Grant(ScopeArgs),
+    /// Take scopes from a device; its open connections end with `scopes_changed`
+    Deny(ScopeArgs),
+}
+
+#[derive(clap::Args)]
+struct ScopeArgs {
+    /// The first characters of the device id, at least 4 (see `swayconnectd devices`)
+    prefix: String,
+    /// Scope names, for example `state.titles`
+    #[arg(required = true, value_parser = parse_scope)]
+    scopes: Vec<Scope>,
 }
 
 /// An error with the exit code of `docs/DESIGN.md` 4.7.
@@ -103,8 +124,20 @@ fn parse_scope(name: &str) -> Result<Scope, String> {
     Scope::from_wire(name).ok_or_else(|| format!("unknown scope `{name}`"))
 }
 
+fn main() -> ExitCode {
+    // The icon raster child (docs/DESIGN.md 11.5) limits its own memory, so it must run
+    // before the async runtime starts any thread.
+    let mut arguments = std::env::args_os().skip(1);
+    if let (Some(first), None) = (arguments.next(), arguments.next())
+        && first == raster::RASTER_ARG
+    {
+        return raster::child_main();
+    }
+    run_cli()
+}
+
 #[tokio::main]
-async fn main() -> ExitCode {
+async fn run_cli() -> ExitCode {
     let cli = Cli::parse();
     let outcome = match cli.command.unwrap_or(Command::Run) {
         Command::Run => run().await,
@@ -116,7 +149,13 @@ async fn main() -> ExitCode {
             };
             pair(&request).await
         }
-        Command::Devices => devices().await,
+        Command::Devices { change: None } => devices().await,
+        Command::Devices {
+            change: Some(DevicesChange::Grant(args)),
+        } => change_scopes(ScopeChange::Grant, args).await,
+        Command::Devices {
+            change: Some(DevicesChange::Deny(args)),
+        } => change_scopes(ScopeChange::Deny, args).await,
         Command::Revoke { device_id } => revoke(&device_id).await,
     };
     match outcome {
@@ -179,6 +218,23 @@ fn paths_from_environment() -> Result<Paths, Failure> {
     })
 }
 
+/// The icon service reads `$XDG_DATA_HOME` and `$XDG_DATA_DIRS`, caches below
+/// `$XDG_CACHE_HOME`, and runs this program as its raster child (`docs/DESIGN.md` 11.5).
+fn icon_sources() -> Result<IconSources, Failure> {
+    let data_home = xdg_dir("XDG_DATA_HOME", ".local/share")?;
+    let data_dirs = std::env::var_os("XDG_DATA_DIRS");
+    let raster_program = std::env::current_exe().map_err(|error| {
+        Failure::runtime(anyhow!(
+            "cannot name the own program for the icon raster child: {error}"
+        ))
+    })?;
+    Ok(IconSources {
+        search_dirs: icons::search_dirs(&data_home, data_dirs.as_deref()),
+        cache_dir: xdg_dir("XDG_CACHE_HOME", ".cache")?.join(APP_DIR),
+        raster_program,
+    })
+}
+
 fn sway_target(config: &Config, paths: &Paths) -> Result<SwayTarget, Failure> {
     if let Some(socket) = &config.sway_socket {
         return Ok(SwayTarget::Explicit(socket.clone()));
@@ -202,12 +258,13 @@ async fn run() -> Result<ExitCode, Failure> {
     let paths = paths_from_environment()?;
     let config = Config::load(&paths.config_file).map_err(Failure::usage)?;
     let target = sway_target(&config, &paths)?;
+    let icons = icon_sources()?;
     // Registered before the start is logged, so a signal sent right after it is not lost.
     let mut interrupt = signal(SignalKind::interrupt()).map_err(Failure::runtime)?;
     let mut terminate = signal(SignalKind::terminate()).map_err(Failure::runtime)?;
     let mut panic_switch = signal(SignalKind::user_defined1()).map_err(Failure::runtime)?;
 
-    let daemon = Daemon::start(config, paths, target)
+    let daemon = Daemon::start_with_icons(config, paths, target, icons)
         .await
         .map_err(|error| Failure {
             exit_code: error.exit_code(),
@@ -361,6 +418,23 @@ async fn devices() -> Result<ExitCode, Failure> {
     Ok(ExitCode::SUCCESS)
 }
 
+async fn change_scopes(change: ScopeChange, args: ScopeArgs) -> Result<ExitCode, Failure> {
+    let scopes: BTreeSet<Scope> = args.scopes.into_iter().collect();
+    let mut admin = AdminClient::connect(&paths_from_environment()?).await?;
+    let changed = admin.change_scopes(&args.prefix, change, &scopes).await?;
+    let outcome = if changed.changed {
+        "scopes changed, open connections ended"
+    } else {
+        "no change"
+    };
+    println!(
+        "{}: {outcome}; scopes {}",
+        escape_for_terminal(&changed.device_id),
+        escape_for_terminal(&changed.scopes.join(","))
+    );
+    Ok(ExitCode::SUCCESS)
+}
+
 async fn revoke(device_id: &str) -> Result<ExitCode, Failure> {
     let device = DeviceId::parse(device_id)
         .map_err(|_| Failure::usage(anyhow!("not a device id (see `swayconnectd devices`)")))?;
@@ -374,91 +448,5 @@ async fn revoke(device_id: &str) -> Result<ExitCode, Failure> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_y_and_yes_confirm_a_device() {
-        for yes in ["y\n", "Y\n", "yes\n", " YES \r\n"] {
-            assert!(is_yes(yes), "{yes:?}");
-        }
-        for no in ["", "\n", "n\n", "no\n", "yy\n", "ok\n", "1\n"] {
-            assert!(!is_yes(no), "{no:?}");
-        }
-    }
-
-    #[tokio::test]
-    async fn a_line_typed_before_the_device_was_shown_is_not_its_answer() {
-        let typed_early = Instant::now();
-        let (terminal, mut lines) = watch::channel(Some((typed_early, "y".to_owned())));
-        let shown_at = typed_early + Duration::from_millis(1);
-
-        let mut answer = std::pin::pin!(answer_typed_after(&mut lines, shown_at));
-        let early = tokio::time::timeout(Duration::from_millis(50), &mut answer).await;
-        assert!(early.is_err(), "the early line was taken as the answer");
-
-        terminal.send_replace(Some((shown_at, "n".to_owned())));
-        assert_eq!(answer.await.as_deref(), Some("n"));
-    }
-
-    #[tokio::test]
-    async fn a_closed_terminal_gives_no_answer_even_after_an_early_line() {
-        let typed_early = Instant::now();
-        let (terminal, mut lines) = watch::channel(Some((typed_early, "y".to_owned())));
-        drop(terminal);
-
-        let shown_at = typed_early + Duration::from_millis(1);
-        assert_eq!(answer_typed_after(&mut lines, shown_at).await, None);
-    }
-
-    #[test]
-    fn the_firewall_hint_is_for_non_loopback_hosts() {
-        assert!(is_loopback_host("127.0.0.1"));
-        assert!(is_loopback_host("::1"));
-        assert!(!is_loopback_host("192.168.1.200"));
-        assert!(!is_loopback_host("desk.example"));
-    }
-
-    #[test]
-    fn pair_takes_scopes_ttl_and_host_and_refuses_values_outside_the_limits() {
-        let cli = Cli::try_parse_from(["swayconnectd", "pair"]).expect("defaults");
-        let Some(Command::Pair { scopes, ttl, host }) = cli.command else {
-            panic!("pair was parsed as another command");
-        };
-        assert_eq!(
-            scopes,
-            [Scope::StateRead, Scope::StateTitles, Scope::Control]
-        );
-        assert_eq!((ttl, host), (300, None));
-
-        let narrowed = [
-            "swayconnectd",
-            "pair",
-            "--scopes",
-            "state.read,control",
-            "--ttl",
-            "30",
-        ];
-        let Some(Command::Pair { scopes, ttl, .. }) =
-            Cli::try_parse_from(narrowed).expect("valid").command
-        else {
-            panic!("pair was parsed as another command");
-        };
-        assert_eq!((scopes, ttl), (vec![Scope::StateRead, Scope::Control], 30));
-
-        for refused in [
-            ["--ttl", "29"],
-            ["--ttl", "601"],
-            ["--scopes", "state.read,root"],
-        ] {
-            let arguments = ["swayconnectd", "pair"].into_iter().chain(refused);
-            assert!(Cli::try_parse_from(arguments).is_err(), "{refused:?}");
-        }
-    }
-
-    #[test]
-    fn no_subcommand_means_run() {
-        let cli = Cli::try_parse_from(["swayconnectd"]).expect("valid");
-        assert!(cli.command.is_none());
-    }
-}
+#[path = "main/tests.rs"]
+mod tests;

@@ -27,7 +27,10 @@ pub struct WorkspaceInfo {
 }
 
 /// A node of the reply to `GET_TREE`.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+///
+/// Output-only fields (`active`, `power`, `scale`, `transform`, `make`, `model`,
+/// `current_workspace`) are `None` on other node types.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct Node {
     pub id: u64,
@@ -40,11 +43,42 @@ pub struct Node {
     /// X11 window id of an Xwayland view.
     pub window: Option<i64>,
     pub window_properties: Option<WindowProperties>,
+    /// App id that a sandbox engine (flatpak) set through `security-context-v1`; sway 1.10+.
+    pub sandbox_app_id: Option<String>,
     pub fullscreen_mode: Option<i64>,
     pub focused: bool,
     pub urgent: bool,
+    /// Area in global logical pixels. A workspace's rect excludes the bar.
+    pub rect: Option<Rect>,
+    /// `splith`, `splitv`, `tabbed`, `stacked`, `output`, `none` or a value sway adds later.
+    pub layout: Option<String>,
+    /// Ids of child nodes (tiled and floating), most recently focused first.
+    pub focus: Vec<u64>,
+    /// `none`, `fresh` or `changed`; anything but `none` marks a scratchpad window.
+    pub scratchpad_state: Option<String>,
+    /// A view that currently inhibits idle.
+    pub inhibit_idle: Option<bool>,
+    pub active: Option<bool>,
+    pub power: Option<bool>,
+    pub scale: Option<f64>,
+    /// `normal`, `90`, `180`, `270`, `flipped`, `flipped-90`, ... or a value sway adds later.
+    pub transform: Option<String>,
+    pub make: Option<String>,
+    pub model: Option<String>,
+    /// Name of the workspace an output shows.
+    pub current_workspace: Option<String>,
     pub nodes: Vec<Node>,
     pub floating_nodes: Vec<Node>,
+}
+
+/// A rectangle in global logical pixels, as sway reports it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct Rect {
+    pub x: i64,
+    pub y: i64,
+    pub width: i64,
+    pub height: i64,
 }
 
 /// Xwayland properties of a [`Node`].
@@ -52,6 +86,7 @@ pub struct Node {
 #[serde(default)]
 pub struct WindowProperties {
     pub class: Option<String>,
+    pub instance: Option<String>,
 }
 
 /// Reply to `SUBSCRIBE`, and one element of the reply to `RUN_COMMAND`.
@@ -93,9 +128,49 @@ mod tests {
         assert_eq!(
             floating.window_properties,
             Some(WindowProperties {
-                class: Some("XTerm".to_owned())
+                class: Some("XTerm".to_owned()),
+                instance: Some("xterm".to_owned()),
             })
         );
+    }
+
+    #[test]
+    fn layout_and_output_fields_parse() {
+        let output: Node = serde_json::from_str(
+            r#"{"id":3,"type":"output","name":"DP-1","active":true,"power":false,"dpms":false,
+                "scale":1.25,"transform":"90","make":"Dell Inc.","model":"P3223QE",
+                "current_workspace":"2","layout":"output","focus":[4,7],
+                "rect":{"x":-1920,"y":0,"width":3072,"height":1728}}"#,
+        )
+        .expect("output parses");
+        assert_eq!(
+            (output.active, output.power, output.scale),
+            (Some(true), Some(false), Some(1.25))
+        );
+        assert_eq!(output.transform.as_deref(), Some("90"));
+        assert_eq!(output.make.as_deref(), Some("Dell Inc."));
+        assert_eq!(output.model.as_deref(), Some("P3223QE"));
+        assert_eq!(output.current_workspace.as_deref(), Some("2"));
+        assert_eq!(output.layout.as_deref(), Some("output"));
+        assert_eq!(output.focus, [4, 7]);
+        assert_eq!(
+            output.rect,
+            Some(Rect {
+                x: -1920,
+                y: 0,
+                width: 3072,
+                height: 1728
+            })
+        );
+
+        let view: Node = serde_json::from_str(
+            r#"{"id":9,"type":"floating_con","layout":"none","scratchpad_state":"fresh",
+                "inhibit_idle":true,"focus":[]}"#,
+        )
+        .expect("view parses");
+        assert_eq!(view.scratchpad_state.as_deref(), Some("fresh"));
+        assert_eq!(view.inhibit_idle, Some(true));
+        assert_eq!((view.power, view.scale, view.rect), (None, None, None));
     }
 
     #[test]

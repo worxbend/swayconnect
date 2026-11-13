@@ -10,7 +10,7 @@ use tokio::time::Instant;
 
 use super::*;
 use crate::actions;
-use crate::throttle::Rate;
+use crate::throttle::{Rate, RateClass};
 
 const VECTORS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../protocol/vectors/v1");
 const EVERY_SCOPE: [Scope; 3] = [Scope::StateRead, Scope::StateTitles, Scope::Control];
@@ -63,7 +63,7 @@ fn action_requests() -> [(Req, Action); 5] {
 /// A daemon that is not read-only and a bucket that is never empty.
 fn checked(scopes: &[Scope], request: &Req) -> Result<Decision, ErrorBody> {
     let scopes = scopes.iter().copied().collect();
-    check(&scopes, false, || Ok(()), request)
+    check(&scopes, false, |_| Ok(()), request)
 }
 
 fn refused(scopes: &[Scope], op: &str, args: Option<Value>) -> ErrorBody {
@@ -87,7 +87,7 @@ fn each_action_is_handed_on_as_its_typed_value_and_takes_one_token() {
     let scopes = BTreeSet::from([Scope::Control]);
     for (request, action) in action_requests() {
         let taken = Cell::new(0);
-        let take_token = || {
+        let take_token = |_| {
             taken.set(taken.get() + 1);
             Ok(())
         };
@@ -101,7 +101,7 @@ fn each_action_is_handed_on_as_its_typed_value_and_takes_one_token() {
 fn in_read_only_mode_no_action_is_handed_on_and_no_token_is_taken() {
     let scopes = EVERY_SCOPE.into_iter().collect();
     for (request, _) in action_requests() {
-        let take_token = || panic!("read-only is checked before the rate limit");
+        let take_token = |_| panic!("read-only is checked before the rate limit");
         let outcome = check(&scopes, true, take_token, &request);
         let error = outcome.expect_err("no `Decision::Act` in read-only mode");
         assert_eq!(error.code, ErrorCode::ReadOnly, "{request:?}");
@@ -112,7 +112,7 @@ fn in_read_only_mode_no_action_is_handed_on_and_no_token_is_taken() {
 #[test]
 fn read_only_mode_leaves_ping_and_subscribe_alone() {
     let scopes = EVERY_SCOPE.into_iter().collect();
-    let take_token = || panic!("only an action takes a token");
+    let take_token = |_| panic!("only an action takes a token");
     let subscribe = request("state.subscribe", Some(json!({"topics": ["desktop"]})));
     assert_eq!(
         check(&scopes, true, take_token, &subscribe),
@@ -128,7 +128,7 @@ fn read_only_mode_leaves_ping_and_subscribe_alone() {
 fn a_missing_scope_is_reported_before_read_only_and_takes_no_token() {
     let scopes = BTreeSet::from([Scope::StateRead]);
     for (request, _) in action_requests() {
-        let take_token = || panic!("the scope is checked before the rate limit");
+        let take_token = |_| panic!("the scope is checked before the rate limit");
         let error = check(&scopes, true, take_token, &request).expect_err("forbidden");
         assert_eq!(error.code, ErrorCode::Forbidden, "{request:?}");
         assert_eq!(
@@ -142,7 +142,7 @@ fn a_missing_scope_is_reported_before_read_only_and_takes_no_token() {
 fn an_empty_bucket_is_reported_with_the_retry_delay_before_bad_arguments() {
     let scopes = BTreeSet::from([Scope::Control]);
     let no_arguments = request("window.focus", Some(json!("not an object")));
-    let error = check(&scopes, false, || Err(RETRY_AFTER), &no_arguments).expect_err("limited");
+    let error = check(&scopes, false, |_| Err(RETRY_AFTER), &no_arguments).expect_err("limited");
     assert_eq!(error.code, ErrorCode::RateLimited);
     assert_eq!(
         Value::Object(error.detail.expect("detail")),
@@ -154,7 +154,7 @@ fn an_empty_bucket_is_reported_with_the_retry_delay_before_bad_arguments() {
 fn the_retry_delay_is_never_reported_as_zero() {
     let scopes = BTreeSet::from([Scope::Control]);
     let (focus, _) = &action_requests()[2];
-    let almost_now = || Err(Duration::from_micros(1));
+    let almost_now = |_| Err(Duration::from_micros(1));
     let error = check(&scopes, false, almost_now, focus).expect_err("limited");
     assert_eq!(error.detail.expect("detail")["retry_after_ms"], 1);
 }
@@ -174,7 +174,7 @@ fn an_action_with_bad_arguments_still_takes_its_token() {
     ];
     for (op, args) in bad_arguments {
         let taken = Cell::new(0);
-        let take_token = || {
+        let take_token = |_| {
             taken.set(taken.get() + 1);
             Ok(())
         };
@@ -189,11 +189,14 @@ fn an_action_with_bad_arguments_still_takes_its_token() {
 fn the_offered_operations_follow_the_scopes_and_the_mode() {
     let every_scope = EVERY_SCOPE.into_iter().collect();
     let without_control = BTreeSet::from([Scope::StateRead, Scope::StateTitles]);
-    let read_side = ["ping", "state.subscribe"];
+    let read_side = ["ping", "state.subscribe", "icon.get"];
     let actions = ["workspace.focus", "window.focus", "window.fullscreen"];
 
-    let all = [&read_side[..], &actions].concat();
-    assert_eq!(offered_ops(&every_scope, false), all);
+    let all = ["ping", "state.subscribe"]
+        .into_iter()
+        .chain(actions)
+        .chain(["icon.get"]);
+    assert_eq!(offered_ops(&every_scope, false), Vec::from_iter(all));
     assert_eq!(offered_ops(&every_scope, true), read_side);
     assert_eq!(offered_ops(&without_control, false), read_side);
     assert_eq!(
@@ -342,7 +345,14 @@ fn replay(vector: &Value) -> Value {
         let spent = Rate::ACTIONS.take(&mut full_again_at, now);
         spent.expect("the bucket holds a token");
     }
-    let take_token = || Rate::ACTIONS.take(&mut full_again_at, now);
+    let take_token = |class| {
+        assert_eq!(
+            class,
+            RateClass::Actions,
+            "requests.json holds no `icon.get`"
+        );
+        Rate::ACTIONS.take(&mut full_again_at, now)
+    };
 
     let refusal = match check(&scopes, is_read_only, take_token, &request) {
         Ok(Decision::Act(action)) => match actions::command_for(action, &desktop) {
@@ -356,7 +366,7 @@ fn replay(vector: &Value) -> Value {
     json!({"error": refusal.code.as_str(), "detail": detail})
 }
 
-fn assert_detail_matches(name: &str, expected: &JsonObject, answered: &Value) {
+pub(super) fn assert_detail_matches(name: &str, expected: &JsonObject, answered: &Value) {
     for (member, expected) in expected {
         let answered = &answered[member];
         if member == "retry_after_ms" {

@@ -31,6 +31,19 @@ fn referenced_desktop(state_ref: &str) -> Desktop {
     Desktop::decode(state.expect("desktop state")).expect("a valid desktop")
 }
 
+/// `desktop` without the members that section 17.4 adds: the vectors are version 1 states.
+fn v1_part(desktop: &Desktop) -> Desktop {
+    let mut v1 = desktop.clone();
+    (v1.outputs, v1.scratchpad, v1.layouts_cut) = (None, None, None);
+    for workspace in &mut v1.workspaces {
+        (workspace.rect, workspace.layout) = (None, None);
+    }
+    for window in &mut v1.windows {
+        window.icon = None;
+    }
+    v1
+}
+
 /// A daemon whose read-only mode and whose `desktop` state are the ones `vector` names.
 async fn daemon_for(vector: &Value) -> Harness {
     let is_read_only = vector["read_only"].as_bool().expect("read_only");
@@ -45,7 +58,7 @@ async fn daemon_for(vector: &Value) -> Harness {
     assert_eq!(expected.sway.online, is_sway_online);
     let observer = harness.pair(&EVERY_SCOPE).await;
     let mut observer = harness.connect(&observer).await;
-    subscribed_desktop(&mut observer, |desktop| *desktop == expected).await;
+    subscribed_desktop(&mut observer, |desktop| v1_part(desktop) == expected).await;
     harness
 }
 

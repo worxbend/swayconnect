@@ -4,7 +4,8 @@ use std::ffi::OsStr;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-use swayconnect_testkit::TestDirs;
+use swayconnect_testkit::fixtures::{NOTES_APP_ID, NOTES_DESKTOP_ENTRY, NOTES_ICON_PNG};
+use swayconnect_testkit::{NO_SYSTEM_BUS, TestDirs};
 
 #[test]
 fn every_path_is_under_the_one_temp_root() {
@@ -13,6 +14,10 @@ fn every_path_is_under_the_one_temp_root() {
     for path in [
         dirs.config_home(),
         dirs.data_home(),
+        dirs.cache_home(),
+        dirs.data_dirs(),
+        dirs.desktop_entry(),
+        dirs.icon_file(),
         dirs.runtime_dir(),
         dirs.config_file(),
         dirs.data_dir(),
@@ -59,7 +64,7 @@ fn the_root_is_removed_on_drop() {
 }
 
 #[test]
-fn a_child_command_has_only_the_three_xdg_variables() {
+fn a_child_command_sets_only_the_temp_xdg_dirs_and_a_dead_system_bus() {
     let dirs = TestDirs::new();
 
     let command = dirs.command("/bin/true");
@@ -68,8 +73,44 @@ fn a_child_command_has_only_the_three_xdg_variables() {
 
     assert_eq!(
         names,
-        ["XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_RUNTIME_DIR"]
+        [
+            "DBUS_SYSTEM_BUS_ADDRESS",
+            "XDG_CACHE_HOME",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_DIRS",
+            "XDG_DATA_HOME",
+            "XDG_RUNTIME_DIR",
+        ]
     );
+}
+
+#[test]
+fn the_data_dirs_hold_one_desktop_entry_and_one_png() {
+    let dirs = TestDirs::new();
+
+    let entries: Vec<_> = std::fs::read_dir(dirs.data_dirs().join("applications"))
+        .expect("read applications")
+        .map(|entry| entry.expect("dir entry").path())
+        .collect();
+
+    assert_eq!(entries, [dirs.desktop_entry()]);
+    assert_eq!(
+        dirs.desktop_entry().file_name(),
+        Some(OsStr::new(&format!("{NOTES_APP_ID}.desktop")))
+    );
+    assert_eq!(
+        std::fs::read_to_string(dirs.desktop_entry()).expect("read entry"),
+        NOTES_DESKTOP_ENTRY
+    );
+    assert_eq!(
+        std::fs::read(dirs.icon_file()).expect("read icon"),
+        NOTES_ICON_PNG
+    );
+    assert!(
+        dirs.icon_file()
+            .starts_with(dirs.data_dirs().join("icons/hicolor"))
+    );
+    assert!(dirs.cache_home().is_dir());
 }
 
 #[test]
@@ -86,11 +127,15 @@ fn a_child_process_sees_a_cleared_environment() {
     assert_eq!(
         lines,
         [
+            format!("DBUS_SYSTEM_BUS_ADDRESS={NO_SYSTEM_BUS}"),
+            format!("XDG_CACHE_HOME={}", dirs.cache_home().display()),
             format!("XDG_CONFIG_HOME={}", dirs.config_home().display()),
+            format!("XDG_DATA_DIRS={}", dirs.data_dirs().display()),
             format!("XDG_DATA_HOME={}", dirs.data_home().display()),
             format!("XDG_RUNTIME_DIR={}", dirs.runtime_dir().display()),
         ]
     );
+    assert_eq!(NO_SYSTEM_BUS, "unix:path=/nonexistent");
 }
 
 fn rust_sources(dir: &Path) -> Vec<String> {

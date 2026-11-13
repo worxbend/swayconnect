@@ -30,7 +30,10 @@ async fn welcome_and_state_follow_the_scopes_of_the_device() {
 
     let mut session = harness.connect(&reader).await;
     assert_eq!(session.welcome().scopes, [Scope::StateRead]);
-    assert_eq!(session.welcome().ops, ["ping", "state.subscribe"]);
+    assert_eq!(
+        session.welcome().ops,
+        ["ping", "state.subscribe", "icon.get"]
+    );
     let (_rev, desktop) = support::online_desktop(&mut session).await;
     assert_eq!(desktop.windows.len(), 2);
     assert!(desktop.windows.iter().all(|window| window.title.is_none()));

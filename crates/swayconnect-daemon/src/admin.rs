@@ -23,7 +23,7 @@ use tokio::sync::watch;
 use tokio::task::JoinSet;
 
 use crate::config::StartError;
-use crate::devices::{DeviceInfo, Secret};
+use crate::devices::{DeviceInfo, ScopeChange, Secret};
 use crate::pairing::{OpenedWindow, PairingOutcome, PendingNotice};
 use crate::paths::{
     Kind, PathError, Paths, Problem, check_private, ensure_private_dir, own_uid, require_absolute,
@@ -81,6 +81,15 @@ pub struct PairedDevice {
     pub scopes: Vec<String>,
 }
 
+/// The scopes of a device after `devices.grant` or `devices.deny`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangedScopes {
+    pub device_id: String,
+    pub scopes: Vec<String>,
+    /// `false`: nothing to change, so no session was ended.
+    pub changed: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PairingResult {
     Paired(PairedDevice),
@@ -112,6 +121,10 @@ enum Request {
     DevicesList,
     #[serde(rename = "devices.revoke")]
     DevicesRevoke { device_id: String },
+    #[serde(rename = "devices.grant")]
+    DevicesGrant { prefix: String, scopes: Vec<String> },
+    #[serde(rename = "devices.deny")]
+    DevicesDeny { prefix: String, scopes: Vec<String> },
 }
 
 // No `Debug`: `Window` holds the pairing URI.
@@ -127,6 +140,7 @@ enum Reply {
     ClientGone,
     Devices { devices: Vec<DeviceInfo> },
     Revoked { found: bool },
+    Scopes(ChangedScopes),
     Error { message: String },
 }
 
@@ -302,6 +316,14 @@ impl Session {
                 Request::DevicesRevoke { device_id } => {
                     channel.send(&self.revoke(&device_id)).await?;
                 }
+                Request::DevicesGrant { prefix, scopes } => {
+                    let reply = self.change_scopes(&prefix, ScopeChange::Grant, &scopes);
+                    channel.send(&reply).await?;
+                }
+                Request::DevicesDeny { prefix, scopes } => {
+                    let reply = self.change_scopes(&prefix, ScopeChange::Deny, &scopes);
+                    channel.send(&reply).await?;
+                }
                 Request::PairOpen {
                     scopes,
                     lifetime_s,
@@ -332,6 +354,27 @@ impl Session {
         }
     }
 
+    fn change_scopes(&self, prefix: &str, change: ScopeChange, scopes: &[String]) -> Reply {
+        let scopes = match parse_scopes(scopes) {
+            Ok(scopes) => scopes,
+            Err(message) => return Reply::Error { message },
+        };
+        match self.security.change_scopes(prefix, change, &scopes) {
+            Ok(set) => Reply::Scopes(ChangedScopes {
+                device_id: set.device_id.as_str().to_owned(),
+                scopes: set
+                    .scopes
+                    .iter()
+                    .map(|scope| scope.as_str().to_owned())
+                    .collect(),
+                changed: set.changed,
+            }),
+            Err(error) => Reply::Error {
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// `Err` holds the message for the owner.
     fn open_window(
         &self,
@@ -344,13 +387,7 @@ impl Session {
                 "the lifetime must be {MIN_LIFETIME_S} to {MAX_LIFETIME_S} seconds"
             ));
         }
-        let scopes = scopes
-            .iter()
-            .map(|name| Scope::from_wire(name).ok_or("unknown scope"))
-            .collect::<Result<BTreeSet<Scope>, _>>()?;
-        if scopes.is_empty() {
-            return Err("at least one scope is needed".to_owned());
-        }
+        let scopes = parse_scopes(scopes)?;
         let opened = self
             .security
             .open_pairing(scopes, Duration::from_secs(lifetime_s))
@@ -380,6 +417,18 @@ impl Session {
             Err(_) => Err("the host is not an IP address or a DNS name".to_owned()),
         }
     }
+}
+
+/// At least one scope, every name known. `Err` holds the message for the owner.
+fn parse_scopes(names: &[String]) -> Result<BTreeSet<Scope>, String> {
+    let scopes = names
+        .iter()
+        .map(|name| Scope::from_wire(name).ok_or("unknown scope"))
+        .collect::<Result<BTreeSet<Scope>, _>>()?;
+    if scopes.is_empty() {
+        return Err("at least one scope is needed".to_owned());
+    }
+    Ok(scopes)
 }
 
 /// The rest of a `pair.open` connection: pending device, the owner's answer, the result.
@@ -446,109 +495,9 @@ async fn pair(channel: &mut Channel, opened: OpenedWindow) -> Result<(), AdminEr
     channel.send(&reply).await
 }
 
-/// The client side, for `swayconnectd pair`, `devices` and `revoke`.
-pub struct AdminClient {
-    channel: Channel,
-}
+mod client;
 
-impl AdminClient {
-    /// Applies the directory checks of the server and checks the server's uid, so a planted
-    /// socket cannot hand out a pairing URI for another server.
-    pub async fn connect(paths: &Paths) -> Result<AdminClient, AdminError> {
-        let uid = own_uid()?;
-        check_runtime_dir(paths, uid)?;
-        let socket = paths.admin_socket();
-        let not_running = |error: &io::Error| {
-            let kind = error.kind();
-            kind == io::ErrorKind::NotFound || kind == io::ErrorKind::ConnectionRefused
-        };
-        match check_private(&paths.admin_dir(), Kind::Directory, uid) {
-            Err(PathError::Io { source, .. }) if not_running(&source) => {
-                return Err(AdminError::NotRunning(socket));
-            }
-            checked => checked?,
-        }
-        let stream = match UnixStream::connect(&socket).await {
-            Err(error) if not_running(&error) => return Err(AdminError::NotRunning(socket)),
-            // Names the path: the usual cause is a runtime directory too long for a socket.
-            connected => connected.map_err(PathError::io(&socket))?,
-        };
-        check_peer_uid(stream.peer_cred()?.uid(), uid)?;
-        Ok(AdminClient {
-            channel: Channel::new(stream),
-        })
-    }
-
-    pub async fn devices(&mut self) -> Result<Vec<DeviceInfo>, AdminError> {
-        self.channel.send(&Request::DevicesList).await?;
-        match self.reply().await? {
-            Reply::Devices { devices } => Ok(devices),
-            _ => Err(AdminError::Protocol),
-        }
-    }
-
-    /// `Ok(false)`: no such device.
-    pub async fn revoke(&mut self, device: &DeviceId) -> Result<bool, AdminError> {
-        let device_id = device.as_str().to_owned();
-        self.channel
-            .send(&Request::DevicesRevoke { device_id })
-            .await?;
-        match self.reply().await? {
-            Reply::Revoked { found } => Ok(found),
-            _ => Err(AdminError::Protocol),
-        }
-    }
-
-    /// Opens the pairing window and returns the pairing URI. The URI holds the pairing
-    /// secret: show it to the owner, never log it. Closing this client cancels the pairing.
-    pub async fn open_pairing(&mut self, request: &PairingRequest) -> Result<String, AdminError> {
-        let scopes = request.scopes.iter().map(|scope| scope.as_str().to_owned());
-        let request = Request::PairOpen {
-            scopes: scopes.collect(),
-            lifetime_s: request.lifetime.as_secs(),
-            host: request.host.clone(),
-        };
-        self.channel.send(&request).await?;
-        match self.reply().await? {
-            Reply::Window { uri } => Ok(uri),
-            _ => Err(AdminError::Protocol),
-        }
-    }
-
-    /// Waits until a device presents the secret. `None`: the window expired.
-    pub async fn pending_device(&mut self) -> Result<Option<PendingDevice>, AdminError> {
-        match self.reply().await? {
-            Reply::Pending(device) => Ok(Some(device)),
-            Reply::WindowExpired => Ok(None),
-            _ => Err(AdminError::Protocol),
-        }
-    }
-
-    /// Sends the owner's yes or no for the pending device.
-    pub async fn answer(&mut self, confirm: bool) -> Result<(), AdminError> {
-        self.channel.send(&Answer { confirm }).await
-    }
-
-    /// The end of the pairing. It can arrive before any answer (deadline, device gone), so
-    /// wait for it together with the owner's input. Cancel safe.
-    pub async fn pairing_result(&mut self) -> Result<PairingResult, AdminError> {
-        match self.reply().await? {
-            Reply::Paired(device) => Ok(PairingResult::Paired(device)),
-            Reply::Refused => Ok(PairingResult::Refused),
-            Reply::DeadlinePassed => Ok(PairingResult::DeadlinePassed),
-            Reply::ClientGone => Ok(PairingResult::ClientGone),
-            _ => Err(AdminError::Protocol),
-        }
-    }
-
-    async fn reply(&mut self) -> Result<Reply, AdminError> {
-        match self.channel.receive().await? {
-            Some(Reply::Error { message }) => Err(AdminError::Daemon(message)),
-            Some(reply) => Ok(reply),
-            None => Err(AdminError::Closed),
-        }
-    }
-}
+pub use client::AdminClient;
 
 #[cfg(test)]
 mod tests;

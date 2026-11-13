@@ -2,9 +2,11 @@
 
 use std::convert::Infallible;
 use std::fmt;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand, ValueEnum};
+use swayconnect_protocol::IconHash;
 use swayconnect_protocol::limits::MAX_FOCUS_NUMBER;
 
 #[derive(Debug, Parser)]
@@ -81,6 +83,30 @@ pub enum Command {
         window_id: u64,
         switch: Switch,
     },
+    /// Draw the tiling layout of a workspace, by its number or with --id by its id
+    Layout {
+        /// Workspace number, as `workspaces` lists it
+        #[arg(
+            value_name = "NUMBER",
+            required_unless_present = "id",
+            conflicts_with = "id"
+        )]
+        number: Option<u32>,
+
+        /// Id of a workspace, as `workspaces` lists it
+        #[arg(long, value_name = "ID")]
+        id: Option<u64>,
+    },
+    /// Fetch one app icon by its hash, as `windows --json` lists it, and save it as a PNG
+    Icon {
+        /// Icon hash: 22 characters of base64url
+        #[arg(value_name = "HASH", value_parser = parse_icon_hash)]
+        hash: IconHash,
+
+        /// File to write the PNG to. An existing file is replaced
+        #[arg(short, long = "output", value_name = "FILE")]
+        output: PathBuf,
+    },
     /// Send one frame as it is and print every reply for 2 seconds. For negative tests
     Raw {
         /// The frame payload. Nothing checks it
@@ -108,6 +134,10 @@ impl fmt::Debug for RefusedUri {
 
 fn refuse_uri(_secret_text: &str) -> Result<RefusedUri, Infallible> {
     Ok(RefusedUri)
+}
+
+fn parse_icon_hash(text: &str) -> Result<IconHash, &'static str> {
+    IconHash::parse(text).map_err(|_invalid| "not an icon hash: 22 characters of base64url")
 }
 
 impl Cli {
@@ -256,6 +286,52 @@ mod tests {
             &["fullscreen", "9"],
             &["fullscreen", "9", "toggle"],
             &["fullscreen", "on", "9"],
+        ] {
+            let error = parse(arguments).expect_err("usage error");
+            assert_eq!(error.exit_code(), 2, "{arguments:?}");
+        }
+    }
+
+    #[test]
+    fn layout_takes_a_number_or_an_id() {
+        for (arguments, number, id) in [
+            (&["layout", "3"][..], Some(3), None),
+            (&["layout", "--id", "14"], None, Some(14)),
+        ] {
+            let cli = parse(arguments).expect("layout");
+            assert_eq!(cli.command, Command::Layout { number, id });
+        }
+        for arguments in [
+            &["layout"][..],
+            &["layout", "web"],
+            &["layout", "-1"],
+            &["layout", "3", "--id", "14"],
+        ] {
+            let error = parse(arguments).expect_err("usage error");
+            assert_eq!(error.exit_code(), 2, "{arguments:?}");
+        }
+    }
+
+    #[test]
+    fn icon_takes_a_strict_hash_and_an_output_file() {
+        let hash = "q83vEjRWeJCrze8SNFZ4kA";
+        for arguments in [
+            &["icon", hash, "-o", "app.png"][..],
+            &["icon", "--output", "app.png", hash],
+        ] {
+            let cli = parse(arguments).expect("icon");
+            let expected = Command::Icon {
+                hash: IconHash::parse(hash).expect("hash"),
+                output: PathBuf::from("app.png"),
+            };
+            assert_eq!(cli.command, expected);
+        }
+        for arguments in [
+            &["icon", hash][..],
+            &["icon", "-o", "app.png"],
+            &["icon", "firefox", "-o", "app.png"],
+            &["icon", "q83vEjRWeJCrze8SNFZ4kA==", "-o", "app.png"],
+            &["icon", "q83vEjRWeJCrze8SNFZ4kB", "-o", "app.png"],
         ] {
             let error = parse(arguments).expect_err("usage error");
             assert_eq!(error.exit_code(), 2, "{arguments:?}");

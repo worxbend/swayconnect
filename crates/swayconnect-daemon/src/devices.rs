@@ -1,4 +1,5 @@
-//! Device store (`devices.json`), one revoke signal per device. Written by slice S6a.
+//! Device store (`devices.json`), one revoke signal and one scope signal per device. Written by
+//! slice S6a; scope grant and deny by slice D-SEC (`docs/DESIGN.md` 11.8).
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -14,6 +15,8 @@ use crate::paths::{PathError, read_private, write_atomic};
 use crate::throttle::LogBudget;
 
 const FILE_VERSION: u32 = 1;
+/// The shortest device id prefix that names a device (`docs/DESIGN.md` 11.8).
+pub const MIN_PREFIX_CHARS: usize = 4;
 
 /// The pairing secret `S` or a device key `K`. `Debug` never shows the bytes.
 pub struct Secret([u8; 32]);
@@ -54,6 +57,8 @@ pub struct Entry {
     pub device: Device,
     /// `true`: revoked. Every session of the device holds a receiver.
     pub revoked: watch::Sender<bool>,
+    /// The device's scopes; a new value is sent after each change is on disk.
+    pub scopes_signal: watch::Sender<BTreeSet<Scope>>,
     /// State of the action bucket (`throttle::Rate::take`).
     pub actions_full_again_at: Instant,
     /// For the log line about an empty action bucket.
@@ -76,6 +81,37 @@ pub struct DeviceInfo {
     pub created_at: u64,
     pub last_seen: Option<u64>,
     pub connections: usize,
+}
+
+/// What `swayconnectd devices grant` and `deny` do with the named scopes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScopeChange {
+    Grant,
+    Deny,
+}
+
+/// The scopes of a device after a grant or deny.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopesSet {
+    pub device_id: DeviceId,
+    pub scopes: BTreeSet<Scope>,
+    /// `false`: the device already had (or lacked) every named scope; nothing was written.
+    pub changed: bool,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ChangeError {
+    #[error(
+        "a device prefix is at least {MIN_PREFIX_CHARS} characters of a device id (see `swayconnectd devices`)"
+    )]
+    BadPrefix,
+    #[error("no device id starts with this prefix")]
+    NotFound,
+    /// The ids that start with the prefix.
+    #[error("the prefix matches {} devices: {}; give more characters", .0.len(), .0.join(", "))]
+    Clash(Vec<String>),
+    #[error("scopes not changed: {0}")]
+    Store(#[from] StoreError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -147,6 +183,15 @@ fn scope_names(scopes: &BTreeSet<Scope>) -> Vec<String> {
         .collect()
 }
 
+/// Resolves once the scopes in `watch` differ from `held`, the scopes a session was admitted
+/// with. A value sent before the session subscribed counts. Never resolves after the device is
+/// gone: its revoke signal ends the session then.
+pub async fn scopes_changed(watch: &mut watch::Receiver<BTreeSet<Scope>>, held: &BTreeSet<Scope>) {
+    if watch.wait_for(|scopes| scopes != held).await.is_err() {
+        std::future::pending::<()>().await;
+    }
+}
+
 pub fn unix_now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -207,6 +252,43 @@ impl DeviceStore {
         Ok(true)
     }
 
+    /// Grants or denies `scopes` to the one device whose id starts with `prefix`. Writes the
+    /// file first: on `Err` nothing changed. On a change, the device's scope signal fires.
+    pub fn change_scopes(
+        &mut self,
+        prefix: &str,
+        change: ScopeChange,
+        scopes: &BTreeSet<Scope>,
+    ) -> Result<ScopesSet, ChangeError> {
+        let index = self.position_by_prefix(prefix)?;
+        let entry = &self.entries[index];
+        let current = &entry.device.scopes;
+        let wanted: BTreeSet<Scope> = match change {
+            ScopeChange::Grant => current.union(scopes).copied().collect(),
+            ScopeChange::Deny => current.difference(scopes).copied().collect(),
+        };
+        let changed = wanted != *current;
+        if changed {
+            let mut stored: Vec<StoredDevice> = self.stored().collect();
+            stored[index].scopes = scope_names(&wanted);
+            self.write(stored)?;
+            let entry = &mut self.entries[index];
+            entry.device.scopes.clone_from(&wanted);
+            entry.scopes_signal.send_replace(wanted.clone());
+        }
+        Ok(ScopesSet {
+            device_id: self.entries[index].device.id.clone(),
+            scopes: wanted,
+            changed,
+        })
+    }
+
+    /// The scopes of a stored device, as they change. `None`: not a stored device.
+    pub fn scope_watch(&self, id: &DeviceId) -> Option<watch::Receiver<BTreeSet<Scope>>> {
+        let index = self.position(id)?;
+        Some(self.entries[index].scopes_signal.subscribe())
+    }
+
     /// Lookup by exact string (spec 5.5).
     pub fn get_mut(&mut self, id: &DeviceId) -> Option<&mut Entry> {
         let index = self.position(id)?;
@@ -238,10 +320,33 @@ impl DeviceStore {
             .position(|entry| entry.device.id.as_str() == id.as_str())
     }
 
+    /// The prefix comes from the owner's command line: checked before any lookup.
+    fn position_by_prefix(&self, prefix: &str) -> Result<usize, ChangeError> {
+        let is_id_char = |c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_';
+        if prefix.len() < MIN_PREFIX_CHARS || !prefix.chars().all(is_id_char) {
+            return Err(ChangeError::BadPrefix);
+        }
+        let matches: Vec<usize> = (0..self.entries.len())
+            .filter(|&index| self.entries[index].device.id.as_str().starts_with(prefix))
+            .collect();
+        match matches.as_slice() {
+            [] => Err(ChangeError::NotFound),
+            [index] => Ok(*index),
+            clash => Err(ChangeError::Clash(
+                clash
+                    .iter()
+                    .map(|&index| self.entries[index].device.id.as_str().to_owned())
+                    .collect(),
+            )),
+        }
+    }
+
     fn push(&mut self, device: Device, revoked: watch::Sender<bool>) {
+        let (scopes_signal, _) = watch::channel(device.scopes.clone());
         self.entries.push(Entry {
             device,
             revoked,
+            scopes_signal,
             actions_full_again_at: Instant::now(),
             rate_limit_log: LogBudget::default(),
             last_seen: None,
@@ -286,159 +391,4 @@ fn parse(content: &[u8]) -> Result<Vec<Device>, String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::fs;
-    use std::os::unix::fs::MetadataExt as _;
-
-    use super::*;
-
-    const KEY: [u8; 32] = [0xAB; 32];
-    const KEY_TEXT: &str = "q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s";
-
-    fn device(id_byte: u8) -> Device {
-        Device {
-            id: DeviceId::from_bytes([id_byte; 16]),
-            name: "phone".to_owned(),
-            platform: Some("android".to_owned()),
-            client: None,
-            key: Secret::new(KEY),
-            scopes: BTreeSet::from([Scope::StateRead, Scope::Control]),
-            created_at: 1_800_000_000,
-        }
-    }
-
-    fn store_in(root: &tempfile::TempDir) -> (DeviceStore, PathBuf, u32) {
-        let file = root.path().join("devices.json");
-        let uid = fs::metadata(root.path()).expect("metadata").uid();
-        let store = DeviceStore::load(file.clone(), uid).expect("empty store");
-        (store, file, uid)
-    }
-
-    fn format_error(file: PathBuf, uid: u32, content: &str) -> String {
-        write_atomic(&file, content.as_bytes()).expect("write");
-        match DeviceStore::load(file, uid) {
-            Err(StoreError::Format { reason, .. }) => reason,
-            other => panic!("expected a format error, got {other:?}"),
-        }
-    }
-
-    #[tokio::test]
-    async fn a_stored_device_survives_a_reload_in_the_documented_format() {
-        let root = tempfile::tempdir().expect("temp dir");
-        let (mut store, file, uid) = store_in(&root);
-        assert!(!file.exists());
-        let (revoked, _receiver) = watch::channel(false);
-        store.insert(device(1), revoked).expect("insert");
-
-        let text = fs::read_to_string(&file).expect("file");
-        let json: serde_json::Value = serde_json::from_str(&text).expect("JSON");
-        assert_eq!(json["version"], 1);
-        assert_eq!(json["devices"][0]["key"], KEY_TEXT);
-        assert_eq!(json["devices"][0]["scopes"][1], "control");
-        assert_eq!(fs::metadata(&file).expect("metadata").mode() & 0o777, 0o600);
-
-        let mut reloaded = DeviceStore::load(file, uid).expect("reload");
-        let id = DeviceId::from_bytes([1; 16]);
-        let entry = reloaded.get_mut(&id).expect("device");
-        assert_eq!(entry.device.key.bytes(), &KEY);
-        assert_eq!(entry.device.created_at, 1_800_000_000);
-        assert_eq!(reloaded.list()[0].connections, 0);
-        assert_eq!(reloaded.list()[0].name, "phone");
-    }
-
-    #[tokio::test]
-    async fn revoke_signals_receivers_created_before_and_after_it() {
-        let root = tempfile::tempdir().expect("temp dir");
-        let (mut store, file, uid) = store_in(&root);
-        let (revoked, mut before) = watch::channel(false);
-        store.insert(device(1), revoked).expect("insert");
-        store
-            .insert(device(2), watch::channel(false).0)
-            .expect("insert");
-        let id = DeviceId::from_bytes([1; 16]);
-        assert_eq!(store.list()[0].connections, 1);
-
-        assert!(store.revoke(&id).expect("revoke"));
-
-        assert!(!store.contains(&id));
-        before.changed().await.expect("the revoke is a change");
-        assert!(*before.borrow());
-        let after = before.clone();
-        assert!(*after.borrow());
-        assert!(!store.revoke(&id).expect("second revoke"));
-        let reloaded = DeviceStore::load(file, uid).expect("reload");
-        assert!(!reloaded.contains(&id));
-        assert!(reloaded.contains(&DeviceId::from_bytes([2; 16])));
-    }
-
-    #[tokio::test]
-    async fn a_failed_write_adds_nothing_and_closes_the_revoke_channel() {
-        let root = tempfile::tempdir().expect("temp dir");
-        let uid = fs::metadata(root.path()).expect("metadata").uid();
-        let missing_dir = root.path().join("missing").join("devices.json");
-        let mut store = DeviceStore::load(missing_dir, uid).expect("empty store");
-        let (revoked, mut receiver) = watch::channel(false);
-
-        assert!(store.insert(device(1), revoked).is_err());
-
-        assert!(store.list().is_empty());
-        assert!(receiver.changed().await.is_err());
-    }
-
-    #[tokio::test]
-    async fn a_bad_file_is_refused_without_echoing_the_key() {
-        let root = tempfile::tempdir().expect("temp dir");
-        let (_, file, uid) = store_in(&root);
-        let entry = |id: &str, key: &str, scope: &str| {
-            format!(
-                r#"{{"id":"{id}","name":"n","platform":null,"client":null,"key":"{key}","scopes":["{scope}"],"created_at":1}}"#
-            )
-        };
-        let id = DeviceId::from_bytes([1; 16]);
-        let good = entry(id.as_str(), KEY_TEXT, "control");
-        let cases = [
-            (r#"{"version":2,"devices":[]}"#.to_owned(), "version"),
-            (
-                format!(r#"{{"version":1,"devices":[{good},{good}]}}"#),
-                "twice",
-            ),
-            (
-                format!(
-                    r#"{{"version":1,"devices":[{}]}}"#,
-                    entry("short", KEY_TEXT, "control")
-                ),
-                "invalid id",
-            ),
-            (
-                format!(
-                    r#"{{"version":1,"devices":[{}]}}"#,
-                    entry(id.as_str(), "SECRETKEY", "control")
-                ),
-                "invalid key",
-            ),
-            (
-                format!(
-                    r#"{{"version":1,"devices":[{}]}}"#,
-                    entry(id.as_str(), KEY_TEXT, "root")
-                ),
-                "unknown scope",
-            ),
-            (
-                r#"{"version":1,"devices":[],"extra":1}"#.to_owned(),
-                "extra",
-            ),
-        ];
-        for (content, expected) in cases {
-            let reason = format_error(file.clone(), uid, &content);
-            assert!(reason.contains(expected), "{reason}");
-            assert!(!reason.contains("SECRETKEY") && !reason.contains(KEY_TEXT));
-        }
-    }
-
-    #[test]
-    fn debug_output_redacts_the_key() {
-        let text = format!("{:?}", device(1));
-        assert!(text.contains("<redacted>"));
-        assert!(!text.contains("171") && !text.to_lowercase().contains("ab, ab"));
-    }
-}
+mod tests;

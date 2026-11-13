@@ -143,7 +143,10 @@ async fn a_device_without_control_is_refused_every_action() {
     let harness = Harness::start().await;
     let profile = harness.pair(&[Scope::StateRead, Scope::StateTitles]).await;
     let mut session = harness.connect(&profile).await;
-    assert_eq!(session.welcome().ops, ["ping", "state.subscribe"]);
+    assert_eq!(
+        session.welcome().ops,
+        ["ping", "state.subscribe", "icon.get"]
+    );
     online_desktop(&mut session).await;
 
     let errors = error_codes_of_every_form(&mut session).await;
@@ -160,7 +163,10 @@ async fn a_read_only_daemon_refuses_every_action_and_takes_no_token() {
     let harness = Harness::start_with("read_only = true\n").await;
     let profile = harness.pair(&EVERY_SCOPE).await;
     let mut session = harness.connect(&profile).await;
-    assert_eq!(session.welcome().ops, ["ping", "state.subscribe"]);
+    assert_eq!(
+        session.welcome().ops,
+        ["ping", "state.subscribe", "icon.get"]
+    );
     online_desktop(&mut session).await;
 
     // Ten actions: more than the bucket holds, so a token per refusal would show.
@@ -198,7 +204,7 @@ async fn the_switch_to_read_only_stops_the_actions_of_an_open_session() {
         .await
         .expect("the session stays open");
     let mut later = harness.connect(&profile).await;
-    assert_eq!(later.welcome().ops, ["ping", "state.subscribe"]);
+    assert_eq!(later.welcome().ops, ["ping", "state.subscribe", "icon.get"]);
     let (_rev, desktop) = online_desktop(&mut later).await;
     assert_eq!(desktop.windows.len(), 2, "reading still works");
 }

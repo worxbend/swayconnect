@@ -8,6 +8,7 @@ use tokio::net::UnixStream;
 
 const GET_OUTPUTS: u32 = 3;
 const WINDOW_EVENT: u32 = 0x8000_0003;
+const BINDING_EVENT: u32 = 0x8000_0005;
 
 async fn connect(sway: &FakeSway) -> UnixStream {
     UnixStream::connect(sway.socket_path())
@@ -127,6 +128,40 @@ async fn an_event_reaches_only_a_connection_subscribed_to_it() {
     );
     send(&mut bystander, 7, "").await;
     assert_eq!(receive(&mut bystander).await, (7, fixtures::version()));
+}
+
+#[tokio::test]
+async fn a_binding_event_reaches_a_binding_subscriber_with_type_5() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+    let mut stream = connect(&sway).await;
+
+    send(&mut stream, 2, r#"["window","binding"]"#).await;
+    receive(&mut stream).await;
+    sway.send_event(Event::Binding, fixtures::binding_event());
+
+    assert_eq!(
+        receive(&mut stream).await,
+        (BINDING_EVENT, fixtures::binding_event())
+    );
+}
+
+#[tokio::test]
+async fn a_swapped_tree_reply_is_served_from_the_next_request_on() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+    sway.set_reply(Request::GetTree, fixtures::layout_tree());
+    let mut stream = connect(&sway).await;
+
+    send(&mut stream, 4, "").await;
+    assert_eq!(receive(&mut stream).await, (4, fixtures::layout_tree()));
+    sway.set_reply(Request::GetTree, fixtures::layout_tree_resized());
+    send(&mut stream, 4, "").await;
+
+    assert_eq!(
+        receive(&mut stream).await,
+        (4, fixtures::layout_tree_resized())
+    );
 }
 
 #[tokio::test]

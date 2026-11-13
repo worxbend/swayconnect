@@ -10,6 +10,7 @@ use serde::Deserialize;
 use swayconnect_protocol::limits::{DEFAULT_PORT, MAX_NAME_BYTES};
 use swayconnect_protocol::text::{is_display_name, replace_unsafe};
 
+use crate::icons::IconsConfig;
 use crate::paths::PathError;
 
 const HOSTNAME_FILE: &str = "/proc/sys/kernel/hostname";
@@ -24,6 +25,8 @@ pub struct Config {
     pub read_only: bool,
     /// `None`: discover the sway socket.
     pub sway_socket: Option<PathBuf>,
+    /// Section `[icons]` (`docs/DESIGN.md` 11.9).
+    pub icons: IconsConfig,
 }
 
 /// Why the daemon cannot start (exit code 2, `docs/DESIGN.md` 4.7).
@@ -108,6 +111,7 @@ struct RawConfig {
     allow_from: Vec<String>,
     read_only: bool,
     sway: RawSway,
+    icons: IconsConfig,
 }
 
 #[derive(Deserialize, Default)]
@@ -165,6 +169,7 @@ impl Config {
             sway_socket: Some(raw.sway.socket)
                 .filter(|socket| !socket.is_empty())
                 .map(PathBuf::from),
+            icons: raw.icons,
         })
     }
 }
@@ -256,6 +261,22 @@ mod tests {
     fn an_unknown_key_is_an_error() {
         assert!(error_text("read_onli = true").contains("read_onli"));
         assert!(error_text("[sway]\nsoket = \"/x\"").contains("soket"));
+        assert!(error_text("[icons]\nalias = {}").contains("alias"));
+    }
+
+    #[test]
+    fn the_icons_section_is_kept() {
+        let toml = "[icons]\ntheme = \"Adwaita\"\n[icons.aliases]\n\"Alacritty\" = \"Alacritty\"";
+        let config = Config::from_toml(toml).expect("valid");
+        assert_eq!(config.icons.theme.as_deref(), Some("Adwaita"));
+        assert_eq!(
+            config.icons.aliases.get("Alacritty").map(String::as_str),
+            Some("Alacritty")
+        );
+        assert_eq!(
+            Config::from_toml("").expect("defaults").icons,
+            IconsConfig::default()
+        );
     }
 
     #[test]

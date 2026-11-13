@@ -15,4 +15,4 @@ pub use command::{Command, WorkspaceNumber};
 pub use connection::{Connection, Error, REQUEST_TIMEOUT};
 pub use events::{Event, EventStream};
 pub use socket::{EnvSnapshot, SwayTarget, resolve};
-pub use types::{Node, Version, WindowProperties, WorkspaceInfo};
+pub use types::{Node, Rect, Version, WindowProperties, WorkspaceInfo};

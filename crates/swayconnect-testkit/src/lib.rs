@@ -9,9 +9,10 @@ pub mod fixtures;
 mod frame;
 mod guard;
 mod test_dirs;
+mod xdg_data;
 
 pub use fake_sway::{Event, FakeSway, Request};
-pub use test_dirs::TestDirs;
+pub use test_dirs::{NO_SYSTEM_BUS, TestDirs};
 
 /// File name of the fake sway socket inside its directory.
 pub const SWAY_SOCKET_NAME: &str = "sway-ipc.sock";

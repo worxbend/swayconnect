@@ -16,3 +16,10 @@ read_only = false
 [sway]
 # Empty: discover (SWAYSOCK, then glob in XDG_RUNTIME_DIR). Set: use only this path.
 socket = ""
+
+[icons]
+# Window app id or X11 class -> desktop entry id, for windows nothing else matches.
+# Tried last, after every other match. Default: empty.
+aliases = { Emulator = "jetbrains-studio" }
+# Icon theme searched before hicolor. Default: hicolor only.
+theme = "Papirus"

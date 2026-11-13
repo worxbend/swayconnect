@@ -1,6 +1,7 @@
 //! Runs one command against the server of the stored profile.
 
 use std::io::{BufRead, Write};
+use std::path::Path;
 use std::time::Duration;
 
 use serde_json::{Value, json};
@@ -8,13 +9,14 @@ use swayconnect_protocol::limits::PAIRING_CONFIRMATION_DEADLINE_MS;
 use swayconnect_protocol::ops::{Args, TOPIC_DESKTOP, WorkspaceTarget};
 use swayconnect_protocol::text::{escape_for_terminal, is_display_name};
 use swayconnect_protocol::uri::PairingUri;
+use swayconnect_protocol::{IconGetResult, IconHash, InvalidMember, JsonObject};
 use tokio::time::{Instant, timeout, timeout_at};
 
 use super::args::{Cli, Command, Switch};
 use super::error::CliError;
-use super::render;
 use super::state::DesktopState;
 use super::store::ProfileStore;
+use super::{layout_map, render};
 use crate::client::{ClientError, Connector, Event, Session};
 
 const DEFAULT_DEVICE_NAME: &str = "swayconnect-cli";
@@ -68,6 +70,8 @@ pub async fn run(cli: &Cli, context: Context<'_>) -> Result<(), CliError> {
             };
             app.act(&action).await
         }
+        Command::Layout { number, id } => app.layout(*number, *id).await,
+        Command::Icon { hash, output } => app.icon(*hash, output).await,
         Command::Raw { payload } => app.raw(payload).await,
     }
 }
@@ -186,11 +190,7 @@ impl App<'_> {
         let (session, state) = self.desktop_state().await?;
         let desktop = state.desktop();
         if self.prints_json {
-            for window in &desktop.encode()["windows"]
-                .as_array()
-                .cloned()
-                .unwrap_or_default()
-            {
+            for window in &render::windows_json(desktop) {
                 self.print_json(window)?;
             }
         } else {
@@ -199,6 +199,50 @@ impl App<'_> {
         }
         finish(session).await;
         Ok(())
+    }
+
+    async fn layout(&mut self, number: Option<u32>, id: Option<u64>) -> Result<(), CliError> {
+        let (session, state) = self.desktop_state().await?;
+        finish(session).await;
+        let desktop = state.desktop();
+        let workspace = layout_map::find_workspace(desktop, number, id)?;
+        let layout = match &workspace.layout {
+            Some(Some(layout)) => layout,
+            Some(None) if desktop.layouts_cut == Some(true) => {
+                return Err(CliError::NoLayout("the state was too large"));
+            }
+            Some(None) => return Err(CliError::NoLayout("it has no geometry for it")),
+            None => return Err(CliError::NoLayout("the server is older than layouts")),
+        };
+        if self.prints_json {
+            self.print_json(&layout_map::layout_json(desktop, workspace.id))
+        } else {
+            self.print(&layout_map::layout_text(
+                workspace,
+                layout,
+                &desktop.windows,
+            ))
+        }
+    }
+
+    /// Writes the PNG only after the hash and the size in its header are checked.
+    async fn icon(&mut self, hash: IconHash, file: &Path) -> Result<(), CliError> {
+        let mut session = self.connect().await?;
+        let request = Args::IconGet { hashes: vec![hash] };
+        let result = within(self.answer_timeout, session.request(&request)).await?;
+        finish(session).await;
+        let png = icon_png(&result, hash)?;
+        std::fs::write(file, &png).map_err(|source| CliError::Io {
+            action: "write the icon file",
+            source,
+        })?;
+        let file_name = escape_for_terminal(&file.to_string_lossy());
+        if self.prints_json {
+            let saved = json!({ "hash": hash.to_string(), "bytes": png.len(), "file": file_name });
+            self.print_json(&saved)
+        } else {
+            self.print(&format!("saved {} bytes to {file_name}", png.len()))
+        }
     }
 
     /// Ends only with an error: the server says `bye` or the connection closes.
@@ -296,6 +340,23 @@ impl App<'_> {
                 source,
             })
     }
+}
+
+/// The checked PNG of `hash` from an `icon.get` result (spec 17.5 rule 3).
+fn icon_png(result: &JsonObject, hash: IconHash) -> Result<Vec<u8>, CliError> {
+    let result = IconGetResult::decode(result)
+        .map_err(|InvalidMember(member)| CliError::InvalidIcon(format!("member `{member}`")))?;
+    if result.missing.contains(&hash) {
+        return Err(CliError::NoIcon);
+    }
+    let icon = result
+        .icons
+        .into_iter()
+        .find(|icon| icon.hash == hash)
+        .ok_or_else(|| CliError::InvalidIcon("the result does not name the hash".to_owned()))?;
+    icon.verify()
+        .map_err(|rejection| CliError::InvalidIcon(rejection.to_string()))?;
+    Ok(icon.png)
 }
 
 /// How long `pair` waits for `pairing.confirmed`. The server ends an unconfirmed pairing

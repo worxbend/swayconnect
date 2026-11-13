@@ -1,32 +1,43 @@
 {
   "sway": { "online": true, "version": "1.12" },
+  "outputs": [
+    {
+      "name": "TEST-1", "model": null, "rect": { "x": 0, "y": 0, "w": 2560, "h": 1440 },
+      "scale_milli": 1000, "transform": "normal", "active": true, "power": true,
+      "current_workspace_id": null
+    }
+  ],
   "workspaces": [
     {
       "id": 11, "number": 1, "name": "1", "output": "TEST-1",
-      "focused": true, "visible": true, "urgent": false
+      "focused": true, "visible": true, "urgent": false, "rect": null, "layout": null
     },
     {
       "id": 16, "number": null, "name": "mail", "output": "TEST-1",
-      "focused": false, "visible": false, "urgent": true
+      "focused": false, "visible": false, "urgent": true, "rect": null, "layout": null
     }
   ],
   "windows": [
     {
       "id": 13, "workspace_id": 11, "app_id": "terminal", "title": "Shell in the garden shed",
-      "focused": true, "urgent": false, "floating": false, "fullscreen": false
+      "focused": true, "urgent": false, "floating": false, "fullscreen": false, "icon": null
     },
     {
       "id": 14, "workspace_id": 11, "app_id": "Painter", "title": "Poster for the bake sale",
-      "focused": false, "urgent": false, "floating": false, "fullscreen": true
+      "focused": false, "urgent": false, "floating": false, "fullscreen": true, "icon": null
     },
     {
       "id": 15, "workspace_id": 11, "app_id": "mixer", "title": "Volume mixer",
-      "focused": false, "urgent": true, "floating": true, "fullscreen": false
+      "focused": false, "urgent": true, "floating": true, "fullscreen": false, "icon": null
     },
     {
       "id": 17, "workspace_id": 16, "app_id": "mail-reader", "title": null,
-      "focused": false, "urgent": false, "floating": false, "fullscreen": false
+      "focused": false, "urgent": false, "floating": false, "fullscreen": false, "icon": null
     }
   ],
+  "scratchpad": [
+    { "id": 30, "app_id": "scratch-term", "title": "Hidden scratch terminal", "icon": null }
+  ],
+  "layouts_cut": false,
   "truncated": false
 }

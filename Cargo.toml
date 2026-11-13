@@ -14,7 +14,7 @@ edition = "2024"
 rust-version = "1.99"
 license = "MIT"
 
-# Versions and features: docs/DESIGN.md 7.3. Only slice S0 edits manifests.
+# Versions and features: docs/DESIGN.md 7.3. Only the manifest slice (docs/V2_PLAN.md MAN) edits manifests.
 [workspace.dependencies]
 swayconnect-protocol = { path = "crates/swayconnect-protocol", version = "0.1.0" }
 swayconnect-sway = { path = "crates/swayconnect-sway", version = "0.1.0" }
@@ -39,6 +39,11 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # No default features: they pull in the `image` crate. The terminal renderer needs none.
 qrcode = { version = "0.14.1", default-features = false }
+# Icon rasterising (docs/V2_PLAN.md MAN.1). No default features: no text, fonts, svgz or raster images inside SVG.
+resvg = { version = "0.50.0", default-features = false }
+tiny-skia = { version = "0.12.0", default-features = false, features = ["png-format"] }
+# Resource limits and kill of the raster child without `unsafe`.
+rustix = { version = "1.1.6", features = ["fs", "process"] }
 
 # Dev only.
 tempfile = "3"

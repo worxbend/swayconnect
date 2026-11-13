@@ -6,7 +6,7 @@ use crate::connection::{Connection, Error, parse};
 use crate::frame::MessageType;
 use crate::types::Outcome;
 
-const SUBSCRIPTION: &[u8] = br#"["workspace","window","output","shutdown"]"#;
+const SUBSCRIPTION: &[u8] = br#"["workspace","window","output","shutdown","binding"]"#;
 
 /// A trigger from sway. The payload is not kept: any event means "state may have changed".
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,6 +14,8 @@ pub enum Event {
     Workspace,
     Output,
     Window,
+    /// A key or mouse binding ran. It may have resized a container, which has no event of its own.
+    Binding,
     /// sway is exiting. The socket closes next.
     Shutdown,
     /// An event type nobody subscribed to, with its frame type.
@@ -26,6 +28,7 @@ impl Event {
             0x8000_0000 => Event::Workspace,
             0x8000_0001 => Event::Output,
             0x8000_0003 => Event::Window,
+            0x8000_0005 => Event::Binding,
             0x8000_0006 => Event::Shutdown,
             other => Event::Other(other),
         }
@@ -39,7 +42,8 @@ pub struct EventStream {
 }
 
 impl EventStream {
-    /// Connects to `socket` and subscribes to workspace, window, output and shutdown events.
+    /// Connects to `socket` and subscribes to workspace, window, output, shutdown and binding
+    /// events.
     pub async fn open(socket: &Path) -> Result<EventStream, Error> {
         let connection = Connection::connect(socket).await?;
         let reply = connection
@@ -70,18 +74,20 @@ mod tests {
         assert_eq!(Event::from_code(0x8000_0000), Event::Workspace);
         assert_eq!(Event::from_code(0x8000_0001), Event::Output);
         assert_eq!(Event::from_code(0x8000_0003), Event::Window);
+        assert_eq!(Event::from_code(0x8000_0005), Event::Binding);
         assert_eq!(Event::from_code(0x8000_0006), Event::Shutdown);
         assert_eq!(Event::from_code(0x8000_0007), Event::Other(0x8000_0007));
     }
 
     #[tokio::test]
-    async fn open_subscribes_to_the_four_event_types_and_then_reads_events() {
+    async fn open_subscribes_to_the_five_event_types_and_then_reads_events() {
         let socket = TestSocket::bind();
         let sway = async {
             let mut peer = socket.accept().await;
             let request = peer.read_request().await;
             peer.send(2, br#"{"success":true}"#).await;
             peer.send(0x8000_0003, br#"{"change":"focus"}"#).await;
+            peer.send(0x8000_0005, br#"{"change":"run"}"#).await;
             peer.send(0x8000_0006, br#"{"change":"exit"}"#).await;
             (request, peer)
         };
@@ -89,13 +95,20 @@ mod tests {
             let mut events = EventStream::open(socket.path()).await.expect("subscribe");
             let first = events.next().await.expect("first event");
             let second = events.next().await.expect("second event");
-            (first, second, events)
+            let third = events.next().await.expect("third event");
+            (first, second, third, events)
         };
-        let ((request, peer), (first, second, mut events)) = tokio::join!(sway, client);
+        let ((request, peer), (first, second, third, mut events)) = tokio::join!(sway, client);
 
         assert_eq!(request.0, 2);
-        assert_eq!(request.1, br#"["workspace","window","output","shutdown"]"#);
-        assert_eq!((first, second), (Event::Window, Event::Shutdown));
+        assert_eq!(
+            request.1,
+            br#"["workspace","window","output","shutdown","binding"]"#
+        );
+        assert_eq!(
+            (first, second, third),
+            (Event::Window, Event::Binding, Event::Shutdown)
+        );
 
         drop(peer);
         let error = events.next().await.expect_err("sway closed the socket");

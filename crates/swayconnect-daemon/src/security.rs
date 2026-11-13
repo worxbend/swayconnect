@@ -4,7 +4,7 @@
 //!
 //! Slice S0 wrote the stubs. Slice S6a owns the file.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
@@ -16,14 +16,17 @@ use tokio::sync::{oneshot, watch};
 use tokio::time::Instant;
 
 use crate::config::{Config, Network, StartError};
-use crate::devices::{Device, DeviceInfo, DeviceStore, Secret, StoreError, unix_now};
+use crate::devices::{
+    ChangeError, Device, DeviceInfo, DeviceStore, ScopeChange, ScopesSet, Secret, StoreError,
+    unix_now,
+};
 use crate::identity::Identity;
 use crate::pairing::{
     OpenError, OpenedWindow, PairingOutcome, PairingState, PendingNotice, PendingPairing,
     hmac_probe,
 };
 use crate::paths::{Paths, ensure_private_dir, own_uid};
-use crate::throttle::{ConnectionBuckets, ConnectionSlots, LogBudget, Rate};
+use crate::throttle::{ConnectionBuckets, ConnectionSlots, LogBudget, RateClass};
 
 /// Identity, device store, pairing window and throttle behind one handle. Clones share it.
 #[derive(Clone)]
@@ -44,6 +47,8 @@ struct State {
     devices: DeviceStore,
     pairing: PairingState,
     buckets: ConnectionBuckets,
+    /// `icons` bucket per stored device (`throttle::Rate::take`), made on first use.
+    icon_buckets: HashMap<DeviceId, Instant>,
     slots: ConnectionSlots,
     connection_refusal_log: LogBudget,
     handshake_refusal_log: LogBudget,
@@ -134,6 +139,7 @@ impl Security {
             devices,
             pairing: PairingState::default(),
             buckets: ConnectionBuckets::default(),
+            icon_buckets: HashMap::new(),
             slots: ConnectionSlots::default(),
             connection_refusal_log: LogBudget::default(),
             handshake_refusal_log: LogBudget::default(),
@@ -284,17 +290,29 @@ impl Security {
         state.devices.contains(device) || state.pairing.pending.as_ref() == Some(device)
     }
 
-    /// `Err` holds the delay after which the device may retry. An empty bucket is logged
-    /// here, at most one line per device and interval: the device decides how often it asks.
+    /// The `actions` bucket of [`take_token`](Self::take_token).
     pub fn take_action_token(&self, device: &DeviceId) -> Result<(), Duration> {
+        self.take_token(device, RateClass::Actions)
+    }
+
+    /// Takes a token from the device's bucket of `class`. `Err` holds the delay after which
+    /// the device may retry. An empty `actions` bucket is logged here, at most one line per
+    /// device and interval: the device decides how often it asks.
+    pub fn take_token(&self, device: &DeviceId, class: RateClass) -> Result<(), Duration> {
         let mut state = self.inner.state();
+        let state = &mut *state;
         let Some(entry) = state.devices.get_mut(device) else {
             // Not a stored device (revoked a moment ago, or pending): it has no bucket.
             return Err(Duration::from_secs(1));
         };
         let now = Instant::now();
-        let taken = Rate::ACTIONS.take(&mut entry.actions_full_again_at, now);
-        if taken.is_err()
+        let full_again_at = match class {
+            RateClass::Actions => &mut entry.actions_full_again_at,
+            RateClass::Icons => state.icon_buckets.entry(device.clone()).or_insert(now),
+        };
+        let taken = class.rate().take(full_again_at, now);
+        if class == RateClass::Actions
+            && taken.is_err()
             && let Some(held_back) = entry.rate_limit_log.take(now)
         {
             tracing::info!(
@@ -325,7 +343,11 @@ impl Security {
     /// Deletes the device and drops its sessions (admin socket only). `Ok(false)`: no such
     /// device. On `Err` the device is gone from memory but still in `devices.json`.
     pub fn revoke(&self, device: &DeviceId) -> Result<bool, StoreError> {
-        let outcome = self.inner.state().devices.revoke(device);
+        let outcome = {
+            let mut state = self.inner.state();
+            state.icon_buckets.remove(device);
+            state.devices.revoke(device)
+        };
         match &outcome {
             Ok(true) => tracing::info!(device = device.as_str(), "device revoked"),
             Ok(false) => {}
@@ -334,6 +356,37 @@ impl Security {
             }
         }
         outcome
+    }
+
+    /// Grants or denies scopes of the device named by a unique id prefix (admin socket only).
+    /// A change is on disk before the device's live sessions see it (`scope_watch`).
+    pub fn change_scopes(
+        &self,
+        prefix: &str,
+        change: ScopeChange,
+        scopes: &BTreeSet<Scope>,
+    ) -> Result<ScopesSet, ChangeError> {
+        let outcome = self
+            .inner
+            .state()
+            .devices
+            .change_scopes(prefix, change, scopes);
+        match &outcome {
+            Ok(set) if set.changed => tracing::info!(
+                device = set.device_id.as_str(),
+                scopes = ?set.scopes,
+                "device scopes changed"
+            ),
+            Err(ChangeError::Store(error)) => tracing::error!(%error, "device scopes not changed"),
+            _ => {}
+        }
+        outcome
+    }
+
+    /// The scopes of a stored device as they change; a session waits on it with
+    /// `devices::scopes_changed`. `None`: not a stored device (pending, or revoked).
+    pub fn scope_watch(&self, device: &DeviceId) -> Option<watch::Receiver<BTreeSet<Scope>>> {
+        self.inner.state().devices.scope_watch(device)
     }
 
     fn context(&self, hs: &Handshake, client_nonce: [u8; 32]) -> Context {

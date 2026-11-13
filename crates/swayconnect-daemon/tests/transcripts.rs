@@ -5,6 +5,10 @@
 //! its own start. The members that follow from them are left out of the comparison; every
 //! other member must be equal, the `message` texts too. The client frames `pair` and `auth`
 //! are sent with proofs over the nonces of the running connection.
+//!
+//! The transcripts are version 1 frames. The members that section 17 of the spec adds are
+//! left out of the server frames, and `welcome.ops` and `welcome.topics` may list more than
+//! the transcript: its entries must be there, in its order.
 
 mod support;
 
@@ -28,18 +32,56 @@ const WINDOW_LIFETIME: Duration = Duration::from_secs(300);
 const UNREPEATABLE_MEMBERS: [&str; 5] =
     ["nonce", "device_id", "server_proof", "confirm_code", "rev"];
 
-/// `frame` without the members that no two runs of a daemon repeat.
-fn repeatable(frame: &Value) -> Value {
+/// The members that `docs/PROTOCOL.md` section 17 adds. Version 1 uses none of these names.
+const V2_MEMBERS: [&str; 8] = [
+    "known_scopes",
+    "known_ops",
+    "outputs",
+    "scratchpad",
+    "layouts_cut",
+    "rect",
+    "layout",
+    "icon",
+];
+/// Lists of `welcome` that grow with the operations and topics of section 17.
+const GROWING_LISTS: [&str; 2] = ["ops", "topics"];
+
+/// `frame` without the members named in `dropped`, at any depth.
+fn without(frame: &Value, dropped: &[&str]) -> Value {
     match frame {
         Value::Object(members) => {
-            let is_repeatable = |name: &str| !UNREPEATABLE_MEMBERS.contains(&name);
-            let kept = members.iter().filter(|(name, _)| is_repeatable(name));
-            let kept = kept.map(|(name, member)| (name.clone(), repeatable(member)));
+            let kept = members
+                .iter()
+                .filter(|(name, _)| !dropped.contains(&name.as_str()));
+            let kept = kept.map(|(name, member)| (name.clone(), without(member, dropped)));
             Value::Object(kept.collect())
         }
-        Value::Array(items) => items.iter().map(repeatable).collect(),
+        Value::Array(items) => items.iter().map(|item| without(item, dropped)).collect(),
         scalar => scalar.clone(),
     }
+}
+
+/// `frame` without the members that no two runs of a daemon repeat.
+fn repeatable(frame: &Value) -> Value {
+    without(frame, &UNREPEATABLE_MEMBERS)
+}
+
+/// What version 1 defines of the server frame `sent`, with each growing list cut to the
+/// entries of `expected`. A missing entry of `expected` makes the comparison fail.
+fn v1_members(sent: &JsonObject, expected: &JsonObject) -> JsonObject {
+    let Value::Object(mut v1) = without(&Value::Object(sent.clone()), &V2_MEMBERS) else {
+        unreachable!("an object stays an object");
+    };
+    if v1.get("type").and_then(Value::as_str) != Some("welcome") {
+        return v1;
+    }
+    for list in GROWING_LISTS {
+        let wanted = expected.get(list).and_then(Value::as_array);
+        if let (Some(wanted), Some(Value::Array(entries))) = (wanted, v1.get_mut(list)) {
+            entries.retain(|entry| wanted.contains(entry));
+        }
+    }
+    v1
 }
 
 /// What a transcript frame fixes for every daemon.
@@ -89,7 +131,8 @@ impl Replay {
     async fn server_sends_its_frame(&mut self) -> JsonObject {
         let expected = payload_of(&self.next_frame_from("S"));
         let sent = soon("a server frame", self.wire.receive()).await;
-        assert_eq!(fixed_part(sent.clone()), fixed_part(expected));
+        let v1 = v1_members(&sent, &expected);
+        assert_eq!(fixed_part(v1), fixed_part(expected));
         sent
     }
 

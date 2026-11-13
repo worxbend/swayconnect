@@ -9,8 +9,14 @@ use std::process::Command;
 use tempfile::TempDir;
 
 use crate::SWAY_SOCKET_NAME;
+use crate::xdg_data;
 
-/// A temp root with config, data and runtime directories. Removed on drop.
+/// The system bus address a child gets: a path that cannot exist, so no child reaches
+/// the real system bus (`docs/DESIGN.md` 11.12).
+pub const NO_SYSTEM_BUS: &str = "unix:path=/nonexistent";
+
+/// A temp root with config, data, cache and runtime directories, and an
+/// `XDG_DATA_DIRS` with one desktop entry and one icon. Removed on drop.
 ///
 /// The testkit does not depend on the daemon, so a test builds the daemon's `Paths`
 /// from [`config_file`](Self::config_file), [`data_dir`](Self::data_dir) and
@@ -37,6 +43,8 @@ impl TestDirs {
         let dirs = Self { root };
         fs::create_dir_all(dirs.config_home().join("swayconnect")).expect("create config dir");
         fs::create_dir(dirs.data_home()).expect("create data home");
+        fs::create_dir(dirs.cache_home()).expect("create cache home");
+        xdg_data::populate(&dirs.data_dirs());
         fs::create_dir(dirs.runtime_dir()).expect("create runtime dir");
         // The daemon refuses a runtime directory with a looser mode (docs/DESIGN.md 5.4).
         fs::set_permissions(dirs.runtime_dir(), Permissions::from_mode(0o700))
@@ -56,6 +64,29 @@ impl TestDirs {
     /// Value for `XDG_DATA_HOME`.
     pub fn data_home(&self) -> PathBuf {
         self.root().join("data")
+    }
+
+    /// Value for `XDG_CACHE_HOME`. Created empty.
+    pub fn cache_home(&self) -> PathBuf {
+        self.root().join("cache")
+    }
+
+    /// Value for `XDG_DATA_DIRS`: one directory holding
+    /// `applications/notes.desktop` and `icons/hicolor/48x48/apps/notes.png`
+    /// (see [`crate::fixtures::NOTES_APP_ID`]).
+    pub fn data_dirs(&self) -> PathBuf {
+        self.root().join("share")
+    }
+
+    /// The one desktop entry under [`data_dirs`](Self::data_dirs).
+    pub fn desktop_entry(&self) -> PathBuf {
+        xdg_data::desktop_entry_path(&self.data_dirs())
+    }
+
+    /// The one icon file under [`data_dirs`](Self::data_dirs). Its bytes are
+    /// [`crate::fixtures::NOTES_ICON_PNG`].
+    pub fn icon_file(&self) -> PathBuf {
+        xdg_data::icon_path(&self.data_dirs())
     }
 
     /// Value for `XDG_RUNTIME_DIR`, mode 0700. Also the directory of the fake sway socket.
@@ -78,15 +109,21 @@ impl TestDirs {
         self.runtime_dir().join(SWAY_SOCKET_NAME)
     }
 
-    /// A command for a child process with a cleared environment and only the three XDG
-    /// directories set (`docs/DESIGN.md` 9.2 rule 4).
+    /// A command for a child process with a cleared environment (`docs/DESIGN.md` 9.2
+    /// rule 4 and 11.12). Set: the temp `XDG_CONFIG_HOME`, `XDG_DATA_HOME`,
+    /// `XDG_CACHE_HOME`, `XDG_RUNTIME_DIR` and `XDG_DATA_DIRS`, and
+    /// `DBUS_SYSTEM_BUS_ADDRESS` = [`NO_SYSTEM_BUS`]. No `WAYLAND_DISPLAY`, no
+    /// `DBUS_SESSION_BUS_ADDRESS`, no `SWAYSOCK`.
     pub fn command(&self, program: impl AsRef<OsStr>) -> Command {
         let mut command = Command::new(program);
         command
             .env_clear()
             .env("XDG_CONFIG_HOME", self.config_home())
             .env("XDG_DATA_HOME", self.data_home())
-            .env("XDG_RUNTIME_DIR", self.runtime_dir());
+            .env("XDG_CACHE_HOME", self.cache_home())
+            .env("XDG_RUNTIME_DIR", self.runtime_dir())
+            .env("XDG_DATA_DIRS", self.data_dirs())
+            .env("DBUS_SYSTEM_BUS_ADDRESS", NO_SYSTEM_BUS);
         command
     }
 }

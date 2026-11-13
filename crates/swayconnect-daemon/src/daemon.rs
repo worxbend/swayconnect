@@ -3,6 +3,7 @@
 
 use std::io;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -14,8 +15,10 @@ use tokio::task::JoinHandle;
 
 use crate::admin::{AdminServer, Advertised};
 use crate::config::{Config, StartError};
+use crate::icons::raster::ChildRasteriser;
+use crate::icons::{IconService, IconSettings, IconsConfig};
 use crate::listener;
-use crate::paths::Paths;
+use crate::paths::{Paths, own_uid};
 use crate::security::Security;
 use crate::session::Shared;
 use crate::sway_handle::SwayHandle;
@@ -33,6 +36,8 @@ pub enum DaemonError {
         #[source]
         source: io::Error,
     },
+    #[error("cannot start the icon service: {0}")]
+    Icons(#[source] io::Error),
 }
 
 impl DaemonError {
@@ -41,12 +46,24 @@ impl DaemonError {
     pub fn exit_code(&self) -> u8 {
         match self {
             DaemonError::Start(_) => EXIT_CONFIG_ERROR,
-            DaemonError::Bind { .. } => EXIT_RUNTIME_FAILURE,
+            DaemonError::Bind { .. } | DaemonError::Icons(_) => EXIT_RUNTIME_FAILURE,
         }
     }
 }
 
 pub struct Daemon;
+
+/// What the icon service reads and runs (`docs/DESIGN.md` 11.5). `main.rs` builds it from
+/// the environment; tests point it at temp directories.
+#[derive(Debug, Clone)]
+pub struct IconSources {
+    /// `$XDG_DATA_HOME`, then `$XDG_DATA_DIRS`, as `icons::search_dirs` orders them.
+    pub search_dirs: Vec<PathBuf>,
+    /// `$XDG_CACHE_HOME/swayconnect`; the service keeps its PNGs below it.
+    pub cache_dir: PathBuf,
+    /// The `swayconnectd` binary, run as `--raster` once per untrusted icon file.
+    pub raster_program: PathBuf,
+}
 
 /// A running daemon. Dropping it without [`DaemonHandle::stop`] also stops the tasks, but
 /// waits for nothing and can leave `admin.sock` behind.
@@ -59,10 +76,31 @@ pub struct DaemonHandle {
 }
 
 impl Daemon {
+    /// A daemon without icon lookup: every window icon is `null` and `icon.get` lists every
+    /// hash as `missing`.
     pub async fn start(
         config: Config,
         paths: Paths,
         target: SwayTarget,
+    ) -> Result<DaemonHandle, DaemonError> {
+        Daemon::run(config, paths, target, None).await
+    }
+
+    /// A daemon whose icon service reads `icons`.
+    pub async fn start_with_icons(
+        config: Config,
+        paths: Paths,
+        target: SwayTarget,
+        icons: IconSources,
+    ) -> Result<DaemonHandle, DaemonError> {
+        Daemon::run(config, paths, target, Some(icons)).await
+    }
+
+    async fn run(
+        config: Config,
+        paths: Paths,
+        target: SwayTarget,
+        icon_sources: Option<IconSources>,
     ) -> Result<DaemonHandle, DaemonError> {
         let security = Security::open(&config, &paths)?;
         // Before the listeners: the address of a running daemon is in use, and that must
@@ -76,14 +114,22 @@ impl Daemon {
             bound.push(listener.local_addr().map_err(bind_error)?);
             listeners.push(listener);
         }
-        // After the listeners: a start that fails on them leaves no dead `admin.sock` behind.
+        let icons = match icon_sources {
+            Some(sources) => Some(Arc::new(start_icons(sources, config.icons)?)),
+            None => None,
+        };
+        // Last: a start that fails before leaves no dead `admin.sock` behind.
         let admin = AdminServer::bind(&paths)?;
 
         let (shutdown, stop) = watch::channel(false);
         let read_only = Arc::new(AtomicBool::new(config.read_only));
         let fingerprint = security.fingerprint();
         log_start(&bound, &fingerprint, config.read_only);
-        let sway = Arc::new(SwayHandle::spawn(target, stop.clone()));
+        let sway = Arc::new(SwayHandle::spawn_with_icons(
+            target,
+            stop.clone(),
+            icons.clone(),
+        ));
         let shared = Shared {
             security: security.clone(),
             // The supervisor runs until shutdown; sessions keep the receiver alive.
@@ -92,6 +138,7 @@ impl Daemon {
             server_name: Arc::from(config.server_name.as_str()),
             read_only: Arc::clone(&read_only),
             shutdown: stop.clone(),
+            icons,
         };
         let advertised = Advertised {
             server_name: config.server_name,
@@ -109,6 +156,18 @@ impl Daemon {
             tasks,
         })
     }
+}
+
+fn start_icons(sources: IconSources, config: IconsConfig) -> Result<IconService, DaemonError> {
+    let settings = IconSettings {
+        search_dirs: sources.search_dirs,
+        cache_dir: Some(sources.cache_dir),
+        uid: own_uid().map_err(DaemonError::Icons)?,
+        proc_root: PathBuf::from("/proc"),
+        config,
+    };
+    let rasteriser = ChildRasteriser::new(sources.raster_program);
+    IconService::start(settings, rasteriser).map_err(DaemonError::Icons)
 }
 
 fn log_start(bound: &[SocketAddr], fingerprint: &[u8; 32], read_only: bool) {

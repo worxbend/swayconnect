@@ -5,7 +5,8 @@ use swayconnect_protocol::text::replace_unsafe;
 use swayconnect_protocol::{Desktop, InvalidMember, JsonObject};
 
 /// Exists only with every control or format character replaced, so nothing that prints it
-/// can pass a hostile title to the terminal (spec 9.3 rule 4).
+/// can pass a hostile title to the terminal (spec 9.3 rule 4), and with every layout tile of
+/// an unknown window skipped (17.4.3 client rule 1).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DesktopState {
     rev: u64,
@@ -16,7 +17,8 @@ impl DesktopState {
     /// `None` for a state of another topic.
     pub fn from_topic_state(state: &TopicState) -> Option<Result<DesktopState, InvalidMember>> {
         (state.topic == TOPIC_DESKTOP).then(|| {
-            let desktop = Desktop::decode(&state.data)?;
+            let mut desktop = Desktop::decode(&state.data)?;
+            desktop.normalize();
             Ok(DesktopState {
                 rev: state.rev,
                 desktop: without_unsafe_text(desktop),
@@ -53,6 +55,14 @@ fn without_unsafe_text(mut desktop: Desktop) -> Desktop {
         replace_in(&mut window.app_id);
         replace_in(&mut window.title);
     }
+    for output in desktop.outputs.iter_mut().flatten() {
+        output.name = replace_unsafe(&output.name);
+        replace_in(&mut output.model);
+    }
+    for window in desktop.scratchpad.iter_mut().flatten() {
+        replace_in(&mut window.app_id);
+        replace_in(&mut window.title);
+    }
     desktop
 }
 
@@ -84,6 +94,12 @@ mod tests {
                 "focused": true, "urgent": false, "floating": false, "fullscreen": false,
             }],
             "truncated": false,
+            "outputs": [{
+                "name": HOSTILE, "model": HOSTILE, "rect": {"x": 0, "y": 0, "w": 9, "h": 9},
+                "scale_milli": 1000, "transform": "normal", "active": true, "power": true,
+                "current_workspace_id": 4,
+            }],
+            "scratchpad": [{"id": 30, "app_id": HOSTILE, "title": HOSTILE, "icon": null}],
         });
         let Value::Object(data) = data else {
             panic!("not an object");
@@ -107,10 +123,38 @@ mod tests {
         assert_eq!(desktop.workspaces[0].output.as_deref(), Some(REPLACED));
         assert_eq!(desktop.windows[0].app_id.as_deref(), Some(REPLACED));
         assert_eq!(desktop.windows[0].title.as_deref(), Some(REPLACED));
+        let outputs = desktop.outputs.as_ref().expect("outputs");
+        assert_eq!(outputs[0].name, REPLACED);
+        assert_eq!(outputs[0].model.as_deref(), Some(REPLACED));
+        let scratchpad = desktop.scratchpad.as_ref().expect("scratchpad");
+        assert_eq!(scratchpad[0].app_id.as_deref(), Some(REPLACED));
+        assert_eq!(scratchpad[0].title.as_deref(), Some(REPLACED));
         let json_text = Value::Object(state.to_json()).to_string();
         assert!(!json_text.chars().any(is_control_or_format));
         assert_eq!(state.to_json()["topic"], "desktop");
         assert_eq!(state.to_json()["rev"], 7);
+    }
+
+    #[test]
+    fn a_layout_tile_of_a_window_that_is_not_listed_is_skipped() {
+        let mut state = topic_state("desktop");
+        state.data["workspaces"][0]["layout"] = json!({
+            "size": [100, 50], "fullscreen": null, "floating": [],
+            "tiled": {"k": "h", "r": [0, 0, 10000, 10000], "c": [
+                {"w": 9, "r": [0, 0, 5000, 10000]},
+                {"w": 77, "r": [5000, 0, 5000, 10000]},
+            ]},
+        });
+
+        let state = DesktopState::from_topic_state(&state)
+            .expect("desktop topic")
+            .expect("valid state");
+
+        let layout = &state.to_json()["data"]["workspaces"][0]["layout"];
+        assert_eq!(
+            layout["tiled"]["c"],
+            json!([{"w": 9, "r": [0, 0, 5000, 10000]}])
+        );
     }
 
     #[test]
