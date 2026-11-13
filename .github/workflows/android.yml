@@ -1,0 +1,104 @@
+name: Android
+
+# Builds and tests the Android client. See docs/DESIGN.md section 8.
+# The same tasks pass on a developer machine with Temurin 25, Gradle 9.8.0 and platforms;android-37.0.
+
+on:
+  push:
+    branches: [main]
+    paths: &android-paths
+      - "clients/android/**"
+      - "protocol/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths: *android-paths
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: clients/android
+
+jobs:
+  protocol:
+    name: ":protocol tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      has_app: ${{ steps.app.outputs.exists }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install compile SDK
+        run: sdkmanager "platforms;android-37.0"
+
+      - name: Run :protocol tests
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :protocol:test
+
+      # The app job runs only when the :app module exists (written after :protocol is green).
+      - name: Look for the :app module
+        id: app
+        run: |
+          if [ -f app/build.gradle.kts ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  app:
+    name: ":app tests, debug APK, lint"
+    needs: protocol
+    if: needs.protocol.outputs.has_app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install compile SDK
+        run: sdkmanager "platforms;android-37.0"
+
+      - name: Test, assemble and lint
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: swayconnect-debug-apk
+          path: clients/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14

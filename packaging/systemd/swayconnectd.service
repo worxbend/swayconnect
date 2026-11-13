@@ -1,0 +1,19 @@
+# systemd user unit for swayconnectd. Values: docs/DESIGN.md section 6.
+# Install: copy to ~/.config/systemd/user/, then `systemctl --user enable --now swayconnectd`.
+
+[Unit]
+Description=swayconnect daemon (remote control for the sway desktop)
+# No start limit: a LAN listen address can come up long after login.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/swayconnectd run
+Restart=on-failure
+RestartSec=5
+# Exit 2 is a config or file-permission error. A restart cannot fix it.
+RestartPreventExitStatus=2
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target
