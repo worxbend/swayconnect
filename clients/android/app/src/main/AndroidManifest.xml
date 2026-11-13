@@ -11,6 +11,7 @@
         tools:targetApi="33"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.SwayConnect">
         <activity
             android:name=".MainActivity"

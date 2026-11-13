@@ -12,6 +12,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +20,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.swayconnect.android.ui.DesktopScreen
 import com.swayconnect.android.ui.MainViewModel
-import com.swayconnect.android.ui.PairScreen
-import com.swayconnect.android.ui.Screen
+import com.swayconnect.android.ui.common.LocalIconCache
+import com.swayconnect.android.ui.desktop.DesktopArea
+import com.swayconnect.android.ui.desktop.TrustLostPage
+import com.swayconnect.android.ui.pair.PairScreen
+import com.swayconnect.android.ui.shell.AppShell
+import com.swayconnect.android.ui.state.Screen
 import com.swayconnect.android.ui.theme.SwayConnectTheme
 import kotlinx.coroutines.launch
 
@@ -71,6 +75,14 @@ private fun App(viewModel: MainViewModel) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             }
         Screen.Pair -> PairScreen(state, viewModel)
-        Screen.Desktop -> DesktopScreen(state, viewModel)
+        Screen.Desktop ->
+            if (state.unpaired || state.wrongKey) {
+                // Full screen (docs/UX.md 16): nothing of the shell for a computer this phone cannot trust now.
+                TrustLostPage(wrongKey = !state.unpaired, serverName = state.lostServerName, onPairAgain = viewModel::showPairScreen)
+            } else {
+                CompositionLocalProvider(LocalIconCache provides viewModel.iconCache) {
+                    AppShell(state, viewModel) { padding -> DesktopArea(state, viewModel, padding) }
+                }
+            }
     }
 }

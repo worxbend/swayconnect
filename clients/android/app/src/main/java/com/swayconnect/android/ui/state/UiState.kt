@@ -1,9 +1,10 @@
-package com.swayconnect.android.ui
+package com.swayconnect.android.ui.state
 
 import com.swayconnect.protocol.Base64Url
 import com.swayconnect.protocol.Desktop
 import com.swayconnect.protocol.FINGERPRINT_BYTES
 import com.swayconnect.protocol.Op
+import com.swayconnect.protocol.OpAvailability
 import com.swayconnect.protocol.PairingUri
 import com.swayconnect.protocol.PairingUriException
 import com.swayconnect.protocol.Profile
@@ -16,7 +17,8 @@ enum class Screen { Loading, Pair, Desktop }
 /** The connection states of docs/DESIGN.md 8.4. */
 enum class ConnectionStatus { Disconnected, Connecting, Authenticating, Ready, Backoff }
 
-enum class PairPhase { Editing, Connecting, AwaitingConfirmation }
+/** [Confirmed]: the computer said yes; the pair screen shows "What this phone can do" until Done (UX 11 step 4). */
+enum class PairPhase { Editing, Connecting, AwaitingConfirmation, Confirmed }
 
 /** What a pairing link says about the computer. It holds nothing secret. */
 data class PairTarget(val host: String, val port: Int, val shortFingerprint: String, val name: String?) {
@@ -53,18 +55,22 @@ fun PairForm.withLink(text: String): PairForm {
     }
 }
 
-/** The paired computer, from the stored profile. */
-data class ServerSummary(val name: String, val shortFingerprint: String) {
+/**
+ * The paired computer, from the stored profile. [devicePrefix] is the first 4 characters of this phone's device id,
+ * as `swayconnectd devices grant` takes it (docs/UX.md 10.4); null when the stored id is not plain base64url.
+ */
+data class ServerSummary(val name: String, val shortFingerprint: String, val devicePrefix: String? = null) {
     companion object {
+        private const val DEVICE_PREFIX_CHARS = 4
+        private val DEVICE_ID = Regex("[A-Za-z0-9_-]{4,}")
+
         fun of(profile: Profile): ServerSummary {
             val fingerprint = Base64Url.decode(profile.fp, FINGERPRINT_BYTES)
-            return ServerSummary(replaceUnsafe(profile.serverName), fingerprint?.let(::shortFingerprint) ?: "unknown")
+            val prefix = profile.deviceId.takeIf { DEVICE_ID.matches(it) }?.take(DEVICE_PREFIX_CHARS)
+            return ServerSummary(replaceUnsafe(profile.serverName), fingerprint?.let(::shortFingerprint) ?: "unknown", prefix)
         }
     }
 }
-
-/** What `welcome` granted on the current connection. */
-data class Granted(val ops: Set<String>, val scopes: List<String>, val readOnly: Boolean)
 
 data class UiState(
     val pair: PairForm,
@@ -74,7 +80,13 @@ data class UiState(
     /** Why the last connection ended. Shown under the banner until a connection is ready again. */
     val connectionProblem: String? = null,
     val granted: Granted? = null,
+    /** The newest state, live or not: see [desktopLive]. */
     val desktop: Desktop? = null,
+    /** False while [desktop] is the cached snapshot or the last state of a closed connection (UX 5.9: dimmed, no taps). */
+    val desktopLive: Boolean = false,
+    /** Wall-clock time of the newest state in [desktop], for "last seen 12 s ago". */
+    val lastSeenAtMs: Long? = null,
+    /** The workspace shown on the phone (the pager page). The source of truth for the page index (UX 5.5). */
     val selectedWorkspaceId: Long? = null,
     /** The workspace or window whose action waits for its answer. Both kinds share one id space. */
     val pendingTargetId: Long? = null,
@@ -82,24 +94,34 @@ data class UiState(
     val notice: String? = null,
     /** The computer revoked this device, or no longer knows it. */
     val unpaired: Boolean = false,
+    /** The name of the computer that revoked this device, for the full-screen "no longer paired with" page. */
+    val lostServerName: String? = null,
+    /** The computer presented another certificate than the paired one: no auto-retry (docs/UX.md 16). */
+    val wrongKey: Boolean = false,
+    val area: Area = Area.Desktop,
+    val sheet: Sheet? = null,
+    val viewMode: ViewMode = ViewMode.Map,
+    val drive: DriveMode = DriveMode.Drive,
+    /** Drive was refused with `rate_limited` or `read_only`: the status line shows "Drive paused" until the UI clears it. */
+    val drivePaused: Boolean = false,
+    /** "Computer moved to 7 →": the computer's focused workspace when follow focus did not scroll there. */
+    val followFocusChip: Long? = null,
+    /** "Larger text · Show list" was used or closed; in memory until a settings store exists (UX 15). */
+    val listHintDismissed: Boolean = false,
 )
 
-/** Applies a state from the server. The selection follows the focus when the focus moves. */
-fun UiState.withDesktop(next: Desktop?): UiState {
-    val focusedBefore = desktop?.workspaces?.firstOrNull { it.focused }?.id
-    val focusedNow = next?.workspaces?.firstOrNull { it.focused }?.id
-    val stillThere = next?.workspaces?.any { it.id == selectedWorkspaceId } == true
-    val selected =
-        when {
-            focusedNow != focusedBefore && focusedNow != null -> focusedNow
-            stillThere -> selectedWorkspaceId
-            else -> focusedNow ?: next?.workspaces?.firstOrNull()?.id
-        }
-    // The window list uses the id as its key, and Compose throws on a key that comes twice. Sway ids
-    // are unique; a broken server must not be able to crash the app.
-    val shown = next?.copy(windows = next.windows.distinctBy { it.id })
-    return copy(desktop = shown, selectedWorkspaceId = selected, pendingTargetId = null)
-}
+/** The pages of the pager, one per workspace, in sway's order. */
+val UiState.pages: List<Workspace>
+    get() = desktop?.workspaces.orEmpty()
+
+/** The page index of [UiState.selectedWorkspaceId], found again by id after every state; -1 without pages. */
+val UiState.shownPageIndex: Int
+    get() = pages.indexOfFirst { it.id == selectedWorkspaceId }
+
+/** True when a user-initiated settle sends `workspace.focus` (UX 5.5 Drive mode). "Drive paused" browses only. */
+val UiState.isDriving: Boolean
+    get() = drive == DriveMode.Drive && !drivePaused && desktopLive &&
+        granted?.availabilityOf(Op.WORKSPACE_FOCUS) == OpAvailability.Available
 
 private val ACTION_OPS = setOf(Op.WORKSPACE_FOCUS, Op.WINDOW_FOCUS, Op.WINDOW_FULLSCREEN)
 

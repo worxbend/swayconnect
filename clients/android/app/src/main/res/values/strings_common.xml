@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="window_mark_focused">Focused</string>
+    <string name="window_mark_focused_spoken">focused on computer</string>
+    <string name="window_mark_urgent">Urgent</string>
+    <string name="window_mark_urgent_spoken">needs attention</string>
+    <string name="window_mark_fullscreen">Fullscreen</string>
+    <string name="window_mark_floating">Floating</string>
+    <string name="window_mark_tabbed">Tabbed · %1$d of %2$d</string>
+    <string name="window_mark_stacked">Stacked · %1$d of %2$d</string>
+    <string name="window_untitled">Window</string>
+    <string name="window_same_app_index">#%1$d</string>
+    <string name="window_same_app_index_spoken">window %1$d of this app</string>
+    <string name="window_waiting">waiting for the computer</string>
+    <string name="window_more_actions">More actions</string>
+</resources>

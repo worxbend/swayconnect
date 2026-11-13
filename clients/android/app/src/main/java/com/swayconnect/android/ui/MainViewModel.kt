@@ -4,9 +4,32 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.swayconnect.android.AppContainer
+import com.swayconnect.android.data.IconFetch
 import com.swayconnect.android.data.StoredPairing
 import com.swayconnect.android.data.StoredPairingLostException
-import com.swayconnect.protocol.ByeCode
+import com.swayconnect.android.ui.state.Area
+import com.swayconnect.android.ui.state.ConnectionStatus
+import com.swayconnect.android.ui.state.DriveController
+import com.swayconnect.android.ui.state.DriveMode
+import com.swayconnect.android.ui.state.Granted
+import com.swayconnect.android.ui.state.NOT_A_PAIRING_LINK
+import com.swayconnect.android.ui.state.PagerFacts
+import com.swayconnect.android.ui.state.PairForm
+import com.swayconnect.android.ui.state.PairPhase
+import com.swayconnect.android.ui.state.Refusal
+import com.swayconnect.android.ui.state.Screen
+import com.swayconnect.android.ui.state.ServerSummary
+import com.swayconnect.android.ui.state.Sheet
+import com.swayconnect.android.ui.state.UiState
+import com.swayconnect.android.ui.state.ViewMode
+import com.swayconnect.android.ui.state.followChip
+import com.swayconnect.android.ui.state.isDriving
+import com.swayconnect.android.ui.state.withCachedDesktop
+import com.swayconnect.android.ui.state.withDesktop
+import com.swayconnect.android.ui.state.withDesktopStale
+import com.swayconnect.android.ui.state.withLink
+import com.swayconnect.protocol.ByeReaction
+import com.swayconnect.protocol.Desktop
 import com.swayconnect.protocol.Connection
 import com.swayconnect.protocol.ErrorCode
 import com.swayconnect.protocol.HandshakeException
@@ -36,7 +59,11 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.longOrNull
 
 /**
  * The one view model of the app. It owns the single connection: either a pairing attempt or the
@@ -65,10 +92,22 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         class Refused(val problem: String) : SessionOutcome
 
         class Lost(val problem: String, val afterWelcome: Boolean) : SessionOutcome
+
+        /** The computer presented another certificate than the paired one. No auto-retry (docs/UX.md 16). */
+        data object WrongKey : SessionOutcome
+
+        /** `bye` `scopes_changed`: connect again at once, without backoff (docs/PROTOCOL.md 17.15). */
+        data object ScopesChanged : SessionOutcome
     }
+
+    /** A live desktop state to write to the cache, with what decides its titles. */
+    private class Snapshot(val fp: String, val desktop: Desktop, val seenAtMs: Long, val keepTitles: Boolean)
 
     private val mutableState = MutableStateFlow(UiState(pair = PairForm(deviceName = container.defaultDeviceName)))
     val state: StateFlow<UiState> = mutableState.asStateFlow()
+
+    /** For `LocalIconCache` (slice A2 provides it around the shell). */
+    val iconCache get() = container.iconCache
 
     private val task = MutableStateFlow<Task>(Task.Idle)
 
@@ -78,6 +117,15 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     @Volatile private var stored: StoredPairing? = null
 
     @Volatile private var liveSession: Session? = null
+
+    /** Guarded by itself. */
+    private val drive = DriveController()
+
+    @Volatile private var driveJob: Job? = null
+
+    @Volatile private var pagerFacts = PagerFacts()
+
+    private val snapshots = MutableStateFlow<Snapshot?>(null)
 
     private val client =
         SwayConnectClient(
@@ -89,6 +137,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     init {
         viewModelScope.launch(container.io) { loadStoredPairing() }
         viewModelScope.launch(container.io) { runConnection() }
+        viewModelScope.launch(container.io) { saveSnapshots() }
+        container.iconCache?.let { cache -> viewModelScope.launch(container.io) { cache.run() } }
     }
 
     /**
@@ -182,6 +232,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         if (current is Task.Pairing) endPairing(current, problem = null)
     }
 
+    /** "Done" after a confirmed pairing: the desktop follows. */
+    fun finishPairing() {
+        mutableState.update {
+            if (it.pair.phase != PairPhase.Confirmed) {
+                it
+            } else {
+                it.copy(screen = Screen.Desktop, pair = PairForm(deviceName = it.pair.deviceName))
+            }
+        }
+    }
+
     fun showPairScreen() {
         mutableState.update { it.copy(screen = Screen.Pair) }
     }
@@ -190,14 +251,135 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         mutableState.update { if (it.server == null) it else it.copy(screen = Screen.Desktop) }
     }
 
+    // ---- Shell ----
+
+    /** A tap on the pill navigation. An open sheet closes. */
+    fun selectArea(area: Area) {
+        mutableState.update { it.copy(area = area, sheet = null) }
+    }
+
+    fun openSheet(sheet: Sheet) {
+        mutableState.update { it.copy(sheet = sheet) }
+    }
+
+    fun closeSheet() {
+        mutableState.update { it.copy(sheet = null) }
+    }
+
+    /**
+     * Back (docs/UX.md 2 rule 2): closes the sheet, else returns to Desktop. False on Desktop with no sheet:
+     * the app leaves Back to the system then.
+     */
+    fun goBack(): Boolean {
+        val before = mutableState.value
+        return when {
+            before.sheet != null -> true.also { closeSheet() }
+            before.area != Area.Desktop -> true.also { selectArea(Area.Desktop) }
+            else -> false
+        }
+    }
+
+    fun setViewMode(mode: ViewMode) {
+        mutableState.update { it.copy(viewMode = mode) }
+    }
+
+    /** The Drive / Browse pill. A waiting settle is dropped when Drive turns off. */
+    fun setDriveMode(mode: DriveMode) {
+        if (mode == DriveMode.Browse) driveJob?.cancel()
+        mutableState.update { it.copy(drive = mode) }
+    }
+
+    fun clearDrivePaused() {
+        mutableState.update { it.copy(drivePaused = false) }
+    }
+
     // ---- Desktop screen ----
 
-    /** Selects the workspace whose windows are listed, and focuses it when the computer offers that. */
+    /** Selects the workspace whose windows are listed, and focuses it when the computer offers that. Used by the v1 screen. */
     fun selectWorkspace(workspaceId: Long) {
         mutableState.update { it.copy(selectedWorkspaceId = workspaceId) }
-        val offered = mutableState.value.granted?.ops?.contains(Op.WORKSPACE_FOCUS) == true
-        if (offered) act(workspaceId) { it.focusWorkspace(workspaceId) }
+        showOnComputer(workspaceId)
     }
+
+    /** "Show on computer" (Browse mode) and the workspace sheet: focuses [workspaceId] on the computer. */
+    fun showOnComputer(workspaceId: Long) {
+        if (mutableState.value.granted?.ops?.contains(Op.WORKSPACE_FOCUS) == true) {
+            act(workspaceId) { it.focusWorkspace(workspaceId) }
+        }
+    }
+
+    /** A finger went down on, or came up from, the pager or the card row. Feeds the follow-focus guard. */
+    fun onPagerTouch(down: Boolean) {
+        pagerFacts = pagerFacts.copy(fingerDown = down, lastTouchAtMs = monotonicMs())
+    }
+
+    /** TalkBack's touch exploration turned on or off. While on, the pager never follows the computer. */
+    fun onTouchExplorationChanged(enabled: Boolean) {
+        pagerFacts = pagerFacts.copy(touchExploration = enabled)
+    }
+
+    /** A user drag of the pager or of the card row began (`DragInteraction.Start`). Never for a programmatic scroll. */
+    fun onUserDrag() {
+        val shownId = mutableState.value.selectedWorkspaceId
+        synchronized(drive) { drive.userDrag(shownId) }
+    }
+
+    /**
+     * A tap on a workspace card: the phone shows it, and the settle that follows counts as user-initiated.
+     * A tap on the card that is already shown settles at once, since the pager does not move.
+     */
+    fun onCardTap(workspaceId: Long) {
+        synchronized(drive) { drive.cardTap() }
+        val alreadyShown = mutableState.value.selectedWorkspaceId == workspaceId
+        mutableState.update { it.copy(selectedWorkspaceId = workspaceId) }
+        if (alreadyShown) onPageSettled(workspaceId)
+    }
+
+    /**
+     * The pager settled on [workspaceId], read from the pages at settle time. Call it after every scroll that
+     * stops, programmatic or not. In Drive mode a user-initiated settle that holds for 250ms sends one
+     * `workspace.focus` (docs/UX.md 5.5).
+     */
+    fun onPageSettled(workspaceId: Long) {
+        mutableState.update { it.copy(selectedWorkspaceId = workspaceId) }
+        synchronized(drive) { drive.settled(workspaceId, monotonicMs()) }
+        driveJob?.cancel()
+        driveJob =
+            viewModelScope.launch(container.io) {
+                delay(DriveController.HOLD_MS)
+                driveDueFocus()
+            }
+    }
+
+    /** A tap on "Computer moved to N": the phone shows the computer's workspace. It sends nothing. */
+    fun followMovedChip() {
+        mutableState.update { it.followChip() }
+    }
+
+    fun dismissListHint() {
+        mutableState.update { it.copy(listHintDismissed = true) }
+    }
+
+    fun dismissMovedChip() {
+        mutableState.update { it.copy(followFocusChip = null) }
+    }
+
+    private fun driveDueFocus() {
+        val current = mutableState.value
+        val focusedId = current.desktop?.workspaces?.firstOrNull { it.focused }?.id
+        val pageIds = current.desktop?.workspaces?.map { it.id }.orEmpty()
+        val target = synchronized(drive) { drive.due(monotonicMs(), current.selectedWorkspaceId, focusedId, pageIds) }
+        if (target == null || !current.isDriving) return
+        act(target, ::driveRefusal) { it.focusWorkspace(target) }
+    }
+
+    /** docs/UX.md 5.5 rules 4 and 5. Drive never retries. */
+    private fun driveRefusal(state: UiState, failure: RequestFailedException): UiState =
+        when (failure.code) {
+            ErrorCode.RATE_LIMITED, ErrorCode.READ_ONLY -> state.copy(drivePaused = true)
+            UNSUPPORTED_TARGET -> state.copy(notice = "This workspace cannot be shown from the phone.")
+            else -> actionRefusal(state, failure)
+        }
 
     fun focusWindow(windowId: Long) {
         act(windowId) { it.focusWindow(windowId) }
@@ -246,25 +428,36 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             return
         }
         adopt(pairing)
+        container.desktopCache.load(pairing.profile.fp)?.let { cached ->
+            // Only before the first live state: a session that is already up has the newer truth.
+            mutableState.update { if (it.desktop == null) it.withCachedDesktop(cached.desktop, cached.savedAtMs) else it }
+        }
         // Not a plain write: a pairing attempt that began while the profile was read keeps the
         // connection. The session follows when that attempt ends.
         task.compareAndSet(Task.Idle, Task.KeepSession(pairing))
     }
 
-    private fun adopt(pairing: StoredPairing) {
+    /** Makes [pairing] the stored one. [also] changes the same state update. */
+    private fun adopt(pairing: StoredPairing, also: (UiState) -> UiState = { it }) {
         stored = pairing
         mutableState.update {
             // A link that arrived while the profile was read keeps the pair screen in front.
             val screen = if (it.screen == Screen.Loading) Screen.Desktop else it.screen
-            it.copy(screen = screen, server = ServerSummary.of(pairing.profile), unpaired = false)
+            also(it.copy(screen = screen, server = ServerSummary.of(pairing.profile), unpaired = false, lostServerName = null, wrongKey = false))
         }
     }
 
     private fun taskWithoutPairing(): Task = stored?.let { Task.KeepSession(it) } ?: Task.Idle
 
-    /** Deletes the profile and the key. False when the phone refuses; the notice line says so then. */
+    /**
+     * Deletes the profile, the key and the desktop snapshot (it may hold window titles). False when the phone
+     * refuses; the notice line says so then.
+     */
     private fun clearStoredPairing(): Boolean =
         try {
+            snapshots.value = null
+            // Under the lock of the writer: a snapshot write that is under way cannot bring the file back.
+            synchronized(container.desktopCache) { container.desktopCache.clear() }
             container.profileStore.clear()
             true
         } catch (e: IOException) {
@@ -300,10 +493,16 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 endPairing(request, problem)
                 return
             }
-            mutableState.update {
-                it.copy(screen = Screen.Desktop, pair = PairForm(deviceName = it.pair.deviceName), connectionProblem = null)
+            // The pair screen stays for "What this phone can do" (UX 11 step 4). It reads the scopes from the
+            // `welcome` of the new session, so nothing granted by a previous computer may stay. One update with
+            // the new server: an observer of Confirmed must never see the previous computer's name.
+            adopt(pairing) {
+                it.copy(
+                    pair = PairForm(deviceName = it.pair.deviceName, phase = PairPhase.Confirmed),
+                    granted = null,
+                    connectionProblem = null,
+                )
             }
-            adopt(pairing)
             task.value = Task.KeepSession(pairing)
         } catch (e: IOException) {
             endPairing(request, pairingProblem(e))
@@ -380,6 +579,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                     // the next start of the activity asks once more.
                     awaitCancellation()
                 }
+                SessionOutcome.WrongKey -> {
+                    mutableState.update { it.copy(connection = ConnectionStatus.Disconnected, wrongKey = true) }
+                    // Not retried: another certificate is a possible impersonation, not an outage. The next
+                    // start of the activity asks once more, as for a refusal.
+                    awaitCancellation()
+                }
+                SessionOutcome.ScopesChanged -> backoffMs = INITIAL_BACKOFF_MS
                 is SessionOutcome.Lost -> {
                     if (outcome.afterWelcome) backoffMs = INITIAL_BACKOFF_MS
                     mutableState.update {
@@ -399,7 +605,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     private fun forgetRevoked(request: Task.KeepSession) {
         stored = null
         clearStoredPairing()
-        mutableState.update { it.copy(unpaired = true, connectionProblem = null, server = null) }
+        mutableState.update {
+            it.copy(unpaired = true, lostServerName = it.server?.name, connectionProblem = null, server = null)
+        }
         task.compareAndSet(request, Task.Idle)
     }
 
@@ -407,19 +615,20 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         try {
             when (val end = client.runSession(pairing.profile, pairing.key, ::showSession)) {
                 is SessionEnd.ByServer ->
-                    if (end.code == ByeCode.REVOKED) {
-                        SessionOutcome.Unpaired
-                    } else {
-                        val problem = "The computer closed the connection (${replaceUnsafe(end.code)})."
-                        SessionOutcome.Lost(problem, afterWelcome = true)
+                    when (ByeReaction.of(end.code)) {
+                        ByeReaction.FORGET -> SessionOutcome.Unpaired
+                        ByeReaction.RECONNECT_NOW -> SessionOutcome.ScopesChanged
+                        ByeReaction.RECONNECT_BACKOFF -> {
+                            val problem = "The computer closed the connection (${replaceUnsafe(end.code)})."
+                            SessionOutcome.Lost(problem, afterWelcome = true)
+                        }
                     }
                 is SessionEnd.Lost, SessionEnd.PairingConfirmed ->
                     SessionOutcome.Lost("The connection was lost.", afterWelcome = true)
             }
         } catch (e: PinMismatchException) {
-            // Its own error, not a network failure (docs/DESIGN.md 8.4).
-            val problem = "The computer presented a different certificate than the paired one. Nothing was sent."
-            SessionOutcome.Lost(problem, afterWelcome = false)
+            // Its own error, not a network failure (docs/DESIGN.md 8.4). Nothing was sent.
+            SessionOutcome.WrongKey
         } catch (e: RejectedException) {
             if (e.code == RejectCode.AUTH_FAILED) {
                 SessionOutcome.Unpaired
@@ -435,18 +644,35 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             SessionOutcome.Lost("The computer cannot be reached.", afterWelcome = false)
         } finally {
             liveSession = null
-            mutableState.update { it.copy(granted = null).withDesktop(null) }
+            driveJob?.cancel()
+            mutableState.update { it.withDesktopStale() }
         }
 
     /** Runs next to the reader of a session, after `welcome`. */
     private suspend fun showSession(session: Session) {
         liveSession = session
         val welcome = session.welcome
-        val granted = Granted(welcome.ops.toSet(), welcome.scopes.map(::replaceUnsafe), welcome.readOnly)
+        val granted = Granted.of(welcome)
         mutableState.update {
             // The notice of an action belongs to the connection that carried the action.
-            it.copy(connection = ConnectionStatus.Ready, connectionProblem = null, granted = granted, notice = null)
+            it.copy(connection = ConnectionStatus.Ready, connectionProblem = null, granted = granted, notice = null, wrongKey = false)
         }
+        val icons = container.iconCache
+        if (icons != null && Op.ICON_GET in welcome.ops) {
+            val fetch: IconFetch = session::iconGet
+            icons.attach(fetch)
+            try {
+                followDesktop(session)
+            } finally {
+                icons.detach(fetch)
+            }
+        } else {
+            followDesktop(session)
+        }
+    }
+
+    private suspend fun followDesktop(session: Session) {
+        val welcome = session.welcome
         try {
             session.subscribeDesktop()
         } catch (e: RequestFailedException) {
@@ -454,7 +680,34 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             mutableState.update { it.copy(notice = "The computer does not let this device read the desktop.") }
             return
         }
-        session.desktop.collect { desktop -> mutableState.update { it.withDesktop(desktop) } }
+        val fp = stored?.profile?.fp
+        session.desktop.collect { desktop ->
+            if (desktop == null) return@collect
+            val seenAtMs = System.currentTimeMillis()
+            mutableState.update {
+                val follow = pagerFacts.allowsFollow(ownRequestPending = it.pendingTargetId != null, nowMs = monotonicMs())
+                it.withDesktop(desktop, follow, seenAtMs)
+            }
+            if (fp != null) snapshots.value = Snapshot(fp, desktop, seenAtMs, keepTitles = SCOPE_TITLES in welcome.scopes)
+        }
+    }
+
+    /** Writes the newest live state to the cache 2 s after it stops changing (docs/UX.md 17.9). */
+    private suspend fun saveSnapshots() {
+        snapshots.collectLatest { snapshot ->
+            if (snapshot == null) return@collectLatest
+            delay(SNAPSHOT_DELAY_MS)
+            try {
+                synchronized(container.desktopCache) {
+                    // A forget since the delay ended replaced the snapshot with null.
+                    if (snapshots.value === snapshot) {
+                        container.desktopCache.save(snapshot.fp, snapshot.desktop, snapshot.seenAtMs, snapshot.keepTitles)
+                    }
+                }
+            } catch (e: IOException) {
+                // Only the dimmed preview of the next start is lost; the live state is unaffected.
+            }
+        }
     }
 
     /**
@@ -462,34 +715,43 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
      * whichever is first. An action is never sent again on its own (docs/PROTOCOL.md section 11),
      * and a tap on a target that still waits sends nothing.
      */
-    private fun act(targetId: Long, send: suspend (Session) -> Unit) {
+    private fun act(
+        targetId: Long,
+        onRefused: (UiState, RequestFailedException) -> UiState = ::actionRefusal,
+        send: suspend (Session) -> Unit,
+    ) {
         val session = liveSession ?: return
         if (mutableState.value.pendingTargetId == targetId) return
         mutableState.update { it.copy(pendingTargetId = targetId, notice = null) }
         viewModelScope.launch(container.io) {
-            val refusal =
+            // RequestFailedException is an IOException: the server answered with a refusal.
+            val failure: IOException? =
                 try {
                     send(session)
                     null
-                } catch (e: RequestFailedException) {
-                    actionRefusal(e)
                 } catch (e: IOException) {
-                    "The computer did not answer. The action is not sent again."
+                    e
                 }
             mutableState.update {
                 // A later action may wait by now: this answer ends only its own spinner and wipes no other notice.
-                val stillWaiting = it.pendingTargetId.takeIf { pending -> pending != targetId }
-                it.copy(pendingTargetId = stillWaiting, notice = refusal ?: it.notice)
+                val answered = it.copy(pendingTargetId = it.pendingTargetId.takeIf { pending -> pending != targetId })
+                when (failure) {
+                    null -> answered
+                    is RequestFailedException -> onRefused(answered, failure)
+                    else -> answered.copy(notice = Refusal.NO_ANSWER)
+                }
             }
         }
     }
 
-    private fun actionRefusal(failure: RequestFailedException): String =
-        when (failure.code) {
-            ErrorCode.READ_ONLY -> "The computer is in read-only mode."
-            ErrorCode.RATE_LIMITED -> "Too many actions. Wait a moment."
-            else -> "The computer refused the action (${replaceUnsafe(failure.code)})."
+    /** docs/UX.md 16: one plain line per code, or the Locked sheet for `forbidden`. Never the raw wire code. */
+    private fun actionRefusal(state: UiState, failure: RequestFailedException): UiState {
+        val detail = failure.detail
+        return when (val refusal = Refusal.of(failure.code, detail.stringAt("scope"), detail.longAt("retry_after_ms"))) {
+            is Refusal.Line -> state.copy(notice = refusal.text)
+            is Refusal.Locked -> state.copy(sheet = Sheet.Locked(refusal.scope))
         }
+    }
 
     private fun setConnection(status: ConnectionStatus) {
         mutableState.update { it.copy(connection = status) }
@@ -511,8 +773,19 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         const val INITIAL_BACKOFF_MS = 1_000L
         const val MAX_BACKOFF_MS = 30_000L
         const val HANDSHAKE_PROBLEM = "The computer did not complete the handshake correctly."
+        const val SNAPSHOT_DELAY_MS = 2_000L
+        const val SCOPE_TITLES = "state.titles"
+        const val UNSUPPORTED_TARGET = "unsupported_target"
+
+        fun monotonicMs(): Long = System.nanoTime() / 1_000_000
     }
 }
+
+/** A string member of an untrusted `detail` object; null when absent or of another type. */
+private fun JsonObject?.stringAt(name: String): String? = (this?.get(name) as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+/** A whole-number member of an untrusted `detail` object; null when absent, not a number or out of range. */
+private fun JsonObject?.longAt(name: String): Long? = (this?.get(name) as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull
 
 /** Tells the view model when TCP and TLS are up, which is where "Connecting" turns into "Authenticating". */
 private class AnnouncingTransport(private val inner: Transport, private val onOpened: () -> Unit) : Transport {

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pair flow, docs/UX.md 11. -->
+<resources>
+    <string name="pair_title">Pair with a computer</string>
+
+    <!-- Step 1: welcome -->
+    <string name="pair_welcome">Control your sway desktop from here.</string>
+    <string name="pair_run_on_computer">On the computer, run:</string>
+    <string name="pair_command" translatable="false">swayconnectd pair</string>
+    <string name="pair_copy">Copy</string>
+    <string name="pair_copy_command">Copy the command</string>
+    <string name="pair_scan_hint">Scan the QR code it prints, or copy the link it prints and paste it here.</string>
+    <string name="pair_paste_link">Paste link</string>
+    <string name="pair_clipboard_empty">The clipboard holds no text. Copy the link on the computer first.</string>
+    <string name="pair_back_to_desktop">Back to %1$s</string>
+
+    <!-- Step 2: target -->
+    <string name="pair_target_heading">Check the computer</string>
+    <string name="pair_target_name">Computer</string>
+    <string name="pair_target_host">Host</string>
+    <string name="pair_target_port">Port</string>
+    <string name="pair_target_fingerprint">Fingerprint</string>
+    <string name="pair_target_fingerprint_hint">The computer prints the same fingerprint.</string>
+    <string name="pair_device_name">Device name</string>
+    <string name="pair_replaces">This replaces %1$s.</string>
+    <string name="pair_button">Pair</string>
+    <string name="pair_other_link">Use another link</string>
+
+    <!-- Step 3: confirm code -->
+    <string name="pair_connecting">Connecting to the computer</string>
+    <string name="pair_code_heading">Compare this code</string>
+    <string name="pair_code_explained">The terminal on the computer shows a code. If it is the same, answer yes there. If it differs, answer no and tap Cancel. Keep this app open until the computer answers.</string>
+    <string name="pair_cancel">Cancel</string>
+
+    <!-- Step 4: what this phone can do -->
+    <string name="pair_done_heading">What this phone can do</string>
+    <string name="pair_done_paired">Paired with %1$s.</string>
+    <string name="pair_done_checking">Asking the computer what this phone may do</string>
+    <string name="pair_done_granted">On</string>
+    <string name="pair_done_locked">Off for now</string>
+    <string name="pair_done_locked_mark">off</string>
+    <string name="pair_done_nothing">Nothing yet.</string>
+    <string name="pair_done_read_only">The computer is set to look only.</string>
+    <string name="pair_done_ask">Ask at the computer to turn more on.</string>
+    <string name="pair_done_button">Done</string>
+
+    <!-- Replace dialog -->
+    <string name="pair_replace_title">Replace %1$s?</string>
+    <string name="pair_replace_text">The pairing with %1$s is deleted once the new computer has confirmed this device.</string>
+    <string name="pair_replace_button">Replace</string>
+
+    <!-- Feature pills, one per scope (PROTOCOL 17.2) -->
+    <string name="pair_scope_state_read">See workspaces</string>
+    <string name="pair_scope_state_titles">See window titles</string>
+    <string name="pair_scope_control">Switch and arrange windows</string>
+    <string name="pair_scope_destructive">Close windows</string>
+    <string name="pair_scope_idle_inhibit">Keep awake</string>
+    <string name="pair_scope_audio">Volume</string>
+    <string name="pair_scope_audio_capture">Microphone</string>
+    <string name="pair_scope_media">Media</string>
+    <string name="pair_scope_launch">Start apps</string>
+    <string name="pair_scope_launch_risky">Start terminals</string>
+    <string name="pair_scope_input_text">Type text</string>
+    <string name="pair_scope_input_keys">Send keys</string>
+</resources>

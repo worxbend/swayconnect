@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App shell: title row, status line, pill navigation, shell sheets (docs/UX.md 2, 4, 10.4-10.6). -->
+<resources>
+    <!-- Areas -->
+    <string name="area_desktop">Desktop</string>
+    <string name="area_audio">Audio</string>
+    <string name="area_launch">Launch</string>
+    <string name="area_keys">Keys</string>
+    <string name="area_more">More</string>
+    <string name="nav_locked">%1$s, off for this phone</string>
+    <string name="nav_urgent">%1$s, needs attention</string>
+
+    <!-- Status words (UX 4.1) -->
+    <string name="status_ready">Ready</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="status_checking_key">Checking key</string>
+    <string name="status_offline">Offline</string>
+    <string name="status_sway_offline">Sway not running</string>
+    <string name="status_screens_off">Screens off</string>
+    <string name="status_read_only">Read-only</string>
+    <string name="status_not_paired">Not paired</string>
+    <string name="status_wrong_key">Wrong computer key</string>
+    <string name="status_refused">Not connected</string>
+    <string name="status_open_computer">Show computer details</string>
+    <string name="status_drive_paused">Drive paused</string>
+
+    <!-- Context pill and round buttons -->
+    <string name="drive_on">Drive</string>
+    <string name="drive_off">Browse</string>
+    <string name="drive_spoken">Drive the computer when swiping</string>
+    <string name="drive_state_on">swipes switch the computer\'s workspace</string>
+    <string name="drive_state_off">swipes only browse on the phone</string>
+    <string name="drive_state_locked">Drive is off for this phone</string>
+    <string name="drive_state_read_only">the computer is set to look only</string>
+    <string name="drive_why">Show why</string>
+    <string name="action_open_launch">Open Launch</string>
+    <string name="action_mute">Mute the default output</string>
+    <string name="action_launcher">Open the launcher on the computer</string>
+    <string name="action_lock">Lock the computer</string>
+    <string name="action_locked">%1$s, off for this phone</string>
+    <string name="action_read_only">%1$s, the computer is set to look only</string>
+
+    <!-- Areas that M1 does not fill (UX 2 rule 4) -->
+    <string name="area_later">This part comes in a later version.</string>
+    <string name="area_locked_how">This part is off for this phone. Show how to turn it on</string>
+    <string name="area_more_later">Quick settings come in a later version.</string>
+    <string name="area_computer">Computer</string>
+
+    <!-- Locked sheet (UX 10.4, 10.5) -->
+    <string name="locked_title">Off for this phone</string>
+    <string name="locked_run">To turn it on, run on the computer:</string>
+    <string name="locked_command" translatable="false">swayconnectd devices grant %1$s %2$s</string>
+    <string name="locked_command_unknown_id" translatable="false">swayconnectd devices grant &lt;id&gt; %1$s</string>
+    <string name="locked_device_hint">Use the device id that swayconnectd devices list shows for this phone.</string>
+    <string name="locked_reconnects">The phone reconnects by itself after.</string>
+    <string name="scope_control">Lets the phone switch workspaces, move, float or fullscreen windows, and lock the computer.</string>
+    <string name="scope_audio">Lets the phone change the volume and the output device, and mute the microphone.</string>
+    <string name="scope_audio_capture">Lets the phone turn the microphone on, change its level and pick the input device. Someone with this phone could listen to the room.</string>
+    <string name="scope_media">Lets the phone play, pause and skip media.</string>
+    <string name="scope_idle_inhibit">Lets the phone stop the computer from locking itself when idle, for a limited time.</string>
+    <string name="scope_launch">Lets the phone start apps and open the launcher. Terminals and apps marked risky need a second permission.</string>
+    <string name="scope_launch_risky">Lets the phone start terminals and apps marked risky. That is the same as running commands.</string>
+    <string name="scope_input">Lets the phone type into the focused window. In a terminal that is the same as running commands.</string>
+    <string name="scope_destructive">Lets the phone close windows. Unsaved work can be lost.</string>
+    <string name="scope_other">The owner of the computer can grant it by name.</string>
+
+    <!-- Computer sheet (UX 10.6) -->
+    <string name="computer_fingerprint">Fingerprint %1$s …</string>
+    <string name="computer_granted">On for this phone</string>
+    <string name="computer_missing">Off for this phone</string>
+    <string name="computer_none">None</string>
+    <string name="computer_read_only">The computer is set to look only.</string>
+    <string name="computer_not_connected">Not connected: the list of what this phone can do comes with the next connection.</string>
+    <string name="computer_locked_scope">%1$s, off. Show how to turn it on</string>
+    <string name="computer_retry">Retry now</string>
+    <string name="computer_forget">Forget this computer</string>
+    <string name="forget_title">Forget this computer?</string>
+    <string name="forget_text">The pairing is removed from this phone. Revoke the device on the computer as well.</string>
+    <string name="forget_confirm">Forget</string>
+    <string name="cancel">Cancel</string>
+</resources>

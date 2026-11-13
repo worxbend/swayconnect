@@ -1,0 +1,594 @@
+{
+ "sway": {
+  "online": true,
+  "version": "1.12"
+ },
+ "outputs": [],
+ "workspaces": [
+  {
+   "id": 30,
+   "number": 1,
+   "name": "1",
+   "output": "DP-1",
+   "focused": true,
+   "visible": true,
+   "urgent": false,
+   "rect": {
+    "x": 0,
+    "y": 28,
+    "w": 3072,
+    "h": 1700
+   },
+   "layout": {
+    "size": [
+     3072,
+     1700
+    ],
+    "fullscreen": null,
+    "tiled": {
+     "k": "h",
+     "r": [
+      0,
+      0,
+      10000,
+      10000
+     ],
+     "c": [
+      {
+       "k": "t",
+       "r": [
+        0,
+        0,
+        5000,
+        10000
+       ],
+       "a": 1,
+       "c": [
+        {
+         "w": 41,
+         "r": [
+          0,
+          120,
+          5000,
+          9880
+         ]
+        },
+        {
+         "w": 42,
+         "r": [
+          0,
+          120,
+          5000,
+          9880
+         ]
+        }
+       ]
+      },
+      {
+       "k": "v",
+       "r": [
+        5000,
+        0,
+        5000,
+        10000
+       ],
+       "c": [
+        {
+         "w": 43,
+         "r": [
+          5000,
+          0,
+          5000,
+          5000
+         ]
+        },
+        {
+         "k": "s",
+         "r": [
+          5000,
+          5000,
+          5000,
+          5000
+         ],
+         "a": 0,
+         "c": [
+          {
+           "w": 44,
+           "r": [
+            5000,
+            5360,
+            5000,
+            4640
+           ]
+          },
+          {
+           "w": 45,
+           "r": [
+            5000,
+            5360,
+            5000,
+            4640
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "floating": [
+     {
+      "k": "v",
+      "r": [
+       3000,
+       3000,
+       2000,
+       4000
+      ],
+      "c": [
+       {
+        "w": 46,
+        "r": [
+         3000,
+         3000,
+         2000,
+         2000
+        ]
+       },
+       {
+        "w": 47,
+        "r": [
+         3000,
+         5000,
+         2000,
+         2000
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": 31,
+   "number": 2,
+   "name": "2",
+   "output": "DP-1",
+   "focused": false,
+   "visible": false,
+   "urgent": false,
+   "rect": {
+    "x": 0,
+    "y": 28,
+    "w": 3072,
+    "h": 1700
+   },
+   "layout": {
+    "size": [
+     3072,
+     1700
+    ],
+    "fullscreen": 52,
+    "tiled": {
+     "k": "h",
+     "r": [
+      0,
+      0,
+      10000,
+      10000
+     ],
+     "c": [
+      {
+       "w": 51,
+       "r": [
+        0,
+        0,
+        5000,
+        10000
+       ]
+      },
+      {
+       "w": 52,
+       "r": [
+        5000,
+        0,
+        5000,
+        10000
+       ]
+      }
+     ]
+    },
+    "floating": [
+     {
+      "w": 53,
+      "r": [
+       500,
+       500,
+       9000,
+       9000
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": 32,
+   "number": 3,
+   "name": "3",
+   "output": "DP-1",
+   "focused": false,
+   "visible": false,
+   "urgent": false,
+   "rect": {
+    "x": 0,
+    "y": 28,
+    "w": 3072,
+    "h": 1700
+   },
+   "layout": {
+    "size": [
+     3072,
+     1700
+    ],
+    "fullscreen": null,
+    "tiled": {
+     "k": "h",
+     "r": [
+      0,
+      0,
+      10000,
+      10000
+     ],
+     "c": [
+      {
+       "w": 61,
+       "r": [
+        0,
+        0,
+        6000,
+        10000
+       ]
+      },
+      {
+       "k": "v",
+       "r": [
+        6000,
+        0,
+        4000,
+        10000
+       ],
+       "c": [
+        {
+         "w": 62,
+         "r": [
+          6000,
+          0,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 63,
+         "r": [
+          6000,
+          1000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 64,
+         "r": [
+          6000,
+          2000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 65,
+         "r": [
+          6000,
+          3000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 66,
+         "r": [
+          6000,
+          4000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 67,
+         "r": [
+          6000,
+          5000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 68,
+         "r": [
+          6000,
+          6000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 69,
+         "r": [
+          6000,
+          7000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 70,
+         "r": [
+          6000,
+          8000,
+          4000,
+          1000
+         ]
+        },
+        {
+         "w": 71,
+         "r": [
+          6000,
+          9000,
+          4000,
+          1000
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "floating": []
+   }
+  }
+ ],
+ "windows": [
+  {
+   "id": 41,
+   "workspace_id": 30,
+   "app_id": "Alacritty",
+   "title": "~/sway",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 42,
+   "workspace_id": 30,
+   "app_id": "Alacritty",
+   "title": "htop",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 43,
+   "workspace_id": 30,
+   "app_id": "google-chrome",
+   "title": "Docs",
+   "focused": true,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 44,
+   "workspace_id": 30,
+   "app_id": "signal",
+   "title": "Signal",
+   "focused": false,
+   "urgent": true,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 45,
+   "workspace_id": 30,
+   "app_id": "Alacritty",
+   "title": "logs",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 46,
+   "workspace_id": 30,
+   "app_id": "pavucontrol",
+   "title": "Volume",
+   "focused": false,
+   "urgent": false,
+   "floating": true,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 47,
+   "workspace_id": 30,
+   "app_id": "mpv",
+   "title": "clip",
+   "focused": false,
+   "urgent": false,
+   "floating": true,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 51,
+   "workspace_id": 31,
+   "app_id": "firefox",
+   "title": "Mozilla",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 52,
+   "workspace_id": 31,
+   "app_id": "mpv",
+   "title": "Film",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": true,
+   "icon": null
+  },
+  {
+   "id": 53,
+   "workspace_id": 31,
+   "app_id": "blueman",
+   "title": "Bluetooth",
+   "focused": false,
+   "urgent": false,
+   "floating": true,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 61,
+   "workspace_id": 32,
+   "app_id": "emacs",
+   "title": "notes",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 62,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 0",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 63,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 1",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 64,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 2",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 65,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 3",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 66,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 4",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 67,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 5",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 68,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 6",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 69,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 7",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 70,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 8",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  },
+  {
+   "id": 71,
+   "workspace_id": 32,
+   "app_id": "Alacritty",
+   "title": "term 9",
+   "focused": false,
+   "urgent": false,
+   "floating": false,
+   "fullscreen": false,
+   "icon": null
+  }
+ ],
+ "scratchpad": [],
+ "truncated": false
+}

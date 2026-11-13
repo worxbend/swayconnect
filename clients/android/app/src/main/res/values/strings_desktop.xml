@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Desktop area: workspace cards, pager, pages, window sheets (docs/UX.md 5). -->
+<resources>
+    <!-- Workspace cards (UX 5.4) -->
+    <plurals name="desktop_window_count">
+        <item quantity="one">%d window</item>
+        <item quantity="other">%d windows</item>
+    </plurals>
+    <string name="desktop_count_empty">empty</string>
+    <string name="desktop_card_spoken">Workspace %1$s</string>
+    <string name="desktop_card_focused">focused on computer</string>
+    <string name="desktop_card_urgent">needs attention</string>
+    <string name="desktop_card_switching">switching</string>
+    <string name="desktop_card_open">Show this workspace</string>
+    <string name="desktop_card_more">Workspace actions</string>
+    <string name="desktop_next">Next workspace</string>
+    <string name="desktop_previous">Previous workspace</string>
+    <string name="desktop_cards">Workspaces</string>
+
+    <!-- Page header (UX 5.6) -->
+    <string name="desktop_header">%1$s · %2$s</string>
+    <string name="desktop_view_map">Layout view</string>
+    <string name="desktop_view_list">List view</string>
+    <string name="desktop_view_needs_newer">Needs a newer swayconnectd</string>
+    <string name="desktop_show_on_computer">Show on computer</string>
+    <string name="desktop_on_screen">On screen</string>
+    <string name="desktop_moved">Computer moved to %1$s →</string>
+    <string name="desktop_moved_spoken">The computer moved to workspace %1$s. Show it</string>
+    <string name="desktop_layout_cut">Layout too large to send; showing the list</string>
+    <string name="desktop_no_layout">No layout for this workspace; showing the list</string>
+    <string name="desktop_list_hint">Larger text · Show list</string>
+    <string name="desktop_list_hint_dismiss">Dismiss the list suggestion</string>
+    <string name="desktop_outside_map">Not on the map</string>
+
+    <!-- States (UX 5.9) -->
+    <string name="desktop_read_only">The computer is set to look only.</string>
+    <string name="desktop_screens_off">The screens are off.</string>
+    <string name="desktop_truncated">The computer has more windows than the phone can show.</string>
+    <string name="desktop_sway_offline">Sway is not running on %1$s. The phone reconnects when it starts.</string>
+    <string name="desktop_no_workspaces">The computer has no workspaces to show.</string>
+    <string name="desktop_seen_seconds">Offline · last seen %1$d s ago</string>
+    <string name="desktop_seen_minutes">Offline · last seen %1$d min ago</string>
+    <string name="desktop_stale_connecting">Connecting · showing the last known desktop</string>
+    <string name="desktop_stale_spoken">not live, taps are off</string>
+    <string name="desktop_retry">Retry now</string>
+    <string name="desktop_loading">Loading the desktop</string>
+    <string name="desktop_unpaired">This phone is no longer paired with %1$s.</string>
+    <string name="desktop_unpaired_unknown">this computer</string>
+    <string name="desktop_wrong_key">This is not the computer you paired with.</string>
+    <string name="desktop_wrong_key_detail">It answered with another certificate. The phone sent nothing and does not try again by itself.</string>
+    <string name="desktop_pair_again">Pair again</string>
+
+    <!-- Windows (UX 5.2, 5.7) -->
+    <string name="desktop_open_app_here">Open an app here</string>
+    <string name="desktop_open_app_on">Open an app on %1$s</string>
+    <string name="desktop_tap_to_focus">Tap a window to focus it</string>
+    <string name="desktop_focus_window">Focus</string>
+    <string name="desktop_fullscreen">Full</string>
+    <string name="desktop_exit_fullscreen">Exit full</string>
+    <string name="desktop_fullscreen_spoken">Fullscreen</string>
+    <string name="desktop_exit_fullscreen_spoken">Exit fullscreen</string>
+    <string name="desktop_action_locked">%1$s, off for this phone</string>
+
+    <!-- Sheets (UX 5.8, 6) -->
+    <string name="desktop_sheet_tiled">tiled</string>
+    <string name="desktop_sheet_floating">floating</string>
+    <string name="desktop_sheet_on_workspace">workspace %1$s</string>
+    <string name="desktop_sheet_workspace">Workspace %1$s</string>
+    <string name="desktop_sheet_small">Small windows</string>
+    <string name="desktop_sheet_group">Windows in this group</string>
+    <string name="desktop_sheet_gone">These windows are gone.</string>
+</resources>

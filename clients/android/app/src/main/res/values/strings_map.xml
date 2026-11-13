@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spoken summary of the map: "Layout, horizontal split, 3 windows". -->
+    <string name="map_description">Layout, %1$s, %2$s</string>
+    <string name="map_kind_split_h">horizontal split</string>
+    <string name="map_kind_split_v">vertical split</string>
+    <string name="map_kind_tabbed">tabbed</string>
+    <string name="map_kind_stacked">stacked</string>
+    <string name="map_kind_one_window">one window</string>
+    <string name="map_kind_floating_only">floating only</string>
+    <string name="map_kind_empty">empty</string>
+    <plurals name="map_window_count">
+        <item quantity="one">%d window</item>
+        <item quantity="other">%d windows</item>
+    </plurals>
+
+    <string name="map_pos_whole">whole screen</string>
+    <string name="map_pos_top_left">top left</string>
+    <string name="map_pos_top">top</string>
+    <string name="map_pos_top_right">top right</string>
+    <string name="map_pos_left">left</string>
+    <string name="map_pos_centre">centre</string>
+    <string name="map_pos_right">right</string>
+    <string name="map_pos_bottom_left">bottom left</string>
+    <string name="map_pos_bottom">bottom</string>
+    <string name="map_pos_bottom_right">bottom right</string>
+
+    <string name="map_action_focus">Focus</string>
+    <string name="map_action_open_group">Show the windows</string>
+    <!-- "Tabbed group, 5 windows, showing Chrome" -->
+    <string name="map_group_tabbed">Tabbed group, %1$s, showing %2$s</string>
+    <string name="map_group_stacked">Stacked group, %1$s, showing %2$s</string>
+    <string name="map_tab">Tab %1$d of %2$d, %3$s</string>
+    <string name="map_more_rows">+%1$d</string>
+
+    <string name="map_empty">Nothing open on %1$s</string>
+
+    <plurals name="map_chip_small">
+        <item quantity="one">+%d small window</item>
+        <item quantity="other">+%d small windows</item>
+    </plurals>
+    <string name="map_chip_floating">Floating · %1$d</string>
+    <string name="map_chip_floating_shown">shown</string>
+    <string name="map_chip_floating_hidden">hidden</string>
+    <string name="map_chip_dense">Dense workspace · Show list</string>
+</resources>
