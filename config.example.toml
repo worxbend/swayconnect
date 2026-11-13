@@ -1,0 +1,18 @@
+# Label shown to clients after authentication. Default: system hostname.
+# 1 to 64 bytes, no control or format characters.
+server_name = "desk"
+
+# Addresses to listen on. Default: ["127.0.0.1:28414"].
+# "0.0.0.0", "::" and any other wildcard are refused.
+listen = ["127.0.0.1:28414", "192.168.1.200:28414"]
+
+# Source networks allowed to connect to non-loopback listen addresses.
+# Required as soon as "listen" has a non-loopback address. Loopback peers are always allowed on loopback.
+allow_from = ["192.168.1.0/24"]
+
+# true: every action is refused with error "read_only". State can still be read.
+read_only = false
+
+[sway]
+# Empty: discover (SWAYSOCK, then glob in XDG_RUNTIME_DIR). Set: use only this path.
+socket = ""

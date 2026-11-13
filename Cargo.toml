@@ -1,0 +1,48 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/swayconnect-protocol",
+    "crates/swayconnect-sway",
+    "crates/swayconnect-daemon",
+    "crates/swayconnect-cli",
+    "crates/swayconnect-testkit",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+
+# Versions and features: docs/DESIGN.md 7.3. Only slice S0 edits manifests.
+[workspace.dependencies]
+swayconnect-protocol = { path = "crates/swayconnect-protocol", version = "0.1.0" }
+swayconnect-sway = { path = "crates/swayconnect-sway", version = "0.1.0" }
+swayconnect-daemon = { path = "crates/swayconnect-daemon", version = "0.1.0" }
+swayconnect-cli = { path = "crates/swayconnect-cli", version = "0.1.0" }
+swayconnect-testkit = { path = "crates/swayconnect-testkit" }
+
+tokio = { version = "1.54", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync", "signal"] }
+# ring provider only: no tls12, no brotli, no aws-lc-rs C build.
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "logging"] }
+tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring"] }
+rcgen = { version = "0.14.10", default-features = false, features = ["crypto", "ring"] }
+ring = "0.17.14"
+base64 = "0.23"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "1.2"
+clap = { version = "4.6", features = ["derive"] }
+thiserror = "2.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# No default features: they pull in the `image` crate. The terminal renderer needs none.
+qrcode = { version = "0.14.1", default-features = false }
+
+# Dev only.
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
+# Not in docs/DESIGN.md 7.3: the identity test of slice S6a must parse the created certificate.
+x509-parser = "0.18"

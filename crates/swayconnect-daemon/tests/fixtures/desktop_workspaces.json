@@ -1,0 +1,10 @@
+[
+  {
+    "id": 11, "type": "workspace", "num": 1, "name": "1", "output": "TEST-1",
+    "focused": true, "visible": true, "urgent": false
+  },
+  {
+    "id": 16, "type": "workspace", "num": -1, "name": "mail", "output": "TEST-1",
+    "focused": false, "visible": false, "urgent": true
+  }
+]

@@ -1,0 +1,17 @@
+[package]
+name = "swayconnect-testkit"
+description = "Test support for swayconnect: fake sway IPC server, temp directories, fixtures"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

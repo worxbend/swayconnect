@@ -1,0 +1,14 @@
+[package]
+name = "swayconnect-protocol"
+description = "swayconnect wire protocol: messages, frames, proofs, pairing URI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+base64.workspace = true
+ring.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

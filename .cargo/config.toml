@@ -1,0 +1,6 @@
+# Machine safety, docs/IMPLEMENTATION_PLAN.md 1.2. Applies to every cargo call, also a raw one.
+[build]
+jobs = 4
+
+[env]
+RUST_TEST_THREADS = "4"

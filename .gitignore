@@ -1,0 +1,12 @@
+/target
+*.swp
+*~
+.idea/
+.vscode/
+
+# Android (clients/android)
+.gradle/
+.kotlin/
+build/
+local.properties
+*.apk

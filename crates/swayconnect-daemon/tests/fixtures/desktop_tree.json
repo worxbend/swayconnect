@@ -1,0 +1,77 @@
+{
+  "id": 1, "type": "root", "name": "root",
+  "nodes": [
+    {
+      "id": 2, "type": "output", "name": "__i3",
+      "nodes": [
+        {
+          "id": 3, "type": "workspace", "name": "__i3_scratch", "fullscreen_mode": 1,
+          "nodes": [],
+          "floating_nodes": [
+            {
+              "id": 30, "type": "floating_con", "name": "Hidden scratch terminal",
+              "app_id": "scratch-term", "pid": 1000, "fullscreen_mode": 0,
+              "nodes": [], "floating_nodes": []
+            }
+          ]
+        }
+      ],
+      "floating_nodes": []
+    },
+    {
+      "id": 10, "type": "output", "name": "TEST-1",
+      "rect": { "x": 0, "y": 0, "width": 2560, "height": 1440 },
+      "nodes": [
+        {
+          "id": 11, "type": "workspace", "num": 1, "name": "1", "output": "TEST-1",
+          "focused": false, "urgent": false, "fullscreen_mode": 1,
+          "floating_nodes": [
+            {
+              "id": 15, "type": "floating_con", "name": "Volume mixer",
+              "app_id": "mixer", "pid": 1003, "focused": false, "urgent": true,
+              "fullscreen_mode": 0, "nodes": [], "floating_nodes": []
+            }
+          ],
+          "nodes": [
+            {
+              "id": 12, "type": "con", "name": null, "app_id": null, "pid": null,
+              "fullscreen_mode": 0, "floating_nodes": [],
+              "nodes": [
+                {
+                  "id": 13, "type": "con", "name": "Shell in the garden shed",
+                  "app_id": "terminal", "pid": 1001, "focused": true, "urgent": false,
+                  "fullscreen_mode": 0, "marks": ["a"], "nodes": [], "floating_nodes": []
+                },
+                {
+                  "id": 14, "type": "con", "name": "Poster for the bake sale",
+                  "app_id": null, "pid": 1002, "window": 4194311,
+                  "window_properties": { "class": "Painter", "instance": "painter" },
+                  "focused": false, "urgent": false, "fullscreen_mode": 1,
+                  "nodes": [], "floating_nodes": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 16, "type": "workspace", "num": -1, "name": "mail", "output": "TEST-1",
+          "focused": false, "urgent": false, "fullscreen_mode": 1,
+          "nodes": [
+            {
+              "id": 17, "type": "con", "name": null, "app_id": "mail-reader", "pid": 1004,
+              "focused": false, "urgent": false, "fullscreen_mode": 0,
+              "nodes": [], "floating_nodes": []
+            },
+            {
+              "id": 18, "type": "con", "name": null, "app_id": null, "pid": null,
+              "fullscreen_mode": 0, "nodes": [], "floating_nodes": []
+            }
+          ],
+          "floating_nodes": []
+        }
+      ],
+      "floating_nodes": []
+    }
+  ],
+  "floating_nodes": []
+}

@@ -1,0 +1,31 @@
+[package]
+name = "swayconnect-cli"
+description = "swayconnect reference client and its client library"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swayconnect"
+path = "src/main.rs"
+
+[dependencies]
+swayconnect-protocol.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+rustls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-rustls.workspace = true
+
+[dev-dependencies]
+swayconnect-testkit.workspace = true
+assert_cmd.workspace = true
+# Tests decode the standard-base64 fields of protocol/vectors/v1/fingerprint.json.
+base64.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
