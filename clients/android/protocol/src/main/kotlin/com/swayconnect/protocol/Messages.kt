@@ -1,0 +1,185 @@
+package com.swayconnect.protocol
+
+import java.io.IOException
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
+
+// The handshake classes are not data classes: a generated toString would print nonces and proofs.
+
+/** A message the server may send (docs/PROTOCOL.md 6.5). */
+sealed interface ServerMessage
+
+@Serializable
+data class ProtocolRange(val min: Int, val max: Int)
+
+@Serializable
+class Hello(val protocol: ProtocolRange, val nonce: String) : ServerMessage
+
+@Serializable
+class PairRequest(
+    val protocol: Int,
+    val nonce: String,
+    val proof: String,
+    @SerialName("device_name") val deviceName: String,
+    val platform: String? = null,
+    val client: String? = null,
+)
+
+@Serializable
+class AuthRequest(
+    val protocol: Int,
+    @SerialName("device_id") val deviceId: String,
+    val nonce: String,
+    val proof: String,
+    val client: String? = null,
+)
+
+@Serializable
+class Welcome(
+    val protocol: Int,
+    @SerialName("device_id") val deviceId: String,
+    @SerialName("server_proof") val serverProof: String,
+    @SerialName("confirm_code") val confirmCode: String? = null,
+    val scopes: List<String>,
+    val ops: List<String>,
+    val topics: List<String>,
+    @SerialName("read_only") val readOnly: Boolean,
+    val server: ServerInfo,
+    val limits: FrameLimits,
+) : ServerMessage
+
+@Serializable
+data class ServerInfo(val name: String, val version: String)
+
+@Serializable
+data class FrameLimits(
+    @SerialName("max_frame_c2s") val maxFrameC2s: Int,
+    @SerialName("max_frame_s2c") val maxFrameS2c: Int,
+    @SerialName("idle_timeout_ms") val idleTimeoutMs: Long,
+)
+
+@Serializable
+data class Reject(val code: String, val message: String) : ServerMessage
+
+@Serializable
+data class Req(val id: Long, val op: String, val args: JsonObject? = null)
+
+@Serializable
+data class Res(
+    val id: Long,
+    val ok: Boolean,
+    val result: JsonObject? = null,
+    val error: ErrorBody? = null,
+) : ServerMessage
+
+@Serializable
+data class ErrorBody(val code: String, val message: String, val detail: JsonObject? = null)
+
+@Serializable
+data class Evt(val event: String, val data: JsonObject) : ServerMessage
+
+@Serializable
+data class Bye(val code: String, val message: String) : ServerMessage
+
+/** One entry of a `state.subscribe` result, and the `data` of a `state.changed` event. */
+@Serializable
+data class TopicState(val topic: String, val rev: Long, val data: JsonObject)
+
+@Serializable
+data class SubscribeResult(val states: List<TopicState>)
+
+// Codes are strings on the wire and stay strings here: a client must accept codes it does not know
+// (docs/PROTOCOL.md 13.2). Only the codes a client reacts to have a name.
+
+object RejectCode {
+    const val AUTH_FAILED = "auth_failed"
+    const val PAIRING_FAILED = "pairing_failed"
+    const val UNSUPPORTED_VERSION = "unsupported_version"
+}
+
+object ByeCode {
+    const val REVOKED = "revoked"
+}
+
+object ErrorCode {
+    const val READ_ONLY = "read_only"
+    const val RATE_LIMITED = "rate_limited"
+}
+
+object Op {
+    const val PING = "ping"
+    const val STATE_SUBSCRIBE = "state.subscribe"
+    const val WORKSPACE_FOCUS = "workspace.focus"
+    const val WINDOW_FOCUS = "window.focus"
+    const val WINDOW_FULLSCREEN = "window.fullscreen"
+}
+
+object Topic {
+    const val DESKTOP = "desktop"
+}
+
+object EventName {
+    const val STATE_CHANGED = "state.changed"
+    const val PAIRING_CONFIRMED = "pairing.confirmed"
+}
+
+/** A frame was valid JSON but not a valid message. */
+class MalformedMessageException(message: String, cause: Throwable? = null) : IOException(message, cause)
+
+/** Maps messages to and from frame payloads. */
+object Wire {
+    // explicitNulls is the default, written out because docs/DESIGN.md 8.2 names it. It is an experimental setting.
+    @OptIn(ExperimentalSerializationApi::class)
+    val json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = true
+    }
+
+    fun encode(message: PairRequest): JsonObject = tagged("pair", json.encodeToJsonElement(PairRequest.serializer(), message))
+
+    fun encode(message: AuthRequest): JsonObject = tagged("auth", json.encodeToJsonElement(AuthRequest.serializer(), message))
+
+    fun encode(message: Req): JsonObject = tagged("req", json.encodeToJsonElement(Req.serializer(), message))
+
+    /**
+     * Returns null for a `type` this client does not know: the caller ignores such a frame (docs/PROTOCOL.md 13.2).
+     */
+    @Throws(MalformedMessageException::class)
+    fun decodeServerMessage(frame: JsonObject): ServerMessage? {
+        val type = (frame["type"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            ?: throw MalformedMessageException("frame has no string member \"type\"")
+        return when (type) {
+            "hello" -> decode(Hello.serializer(), frame)
+            "welcome" -> decode(Welcome.serializer(), frame)
+            "reject" -> decode(Reject.serializer(), frame)
+            "res" -> decode(Res.serializer(), frame)
+            "evt" -> decode(Evt.serializer(), frame)
+            "bye" -> decode(Bye.serializer(), frame)
+            else -> null
+        }
+    }
+
+    @Throws(MalformedMessageException::class)
+    fun <T> decode(strategy: DeserializationStrategy<T>, element: JsonElement): T =
+        try {
+            json.decodeFromJsonElement(strategy, element)
+        } catch (e: SerializationException) {
+            throw MalformedMessageException("message does not have the shape the protocol defines", e)
+        }
+
+    private fun tagged(type: String, body: JsonElement): JsonObject =
+        buildJsonObject {
+            put("type", type)
+            body.jsonObject.forEach { (name, value) -> put(name, value) }
+        }
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme of the Compose host activity. The UI theme is SwayConnectTheme in Kotlin.
+         Light here and dark in values-night, so the starting window has the tone of the UI that follows. -->
+    <style name="Theme.SwayConnect" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
