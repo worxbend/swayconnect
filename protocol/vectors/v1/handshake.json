@@ -1,0 +1,101 @@
+[
+  {
+    "name": "device-id-not-canonical",
+    "after": "t2",
+    "window_open": false,
+    "payload": "{\"type\":\"auth\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozx\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"o1AVbXOYmXPduQKXp6_NJPrlOnX8jICYQ-zp9yWhUuQ\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "null-in-optional-member",
+    "after": "t2",
+    "window_open": false,
+    "payload": "{\"type\":\"auth\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"o1AVbXOYmXPduQKXp6_NJPrlOnX8jICYQ-zp9yWhUuQ\",\"client\":null}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "client-with-control-character",
+    "after": "t2",
+    "window_open": false,
+    "payload": "{\"type\":\"auth\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"o1AVbXOYmXPduQKXp6_NJPrlOnX8jICYQ-zp9yWhUuQ\",\"client\":\"cli\\u001b[2J\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "required-member-missing",
+    "after": "t2",
+    "window_open": false,
+    "payload": "{\"type\":\"auth\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"proof\":\"o1AVbXOYmXPduQKXp6_NJPrlOnX8jICYQ-zp9yWhUuQ\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "version-before-proof",
+    "after": "t2",
+    "window_open": false,
+    "payload": "{\"type\":\"auth\",\"protocol\":2,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}",
+    "expect": {
+      "reject": "unsupported_version"
+    }
+  },
+  {
+    "name": "unknown-type",
+    "after": "t2",
+    "window_open": false,
+    "payload": "{\"type\":\"login\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "device-name-empty",
+    "after": "t1",
+    "window_open": true,
+    "payload": "{\"type\":\"pair\",\"protocol\":1,\"nonce\":\"QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8\",\"proof\":\"v4IEM_iXawe7OxWgxLMdXMS5jZQIfxzoaV8M6SOpK4Y\",\"device_name\":\"\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "device-name-with-u202e",
+    "after": "t1",
+    "window_open": true,
+    "payload": "{\"type\":\"pair\",\"protocol\":1,\"nonce\":\"QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8\",\"proof\":\"v4IEM_iXawe7OxWgxLMdXMS5jZQIfxzoaV8M6SOpK4Y\",\"device_name\":\"Pixel\\u202e9\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "device-name-over-64-bytes",
+    "after": "t1",
+    "window_open": true,
+    "payload": "{\"type\":\"pair\",\"protocol\":1,\"nonce\":\"QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8\",\"proof\":\"v4IEM_iXawe7OxWgxLMdXMS5jZQIfxzoaV8M6SOpK4Y\",\"device_name\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "platform-with-newline",
+    "after": "t1",
+    "window_open": true,
+    "payload": "{\"type\":\"pair\",\"protocol\":1,\"nonce\":\"QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8\",\"proof\":\"v4IEM_iXawe7OxWgxLMdXMS5jZQIfxzoaV8M6SOpK4Y\",\"device_name\":\"Pixel 9\",\"platform\":\"android\\n\"}",
+    "expect": {
+      "reject": "bad_message"
+    }
+  },
+  {
+    "name": "wrong-pair-proof",
+    "after": "t1",
+    "window_open": true,
+    "payload": "{\"type\":\"pair\",\"protocol\":1,\"nonce\":\"QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8\",\"proof\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"device_name\":\"Pixel 9\"}",
+    "expect": {
+      "reject": "pairing_failed"
+    }
+  }
+]

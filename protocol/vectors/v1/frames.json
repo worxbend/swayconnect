@@ -1,0 +1,92 @@
+[
+  {
+    "name": "empty-object",
+    "limit": 4096,
+    "input_hex": [
+      "000000027b7d"
+    ],
+    "expect": [
+      "{}"
+    ]
+  },
+  {
+    "name": "ping",
+    "limit": 4096,
+    "input_hex": [
+      "000000217b2274797065223a22726571222c226964223a352c226f70223a2270696e67227d"
+    ],
+    "expect": [
+      "{\"type\":\"req\",\"id\":5,\"op\":\"ping\"}"
+    ]
+  },
+  {
+    "name": "two-frames-one-read",
+    "limit": 4096,
+    "input_hex": [
+      "000000217b2274797065223a22726571222c226964223a352c226f70223a2270696e67227d000000217b2274797065223a22726571222c226964223a352c226f70223a2270696e67227d"
+    ],
+    "expect": [
+      "{\"type\":\"req\",\"id\":5,\"op\":\"ping\"}",
+      "{\"type\":\"req\",\"id\":5,\"op\":\"ping\"}"
+    ]
+  },
+  {
+    "name": "one-frame-two-reads",
+    "limit": 4096,
+    "input_hex": [
+      "000000217b2274797065",
+      "223a22726571222c226964223a352c226f70223a2270696e67227d"
+    ],
+    "expect": [
+      "{\"type\":\"req\",\"id\":5,\"op\":\"ping\"}"
+    ]
+  },
+  {
+    "name": "length-zero",
+    "limit": 4096,
+    "input_hex": [
+      "00000000"
+    ],
+    "expect": "bad"
+  },
+  {
+    "name": "length-one",
+    "limit": 4096,
+    "input_hex": [
+      "000000017b"
+    ],
+    "expect": "bad"
+  },
+  {
+    "name": "too-large-no-payload",
+    "limit": 4096,
+    "input_hex": [
+      "00001001"
+    ],
+    "expect": "too_large"
+  },
+  {
+    "name": "not-json",
+    "limit": 4096,
+    "input_hex": [
+      "000000097b6e6f74206a736f6e"
+    ],
+    "expect": "bad"
+  },
+  {
+    "name": "not-an-object",
+    "limit": 4096,
+    "input_hex": [
+      "000000025b5d"
+    ],
+    "expect": "bad"
+  },
+  {
+    "name": "not-utf8",
+    "limit": 4096,
+    "input_hex": [
+      "000000037bff7d"
+    ],
+    "expect": "bad"
+  }
+]

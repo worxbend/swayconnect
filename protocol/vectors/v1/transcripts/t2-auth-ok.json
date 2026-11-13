@@ -1,0 +1,18 @@
+{
+  "name": "t2-auth-ok",
+  "preconditions": "Uses the later connection values of 15.2.",
+  "frames": [
+    {
+      "from": "S",
+      "payload": "{\"type\":\"hello\",\"protocol\":{\"min\":1,\"max\":1},\"nonce\":\"gIGCg4SFhoeIiYqLjI2Oj5CRkpOUlZaXmJmam5ydnp8\"}"
+    },
+    {
+      "from": "C",
+      "payload": "{\"type\":\"auth\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"o1AVbXOYmXPduQKXp6_NJPrlOnX8jICYQ-zp9yWhUuQ\",\"client\":\"swayconnect-cli/0.1.0\"}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"4J89wtnib1kTiC4V4fCyaW8ponMU8zHsyA7dkFDEQBo\",\"scopes\":[\"state.read\",\"state.titles\",\"control\"],\"ops\":[\"ping\",\"state.subscribe\",\"workspace.focus\",\"window.focus\",\"window.fullscreen\"],\"topics\":[\"desktop\"],\"read_only\":false,\"server\":{\"name\":\"desk\",\"version\":\"0.1.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "t5-version",
+  "preconditions": "After the `hello` of T2. The client wrongly sends version 2.",
+  "frames": [
+    {
+      "from": "C",
+      "payload": "{\"type\":\"auth\",\"protocol\":2,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"o1AVbXOYmXPduQKXp6_NJPrlOnX8jICYQ-zp9yWhUuQ\"}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"reject\",\"code\":\"unsupported_version\",\"message\":\"supported protocol versions: 1 to 1\"}"
+    }
+  ]
+}

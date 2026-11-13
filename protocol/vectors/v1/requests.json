@@ -1,0 +1,361 @@
+[
+  {
+    "name": "01-subscribe",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":1,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"desktop\"]}}",
+    "expect": "ok"
+  },
+  {
+    "name": "02-fullscreen",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":2,\"op\":\"window.fullscreen\",\"args\":{\"window_id\":5,\"enabled\":true}}",
+    "expect": "ok"
+  },
+  {
+    "name": "03-unknown-topic",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":3,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"media\"]}}",
+    "expect": {
+      "error": "unknown_topic"
+    }
+  },
+  {
+    "name": "04-unknown-op",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":4,\"op\":\"sway.command\",\"args\":{\"command\":\"exec true\"}}",
+    "expect": {
+      "error": "unknown_op"
+    }
+  },
+  {
+    "name": "05-workspace-focus-no-argument",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":5,\"op\":\"workspace.focus\",\"args\":{}}",
+    "expect": {
+      "error": "bad_request"
+    }
+  },
+  {
+    "name": "06-workspace-focus-both-arguments",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":6,\"op\":\"workspace.focus\",\"args\":{\"number\":2,\"workspace_id\":9}}",
+    "expect": {
+      "error": "bad_request"
+    }
+  },
+  {
+    "name": "07-workspace-number-out-of-range",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":7,\"op\":\"workspace.focus\",\"args\":{\"number\":1000}}",
+    "expect": {
+      "error": "bad_request"
+    }
+  },
+  {
+    "name": "08-workspace-number-is-a-string",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":8,\"op\":\"workspace.focus\",\"args\":{\"number\":\"2; exec true\"}}",
+    "expect": {
+      "error": "bad_request"
+    }
+  },
+  {
+    "name": "09-unknown-member-ignored",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":9,\"op\":\"window.focus\",\"args\":{\"window_id\":5,\"extra\":1}}",
+    "expect": "ok"
+  },
+  {
+    "name": "10-workspace-focus-by-id",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":10,\"op\":\"workspace.focus\",\"args\":{\"workspace_id\":9}}",
+    "expect": "ok"
+  },
+  {
+    "name": "11-workspace-id-as-window-id",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":11,\"op\":\"window.focus\",\"args\":{\"window_id\":4}}",
+    "expect": {
+      "error": "not_found"
+    }
+  },
+  {
+    "name": "12-window-id-as-workspace-id",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":12,\"op\":\"workspace.focus\",\"args\":{\"workspace_id\":5}}",
+    "expect": {
+      "error": "not_found"
+    }
+  },
+  {
+    "name": "13-args-is-a-number",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":13,\"op\":\"ping\",\"args\":5}",
+    "expect": {
+      "error": "bad_request"
+    }
+  },
+  {
+    "name": "14-args-is-null",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":14,\"op\":\"ping\",\"args\":null}",
+    "expect": {
+      "error": "bad_request"
+    }
+  },
+  {
+    "name": "15-action-without-control",
+    "scopes": [
+      "state.read"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":15,\"op\":\"workspace.focus\",\"args\":{\"number\":2}}",
+    "expect": {
+      "error": "forbidden",
+      "detail": {
+        "scope": "control"
+      }
+    }
+  },
+  {
+    "name": "16-subscribe-without-state-read",
+    "scopes": [
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":16,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"desktop\"]}}",
+    "expect": {
+      "error": "forbidden",
+      "detail": {
+        "scope": "state.read"
+      }
+    }
+  },
+  {
+    "name": "17-read-only",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": true,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":17,\"op\":\"window.focus\",\"args\":{\"window_id\":5}}",
+    "expect": {
+      "error": "read_only"
+    }
+  },
+  {
+    "name": "18-scope-before-read-only",
+    "scopes": [
+      "state.read"
+    ],
+    "read_only": true,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":18,\"op\":\"workspace.focus\",\"args\":{\"number\":2}}",
+    "expect": {
+      "error": "forbidden"
+    }
+  },
+  {
+    "name": "19-rate-limited",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 0,
+    "payload": "{\"type\":\"req\",\"id\":19,\"op\":\"window.focus\",\"args\":{\"window_id\":5}}",
+    "expect": {
+      "error": "rate_limited",
+      "detail": {
+        "retry_after_ms": {
+          "min": 1,
+          "max": 500
+        }
+      }
+    }
+  },
+  {
+    "name": "20-sway-offline",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": false,
+    "state_ref": "offline",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"id\":20,\"op\":\"window.focus\",\"args\":{\"window_id\":5}}",
+    "expect": {
+      "error": "sway_unavailable"
+    }
+  },
+  {
+    "name": "21-req-without-id",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"req\",\"op\":\"ping\"}",
+    "expect": {
+      "bye": "protocol_error"
+    }
+  },
+  {
+    "name": "22-frame-without-type",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"id\":22,\"op\":\"ping\"}",
+    "expect": {
+      "bye": "protocol_error"
+    }
+  },
+  {
+    "name": "23-auth-after-welcome",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"auth\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"o1AVbXOYmXPduQKXp6_NJPrlOnX8jICYQ-zp9yWhUuQ\"}",
+    "expect": {
+      "bye": "protocol_error"
+    }
+  },
+  {
+    "name": "24-unknown-type",
+    "scopes": [
+      "state.read",
+      "control"
+    ],
+    "read_only": false,
+    "sway_online": true,
+    "state_ref": "t3-rev7",
+    "actions_left": 5,
+    "payload": "{\"type\":\"note\",\"text\":\"hi\"}",
+    "expect": "ignored"
+  }
+]

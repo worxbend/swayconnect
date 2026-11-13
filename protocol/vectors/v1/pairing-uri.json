@@ -1,0 +1,115 @@
+{
+  "valid": [
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&name=desk",
+      "v": 1,
+      "host": "192.168.1.200",
+      "port": 28414,
+      "fp_hex": "aa5108ad019ade397fbe42244fba3d963644da7c753c29a774e684275c9fc0b8",
+      "secret_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "name": "desk"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=fd00%3A%3A1&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "v": 1,
+      "host": "fd00::1",
+      "port": 28414,
+      "fp_hex": "aa5108ad019ade397fbe42244fba3d963644da7c753c29a774e684275c9fc0b8",
+      "secret_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "name": null
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&name=my%20desk%2B1",
+      "v": 1,
+      "host": "192.168.1.200",
+      "port": 28414,
+      "fp_hex": "aa5108ad019ade397fbe42244fba3d963644da7c753c29a774e684275c9fc0b8",
+      "secret_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "name": "my desk+1"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&name=a+b",
+      "v": 1,
+      "host": "192.168.1.200",
+      "port": 28414,
+      "fp_hex": "aa5108ad019ade397fbe42244fba3d963644da7c753c29a774e684275c9fc0b8",
+      "secret_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "name": "a+b"
+    },
+    {
+      "uri": "SwayConnect://PAIR?name=desk&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&port=28414&host=192.168.1.200&v=1&x=9",
+      "v": 1,
+      "host": "192.168.1.200",
+      "port": 28414,
+      "fp_hex": "aa5108ad019ade397fbe42244fba3d963644da7c753c29a774e684275c9fc0b8",
+      "secret_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "name": "desk"
+    }
+  ],
+  "invalid": [
+    {
+      "uri": "swayconnect://pair?v=2&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "unknown v"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg",
+      "reason": "secret missing"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=0&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "port out of range"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=028414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "leading zero in port"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "fp is not 32 bytes"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg=&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "fp has padding"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLh&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "fp has non-zero trailing bits (2.2)"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=a&host=b&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "host twice"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&name=",
+      "reason": "empty name"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&name=a%1Bb",
+      "reason": "control character in name"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&name=%ff",
+      "reason": "name is not UTF-8"
+    },
+    {
+      "uri": "swayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8#x",
+      "reason": "fragment"
+    },
+    {
+      "uri": "swayconnect://pair/x?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "path not empty"
+    },
+    {
+      "uri": "swayconnect://pair?V=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "v missing (V is another name)"
+    },
+    {
+      "uri": "https://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "wrong scheme"
+    },
+    {
+      "uri": "\u017fwayconnect://pair?v=1&host=192.168.1.200&port=28414&fp=qlEIrQGa3jl_vkIkT7o9ljZE2nx1PCmndOaEJ1yfwLg&secret=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "reason": "scheme starts with U+017F, which only Unicode case folding takes for s"
+    }
+  ]
+}

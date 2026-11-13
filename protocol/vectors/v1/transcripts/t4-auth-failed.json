@@ -1,0 +1,14 @@
+{
+  "name": "t4-auth-failed",
+  "preconditions": "After the `hello` of T2. The proof is 32 zero bytes.",
+  "frames": [
+    {
+      "from": "C",
+      "payload": "{\"type\":\"auth\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"nonce\":\"oKGio6SlpqeoqaqrrK2ur7CxsrO0tba3uLm6u7y9vr8\",\"proof\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"reject\",\"code\":\"auth_failed\",\"message\":\"authentication failed\"}"
+    }
+  ]
+}

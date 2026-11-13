@@ -1,0 +1,24 @@
+{
+  "inputs": {
+    "s": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "fp": "aa5108ad019ade397fbe42244fba3d963644da7c753c29a774e684275c9fc0b8",
+    "device_id": "wMHCw8TFxsfIycrLzM3Ozw",
+    "pairing": {
+      "server_nonce": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "client_nonce": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+    },
+    "later": {
+      "server_nonce": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+      "client_nonce": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+    }
+  },
+  "expect": {
+    "pair_proof": "bf820433f8976b07bb3b15a0c4b31d5cc4b98d94087f1ce8695f0ce923a92b86",
+    "k": "aad828da69eb2a990f8ed5c9db325602e983c5a7e15e830d452c6971c9d57da0",
+    "confirm_mac": "9e6299a47c2432caa32045cbca26f7550759b9d12c45b4d40ab007f232b5e074",
+    "confirm_code": "261988",
+    "server_proof_pairing": "a16e1a57eb895093f750feb329c488b2cc71b06b50dd886700b9570484fc54b4",
+    "client_proof_later": "a350156d73989973ddb90297a7afcd24fae53a75fc8c809843ece9f725a152e4",
+    "server_proof_later": "e09f3dc2d9e26f5913882e15e1f0b2696f29a27314f331ecc80edd9050c4401a"
+  }
+}

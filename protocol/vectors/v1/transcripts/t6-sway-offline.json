@@ -1,0 +1,18 @@
+{
+  "name": "t6-sway-offline",
+  "preconditions": "During a session with a `desktop` subscription.",
+  "frames": [
+    {
+      "from": "S",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"desktop\",\"rev\":9,\"data\":{\"sway\":{\"online\":false,\"version\":null},\"workspaces\":[],\"windows\":[],\"truncated\":false}}}"
+    },
+    {
+      "from": "C",
+      "payload": "{\"type\":\"req\",\"id\":6,\"op\":\"window.focus\",\"args\":{\"window_id\":5}}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"res\",\"id\":6,\"ok\":false,\"error\":{\"code\":\"sway_unavailable\",\"message\":\"sway is offline\"}}"
+    }
+  ]
+}

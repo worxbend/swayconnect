@@ -1,0 +1,46 @@
+{
+  "name": "t3-session",
+  "preconditions": "Continues after T2. The device has scopes `state.read`, `state.titles`, `control`. Note the title with one non-ASCII character (U+2014, three bytes in UTF-8): the frame length counts bytes, not characters.",
+  "frames": [
+    {
+      "from": "C",
+      "payload": "{\"type\":\"req\",\"id\":1,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"desktop\"]}}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"res\",\"id\":1,\"ok\":true,\"result\":{\"states\":[{\"topic\":\"desktop\",\"rev\":7,\"data\":{\"sway\":{\"online\":true,\"version\":\"1.12\"},\"workspaces\":[{\"id\":4,\"number\":1,\"name\":\"1\",\"output\":\"DP-1\",\"focused\":true,\"visible\":true,\"urgent\":false},{\"id\":9,\"number\":2,\"name\":\"2\",\"output\":\"DP-1\",\"focused\":false,\"visible\":false,\"urgent\":false}],\"windows\":[{\"id\":5,\"workspace_id\":4,\"app_id\":\"Alacritty\",\"title\":\"zsh\",\"focused\":true,\"urgent\":false,\"floating\":false,\"fullscreen\":false},{\"id\":12,\"workspace_id\":9,\"app_id\":\"firefox\",\"title\":\"Example Domain — Mozilla Firefox\",\"focused\":false,\"urgent\":false,\"floating\":false,\"fullscreen\":false}],\"truncated\":false}}]}}"
+    },
+    {
+      "from": "C",
+      "payload": "{\"type\":\"req\",\"id\":2,\"op\":\"workspace.focus\",\"args\":{\"number\":2}}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"res\",\"id\":2,\"ok\":true,\"result\":{}}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"desktop\",\"rev\":8,\"data\":{\"sway\":{\"online\":true,\"version\":\"1.12\"},\"workspaces\":[{\"id\":4,\"number\":1,\"name\":\"1\",\"output\":\"DP-1\",\"focused\":false,\"visible\":false,\"urgent\":false},{\"id\":9,\"number\":2,\"name\":\"2\",\"output\":\"DP-1\",\"focused\":true,\"visible\":true,\"urgent\":false}],\"windows\":[{\"id\":5,\"workspace_id\":4,\"app_id\":\"Alacritty\",\"title\":\"zsh\",\"focused\":false,\"urgent\":false,\"floating\":false,\"fullscreen\":false},{\"id\":12,\"workspace_id\":9,\"app_id\":\"firefox\",\"title\":\"Example Domain — Mozilla Firefox\",\"focused\":true,\"urgent\":false,\"floating\":false,\"fullscreen\":false}],\"truncated\":false}}}"
+    },
+    {
+      "from": "C",
+      "payload": "{\"type\":\"req\",\"id\":3,\"op\":\"window.focus\",\"args\":{\"window_id\":999}}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"res\",\"id\":3,\"ok\":false,\"error\":{\"code\":\"not_found\",\"message\":\"no window with id 999\"}}"
+    },
+    {
+      "from": "C",
+      "payload": "{\"type\":\"req\",\"id\":4,\"op\":\"ping\"}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"res\",\"id\":4,\"ok\":true,\"result\":{}}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"bye\",\"code\":\"shutdown\",\"message\":\"daemon is shutting down\"}"
+    }
+  ]
+}

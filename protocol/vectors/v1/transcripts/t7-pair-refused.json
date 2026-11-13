@@ -1,0 +1,22 @@
+{
+  "name": "t7-pair-refused",
+  "preconditions": "Same start as T1. The owner answers no, or the confirmation deadline passes.",
+  "frames": [
+    {
+      "from": "S",
+      "payload": "{\"type\":\"hello\",\"protocol\":{\"min\":1,\"max\":1},\"nonce\":\"ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8\"}"
+    },
+    {
+      "from": "C",
+      "payload": "{\"type\":\"pair\",\"protocol\":1,\"nonce\":\"QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8\",\"proof\":\"v4IEM_iXawe7OxWgxLMdXMS5jZQIfxzoaV8M6SOpK4Y\",\"device_name\":\"Pixel 9\",\"platform\":\"android\",\"client\":\"swayconnect-android/0.1.0\"}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"welcome\",\"protocol\":1,\"device_id\":\"wMHCw8TFxsfIycrLzM3Ozw\",\"server_proof\":\"oW4aV-uJUJP3UP6zKcSIssxxsGtQ3YhnALlXBIT8VLQ\",\"confirm_code\":\"261988\",\"scopes\":[],\"ops\":[\"ping\"],\"topics\":[],\"read_only\":false,\"server\":{\"name\":\"desk\",\"version\":\"0.1.0\"},\"limits\":{\"max_frame_c2s\":16384,\"max_frame_s2c\":1048576,\"idle_timeout_ms\":90000}}"
+    },
+    {
+      "from": "S",
+      "payload": "{\"type\":\"bye\",\"code\":\"revoked\",\"message\":\"pairing was not confirmed\"}"
+    }
+  ]
+}
