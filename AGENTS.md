@@ -1,6 +1,6 @@
 # Rules for agents
 
-Next action: read section 1, then `docs/IMPLEMENTATION_PLAN.md` for the slice you work on.
+Next action: read section 1, then the plan of the slice you work on: `docs/V2_PLAN.md` for v2 (its section 1 adds rules), `docs/IMPLEMENTATION_PLAN.md` for stage 1.
 
 `docs/PROTOCOL.md` is normative. If code and spec disagree, the spec wins. If the spec looks wrong, report it; do not diverge silently.
 
@@ -43,6 +43,7 @@ flock ../../target/.agent.lock ./gradlew :protocol:test :app:testDebugUnitTest :
 - Run `./gradlew --stop` when you finish. Do not raise `org.gradle.jvmargs`.
 - Emulator: reuse a running one (`adb devices`). Else start the one AVD (`Medium_Phone_API_37.0`) headless: `-no-window -no-audio -no-boot-anim -no-snapshot-save -cores 2 -memory 3072`. No Gradle or cargo run while it boots. End with `adb emu kill`.
 - The emulator reaches the host's loopback at `10.0.2.2`. The daemon never needs a LAN address for it.
+- The emulator app may hold the owner's own pairing. Never pair over it. To pair with a test daemon, use a separate Android user: `adb shell pm create-user <name>`, `adb install --user <id> -r <apk>`, `adb shell am switch-user <id>`. At the end `am switch-user 0` and `pm remove-user <id>`. Screens with `FLAG_SECURE` (pair) capture black; read them with `uiautomator dump`.
 
 Done for an Android change: the gate above passes with 0 lint errors. A change to a screen is looked at on the emulator.
 

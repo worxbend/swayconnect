@@ -11,6 +11,7 @@ Remote control for a [sway](https://swaywm.org/) desktop. A daemon on the comput
 | V1 "see" | pair, read state, watch live changes | Written. Tested against a fake sway (`just ci`). The read-only live check on the owner's real sway is done. |
 | V2 "act" | focus a workspace, focus a window, fullscreen on or off | Written. Tested against a fake sway only. No action has reached a real sway: the owner has not run step S12 yet. |
 | V3 "phone" | Android app | Builds and passes its JVM tests locally. Ran on one emulator. The owner has not run step S13 yet. |
+| v2 M1 "UI/UX" | layout map, app icons, new Android shell and desktop | Written. `just ci` and the Android gate are green. Seen on one emulator against a `read_only` daemon on the real sway; actions only against a fake sway. The owner has not run gate G-M1 yet. What was and was not checked: `docs/V2_PLAN.md`, Status. |
 
 Read it this way:
 
