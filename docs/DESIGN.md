@@ -2,6 +2,7 @@
 
 Status: accepted for stage 1, after the security, implementability and scope review. Date: 2026-11-13.
 Related: `docs/PROTOCOL.md` (wire contract, normative), `docs/RESEARCH.md` (why), `docs/IMPLEMENTATION_PLAN.md` (how and in what order).
+Version 2 (UI/UX and desktop controls): section 11, with `docs/UX.md`, `docs/V2_RESEARCH.md` and `docs/V2_PLAN.md`. Sections 1 to 10 stay the record of stage 1; section 11 says where v2 changes them.
 
 Next action: the owner reviews V2 and runs step 5 of 9.4 himself. Status of the work: `docs/IMPLEMENTATION_PLAN.md` section 0.
 
@@ -405,7 +406,7 @@ OS facts without a new crate and without `unsafe`:
 9. The 8 slots before `welcome` are shared fairly between peer addresses, not between processes. A local process of another user can open loopback connections faster than a loopback client finishes its handshake, and so keep `swayconnect` on the same machine out. A LAN attacker with many source addresses inside `allow_from` can do the same to a phone. TCP gives the daemon nothing to tell such peers apart before the proof. Not fixed in stage 1.
 10. The total cap of 16 connections has no share per device. One paired device can hold all 16 with authenticated sessions; every other device is then refused at accept. The answer in stage 1 is `swayconnectd revoke`, which uses the admin socket and so still works. A cap per device needs its own `bye` or `reject` code, which is a wire change; it is on the roadmap.
 11. Android 10 (API 29, the `minSdk`) still has the task-affinity flaw known as StrandHogg: another installed app can put an activity of its own into the task of this app and show a false pair screen. Android 11 and later are patched. The platform's answer is `minSdk` 30; raising it is the owner's decision. Until then, check the pair screen on an Android 10 phone with care.
-12. The pair screen shows the pairing link, with its secret, as readable text until the attempt ends. The keyboard is told not to learn it (password input type). The window does not set `FLAG_SECURE`, so a screenshot, a screen share or the recents thumbnail can hold the link. The owner's code check (D17) still stands between a leaked link and a paired device. Whether to set `FLAG_SECURE` on the pair screen is open.
+12. The pair screen shows the pairing link, with its secret, as readable text until the attempt ends. The keyboard is told not to learn it (password input type). Since v2 M1 the pair screen sets `FLAG_SECURE` while it is shown, so a screenshot, a screen share or the recents thumbnail cannot hold the link (checked on the emulator: a capture is black). The owner's code check (D17) still stands between a leaked link and a paired device.
 13. A pairing does not survive a switch to another app on current Android. The connection of a pairing attempt lives in the view model and outlives a rotation or a screen timeout, but Android closes the sockets of an app a few seconds after it left the foreground (seen on API 37 for a session; the pairing connection was not tried). The confirm screen says to keep the app open. A foreground service would fix it and is out of scope.
 14. A QR scanner that starts the link with category `BROWSABLE` finds no handler, because the intent filter leaves that category out on purpose (8.2). No scanner was tried. Paste always works.
 15. The link field reads its text back from the view model. Fast typing can lose a character there (the device name field keeps its text in the composition for that reason). Paste and the link intent are not affected, and nobody types 150 characters of base64 by hand.
@@ -694,3 +695,307 @@ Steps 5 and 6: the owner runs them himself. Agents do not. These are proofs c an
 | 3 | Touchpad through `zwlr_virtual_pointer_v1` under a new scope. Urgent-window notification. Context-aware button pages. WebSocket binding if a web client is wanted. targetSdk 37 with `ACCESS_LOCAL_NETWORK`. |
 | Maybe | Keyboard input (equal to code execution; own scope, off by default). Output power. Thumbnails. |
 | Never | Raw sway command passthrough. `exec` with client text. Remote unlock. A switch that disables authentication. Cloud relay. |
+
+## 11. Version 2 architecture
+
+Status: proposed, 2026-11-13 (review 2). Not implemented. Wire contract: `docs/PROTOCOL.md` section 17. UX: `docs/UX.md`. Evidence: `docs/V2_RESEARCH.md`. Order and ownership: `docs/V2_PLAN.md`.
+
+Next action: the owner answers `docs/V2_PLAN.md` section 0, then slice C1 starts.
+
+### 11.1 What v2 is
+
+Three steps. The owner asked for UI/UX first.
+
+| Milestone | Content | Wire change |
+|---|---|---|
+| M1 "UI/UX" | new Android design (pill navigation, snapping workspace card carousel synced with a pager, layout mini-map, list view, app icons), daemon layout export and icon service, scope grants at the desktop (`devices grant`) | `desktop` additions (layout, rects, outputs, scratchpad, icon hash), op `icon.get`, `welcome.known_scopes` and `known_ops`, `bye scopes_changed` |
+| M2a "desktop controls" | window ops, close window, lock, keep awake, audit log | 17.6, 17.7, 17.8 (topic `session`) |
+| M2b "devices and typing" | audio (sinks and sources), media (play/pause, next, previous), app launch, fuzzel, remote keyboard | 17.9 to 17.13 |
+
+Deferred to 11.13: owner buttons, per-app streams, card profiles, media seek, Live typing, presets, Android Keystore key hardening, audit rotation, `status.json`, multi-output UI groups, tablet split, map↔list morph.
+
+### 11.2 Decisions
+
+| # | Decision | Reason |
+|---|---|---|
+| D20 | Protocol stays version 1. Every v2 item is additive (13.1). | Old clients keep working. No breaking change was needed. |
+| D21 | Layout travels inside topic `desktop`, as basis-point rects per workspace. | One `rev` keeps window ids and geometry consistent. 730 bytes for the live desktop. |
+| D22 | Output facts come from output nodes of `GET_TREE`. `GET_OUTPUTS` stays unsent. | The tree has `rect`, `scale`, `transform`, `power`. Allowed message types stay 0, 1, 2, 4, 7. |
+| D23 | While a client subscribes to `desktop`, the supervisor re-reads the tree every 2 s and on `binding` events. | Sway sends no resize event. |
+| D24 | Icons: own desktop-entry and icon-theme resolver; resvg for SVG in a resource-limited child process; served by content hash only. | MPL-2.0 crates fail `deny.toml`. A hash-only op cannot be turned into a file read. Icon files are not owner-trusted (flatpak exports). |
+| D25 | Audio through `pactl` (JSON snapshots, a long-lived `pactl subscribe`, argv writes with `--`). | Pure Rust side, light build, easy fake. pipewire-rs needs bindgen and clang. |
+| D26 | Media through zbus (MPRIS). No album art in v2. | Typed D-Bus without libdbus. Art fetching is SSRF or arbitrary file read. |
+| D27 | Keep awake: a `systemd-inhibit --what=idle --mode=block ... sleep N` child. | swayidle 1.9.1 honours logind block inhibitors. The child expires by itself even if the daemon hangs. `V2_RESEARCH.md` section 7. |
+| D28 | Apps start from the daemon's own desktop-entry index under `systemd-run --user --scope`. Never through sway `exec`. | No client text in a shell. The app gets its own cgroup and survives a daemon restart. |
+| D29 | Text input through a daemon-owned `zwp_virtual_keyboard_v1` client with a generated keymap. | Sway IPC cannot type. No injector is installed. Works for every app and both layouts. |
+| D30 | Fine-grained scopes, all new ones off by default and granted by name at the desktop. No client scope request. No presets in v2. | D9. A request op would be a social-engineering channel. A preset would hand out controls the owner did not name. |
+| D31 | `K` stays the device credential ("API key"), stored as in v1. | Nothing secret crosses the wire already. Per-scope keys or tokens add nothing on one TLS connection. Keystore hardening is deferred (11.13). |
+| D32 | Biometric step-up is not in v2 unless the owner asks (`V2_PLAN.md` question 1). | New unreviewed crypto flow. Input is off by default and desktop-granted. |
+| D33 | Android stays on material3 1.4.0 (BOM pin) and adds no library. Expressive look is built by hand. | The catalog rule "nothing is bumped". |
+| D34 | Every UI piece is Compose. No XML layouts, no View widgets, no WebView. Icons are Kotlin `ImageVector`s. One exception is allowed only if the owner approves: none is planned. | Owner direction. Private typing uses `BasicSecureTextField`, not an `EditText`. |
+
+### 11.3 Changes to the security rules of 5.3
+
+5.3 is amended, not worked around. `AGENTS.md` section 5 copies the new text in slice INT after `V2_PLAN.md` question 2 is answered. Rules 2, 8, 9 (first sentence) and 11 gate M2a; the `input.text` exception of rule 9 and rule 10 gate M2b.
+
+| Rule | v1 text | v2 text |
+|---|---|---|
+| 1 | No operation accepts a sway command, a shell command or a file path. | Unchanged. |
+| 2 | No string is placed into a sway command. Integers and one boolean only. | No client string is placed into a sway command. A command holds only integers, booleans and members of closed enums defined in `swayconnect-sway` (layout kinds). The one fixed command `output * power on` holds no variable at all. |
+| 5 | Only sway message types 0, 1, 2, 4, 7. | Unchanged. The event subscription adds `binding`. |
+| 8 (new) | | Child processes: argv only, no shell. The program is an absolute path from config (every program has a config key with a default). Arguments are integers, closed enums and daemon-owned strings (pactl names from the daemon's own snapshot, desktop entry ids and Exec tokens from the daemon's own index, config values). A daemon-owned string that comes from another program (a pactl name) goes after `--` and never starts with `-`. Environment from an allowlist. stdin null. stdout and stderr read with a cap and never sent to a client. A timeout and kill. |
+| 9 (new) | | A client string is allowed in a request only when it is an id the server issued (entry id) or a closed enum, matched exactly. The one exception is `input.text`, which goes only to the virtual keyboard, never to a process, a file or sway. |
+| 10 (new) | | Remote input fails closed: refused while the screen is locked or lock state is unknown, while a keyboard-grabbing surface runs, or when focus, read from sway just before each part, is not the target. |
+| 11 (new) | | No client-chosen string reaches a desktop notification. Notices use fixed text and the device short id. |
+
+The stage 1 claim "no code execution path exists" (5.2) ends with M2b: `launch`, `launch.risky` and `input.*` are code-execution equivalent. They are tier 2, off by default and granted only at the desktop.
+
+### 11.4 Daemon modules
+
+New and changed files in `crates/swayconnect-daemon/src/`. Every module with logic is a pure function or sits behind a trait with a fake. Each feature module defines its own config section type (`#[derive(Deserialize)] #[serde(deny_unknown_fields)]`) in its own file; `config.rs` only embeds it.
+
+```
+model.rs            unchanged role; calls layout.rs and outputs; cut rule of PROTOCOL 17.4.5        M1
+layout.rs           NEW pure: sway Node -> Layout (basis points, collapse, depth cap, active child)  M1
+outputs.rs          NEW pure: output nodes -> Output[], scratchpad windows                           M1
+supervisor.rs       + 2 s poll while subscribed, + binding events, + idle-inhibit view count         M1
+icons/
+  mod.rs            IconService: app_id -> Option<IconHash>; hash -> PNG bytes                       M1
+  entries.rs        desktop entry parser and index (shared with apps)                                M1
+  theme.rs          Icon Theme Spec lookup: Inherits, hicolor, pixmaps, size choice                  M1
+  raster.rs         Rasteriser trait; ChildRasteriser runs `swayconnectd --raster` (11.5)           M1
+  store.rs          produced-PNG map, disk cache in $XDG_CACHE_HOME/swayconnect/icons/              M1
+devices.rs          + scope grant/deny, scopes_changed signal per device                             M1
+admin.rs            + devices.grant, devices.deny                                                    M1
+proc.rs             NEW Runner trait: spawn argv with env allowlist, timeout, output cap; FakeRunner M2a
+notify.rs           NEW notify-send through proc.rs, fixed texts                                     M2a
+lockstate.rs        NEW /proc scan: lock processes and keyboard grabbers of the own uid              M2a
+keep_awake.rs       NEW KeepAwake: child handle, expiry, continuous cap with breaks, holder          M2a
+session_topic.rs    NEW per-device `session` state; 2 s lockstate poll while subscribed              M2a
+audit.rs            NEW audit.jsonl writer, 0600, append                                             M2a
+audio/
+  mod.rs            AudioBackend trait, AudioService (id issue, snapshot, debounce, caps)            M2b
+  pactl.rs          JSON parse (lenient), argv builders for writes                                   M2b
+  watch.rs          `pactl subscribe` child, respawn with backoff                                    M2b
+media/
+  mod.rs            MediaBackend trait, MediaService                                                 M2b
+  mpris.rs          zbus: names, PropertiesChanged, NameOwnerChanged                                 M2b
+apps/
+  mod.rs            AppsService: apps topic, recent list, cut rule                                   M2b
+  exec.rs           Exec split by the Desktop Entry quoting rules, field codes removed               M2b
+  launch.rs         systemd-run --user --scope argv; launcher.open (fuzzel), one instance, holder    M2b
+input/
+  mod.rs            InputService: chunking, guard calls, release-all, session arming                 M2b
+  keymap.rs         pure: text -> XKB text keymap + key events (wtype method)                        M2b
+  guard.rs          lock, launcher, grabber, synchronous focus checks                                M2b
+  vkbd.rs           Wayland thread: zwp_virtual_keyboard_v1, memfd keymap, one device per run        M2b
+dispatch.rs         op table grows; rate class per op; extra scope checks 8a/8b
+config.rs           + sections of 11.9
+throttle.rs         + rate classes of PROTOCOL 17.14
+```
+
+`swayconnect-sway` gains: `Rect`, `layout`, `focus`, `scratchpad_state`, `inhibit_idle`, output `power`/`scale`/`transform`/`make`/`model` on `Node` (all `#[serde(default)]`); `binding` in the subscription (M1); command variants `MoveToWorkspace`, `Floating`, `Layout(LayoutKind)`, `MoveScratchpad`, `ScratchpadShow`, `Kill`, `OutputsPowerOn` (M2a). The command pattern test grows to:
+
+```
+^(workspace --no-auto-back-and-forth number \d{1,3}
+ |\[con_id=\d+\] (focus|fullscreen (enable|disable)|floating (enable|disable)
+   |move container to workspace number \d{1,3}|layout (splith|splitv|tabbed|stacking)
+   |move scratchpad|scratchpad show|kill)
+ |output \* power on)$
+```
+
+A new `WaylandTarget` mirrors `SwayTarget`: `Explicit(path)` from config `[wayland] socket`, or `Discover(EnvSnapshot)` with `XDG_RUNTIME_DIR` and `WAYLAND_DISPLAY`. The session bus address for zbus is built the same way from `EnvSnapshot` (`DBUS_SESSION_BUS_ADDRESS`, else `unix:path=$XDG_RUNTIME_DIR/bus`) and passed to `zbus::connection::Builder::address`; zbus never reads the environment itself. Only `main.rs` builds the snapshot. `EnvSnapshot` also gains `XDG_DATA_DIRS` (icon and entry roots). A daemon with temp XDG dirs (agents) gets no Wayland socket and no bus, so input and media are `backend_unavailable` there by construction.
+
+`Paths` gains `cache_dir`. `main.rs` gains the `--raster` entry (11.5) and passes the raster program path into `Daemon::start`.
+
+### 11.5 Layout export and icons
+
+- `layout.rs` follows `PROTOCOL.md` 17.4.3. Rects are normalised against the workspace rect. The workspace node's `fullscreen_mode` is ignored. The active tab is the first `focus` id in `nodes`. Floating containers keep sway's list order (bottom first).
+- The supervisor keeps "subscribed to desktop" as a count from the sessions. Above 0 it polls `GET_TREE` + `GET_WORKSPACES` every 2 s. A publish happens only when the built `Desktop` differs.
+- Icon resolution runs off the async runtime, one job at a time. Results are cached by `(app_id key)` with a 30 s negative cache. The desktop-entry index is rebuilt when an unknown key appears, at most once per 30 s.
+- Absolute `Icon=` paths are accepted only under the icon roots, `/usr/share/pixmaps` and the flatpak exports, after canonicalising. Extension png or svg only. Source file at most 1 MiB.
+- **Rasterising runs in a short-lived child**: `swayconnectd --raster`, spawned by `raster.rs` itself (`tokio::process::Command`, `env_clear()`, stdin and stdout piped, stderr null; program path passed in by `main.rs`; tests use `env!("CARGO_BIN_EXE_swayconnectd")` or a fake `Rasteriser`). The child first sets its own limits with `rustix::process::setrlimit` (`RLIMIT_AS` 256 MiB, `RLIMIT_CPU` 2 s), then reads the source bytes from stdin and writes the PNG to stdout. The daemon kills it after 3 s of wall time and caps its output at 65536 bytes. Before rendering, the child refuses: a PNG whose IHDR declares more than 1024 x 1024; an SVG whose usvg tree has more than 10000 nodes; an SVG that uses filters. Any failure puts the key in the negative cache. One child runs at a time; a killed child never blocks the next icon.
+- An owner alias map in config fixes misses: `[icons.aliases] Emulator = "jetbrains-studio"`.
+- The published `Window.icon` is set only for keys that already have a produced PNG. A new key triggers resolution and a later publish. So a publish never waits for rasterising.
+- `icon.get` serves at most 8 hashes per request (about 700 KB encoded, under `max_frame_s2c`) under the `icons` rate class.
+
+### 11.6 Controls
+
+**Window ops (M2a).** Typed commands from 11.4, checked like v1 actions: the id must be in the snapshot of the right kind. `window.move` uses workspace numbers only (4.4 rule 2).
+
+**Keep awake (M2a).** `keep_awake.rs` holds at most one `systemd-inhibit` child. `on`: kill any old child, spawn `[keep_awake] inhibit` `--what=idle --mode=block --who=swayconnect --why=<fixed text>` `[keep_awake] sleep` `<n>`, where `n` is `duration_s` shortened to the remaining continuous budget; record holder and expiry; then send `output * power on` if an active snapshot output has `power: false`; send a desktop notice with the device short id. `off`: kill. Child exit: clear the state and publish `session`. Continuous cap (`PROTOCOL.md` 17.8 rule 5): on-time accumulates across off periods shorter than `cooldown_s`; only an off period of at least `cooldown_s` resets it; a replace does not. Config check at start: `cooldown_s` ≥ 60 and `max_continuous_s` ≥ `max_duration_s` (exit 2 otherwise); the owner keeps `cooldown_s` above his longest swayidle timeout (default 900 > 600). Released on revoke of the holder, SIGUSR1 and shutdown. Not released on disconnect.
+
+**Lock (M2a).** `session.lock` runs config `[session] lock = ["/home/<owner>/.config/sway/scripts/lock.sh"]` through `proc.rs`. Without config the op is not advertised. At most one lock child at a time; when `lockstate` says locked or the last lock child still runs, the op returns `{already_locked: true}` without spawning. `loginctl lock-session` is not used: swayidle has no `lock` hook here.
+
+**Session topic (M2a).** Built per device. While at least one client subscribes to `session`, `session_topic.rs` re-runs the `lockstate` scan every 2 s and publishes on change.
+
+**Audio (M2b).** Snapshot = `pactl -f json list sinks`, `sources`, plus `get-default-sink` and `get-default-source`. A `pactl subscribe` child triggers a fresh snapshot 100 ms after the first event (client events ignored). Nodes whose name starts with `-` are dropped from the snapshot. Ids on the wire are small integers issued by the daemon and mapped to pactl names in the daemon; a name that vanished is `not_found`. Writes, always with `--` before the positional arguments: `set-sink-volume -- <name> <N>%`, `set-sink-mute -- <name> 0|1`, `set-default-sink -- <name>`, and the source equivalents. Volume is clamped to `max_volume_pct` (default 100). Source writes other than mute-on need `audio.capture`; an unmute of a source sends a desktop notice with the device short id. Caps: 64 sinks, 64 sources. The binary path comes from config, default `/usr/bin/pactl`.
+
+**Media (M2b).** zbus on the session bus (explicit address, 11.4). Players are `org.mpris.MediaPlayer2.*` names except `playerctld`, at most 16. Metadata text is cleaned (2.4) and cut. Titles are withheld from devices without `state.titles`. Ops: play/pause, next, previous.
+
+**Apps and launcher (M2b).** `apps/` reuses `icons/entries.rs`. Filters: `NoDisplay`, `Hidden`, `OnlyShowIn`/`NotShowIn` against `sway`, `TryExec`, URL-only handlers, ids outside `[A-Za-z0-9._-]`. Config `[apps] deny = [...]` hides entries; `risky = [...]` marks them (terminals are always risky). A risky entry needs scope `launch.risky` on the server; the phone's hold is UX only. Launch argv: `[apps] systemd_run` `--user --scope --collect --unit=app-swayconnect-<sanitised id>-<random hex> -- <Exec tokens>`, with an env allowlist (`WAYLAND_DISPLAY`, `DISPLAY`, `SWAYSOCK`, `XDG_RUNTIME_DIR`, `XDG_CURRENT_DESKTOP`, `XDG_DATA_DIRS`, `DBUS_SESSION_BUS_ADDRESS`, `PATH`, `HOME`, `LANG`) taken from the real session at start, not from the daemon's own temp dirs. `Terminal=true` wraps with config `[apps] terminal = ["/usr/bin/alacritty","-e"]`. The topic keeps to `PROTOCOL.md` 17.11 caps and cut rule. `launcher.open` runs config `[launcher] argv` (default `["/usr/bin/fuzzel"]`) as a tracked child, one at a time, and records the holder device and the window focused at open time.
+
+**Close window (M2a).** `[con_id=N] kill` under `destructive`.
+
+### 11.7 Text input and its TOCTOU protection (M2b)
+
+1. `vkbd.rs` owns one Wayland connection on a dedicated std thread. It binds `zwp_virtual_keyboard_manager_v1` and creates one keyboard on the configured seat (`seat0`) for the life of the connection. It reconnects when sway restarts. Commands arrive over a channel; each delivery ends with `wl_display.roundtrip`, so the compositor has processed the keys before the next check.
+2. `keymap.rs` (pure) maps each distinct character of a part to its own keycode in a generated XKB keymap: Latin-1 directly, other code points as keysym `0x01000000 | cp`. Named keys and modifiers use their real evdev codes, each with one level only. Text is never mapped onto Escape, BackSpace, Tab, Return or modifier codes. No key of a generated keymap resolves to `XF86Switch_VT_1`..`12`, `XF86Ungrab` or `Terminate_Server` under any modifier; `ctrl`+`alt`+`F1..F12` is refused at the protocol layer as well. The keymap is uploaded through a sealed memfd and changed only between complete press and release pairs.
+3. A request is cut into parts of at most 16 characters (a key press is one part). Before each part, `guard.rs` checks in this order, all synchronously:
+   1. Lock: a process of the own uid whose `comm` is in config `lock_processes` (default `swaylock`) means locked. An unreadable `/proc` means unknown. Both refuse with `locked`.
+   2. Launcher (target `launcher` only): the request's device is the launcher holder, and the launcher child is still running (`try_wait` on the child handle). Else `launcher_closed`.
+   3. Grab: a process in `keyboard_grabbers` (default `fuzzel`, `wofi`, `bemenu`, `tofi`, `swaylock`) means keys may go elsewhere. Refuse with `keyboard_grabbed`. Exception: target `launcher` and the only grabber is the launcher child the daemon started.
+   4. Focus: one `GET_TREE` on the command IPC connection, sent after the previous part's roundtrip. Sway answers IPC in order in its main loop, so the reply shows focus at that moment. The focused leaf must be `window_id`; for target `launcher` it must be the window recorded at `launcher.open` (the window that gets the keys back if the launcher closes). Else `focus_changed`. No event-based shortcut exists.
+4. Parts are paced: check, deliver, roundtrip, then the next check. Nothing is pipelined.
+5. After each request and on any error or disconnect: release every key and modifier.
+6. Session arming: the first input of a connection sets `session.input.active` and sends a desktop notice "Remote keyboard active (device <short id>)". The session ends after 10 min without input or on disconnect.
+7. Residual risk, written into 5.6: keys processed between one IPC reply and the delivery of at most one part (16 characters) can reach a window that took focus in that gap, or the previously focused window when the launcher exits in that gap. A locker that is not in `lock_processes` defeats the lock check. Shortcuts with `super` reach sway bindings.
+8. Logs and the audit record lengths only, never text.
+
+### 11.8 Security model changes
+
+**Scopes and tiers** (`PROTOCOL.md` 17.2):
+
+| Tier | Scopes | Default at pairing |
+|---|---|---|
+| 0 observe | `state.read`, `state.titles` | on (unchanged) |
+| 1 steer | `control`, `audio`, `media` | `control` on (unchanged); `audio`, `media` only by name |
+| 2 risky | `idle.inhibit`, `destructive`, `audio.capture`, `launch`, `launch.risky`, `input.keys`, `input.text` | off; only by name |
+
+No presets in v2. `swayconnectd pair` keeps the v1 default (`state.read`, `state.titles`, `control`). Every new scope is granted by name: `swayconnectd pair --scopes ...` or `swayconnectd devices grant`.
+
+**Granting (M1).** New admin operations `devices.grant` and `devices.deny` (`swayconnectd devices grant <id-prefix> <scope>...`). A device is named by a unique prefix of its base64url id, at least 4 characters. A change rewrites `devices.json`, then sends `bye` `scopes_changed` to every live session of that device. An unknown scope name in `devices.json` is a start error (exit 2), like the strict config.
+
+**Rate limits.** Per device and class, `PROTOCOL.md` 17.14. `icon.get` has its own class, also in read-only mode.
+
+**Audit log (M2a).** `$XDG_DATA_HOME/swayconnect/audit.jsonl`, 0600, append. One line per tier 2 action, per keep-awake change, per scope change and per input session start: time, device id, peer address, op, target ids, result. Never titles, text or secrets. `swayconnectd audit [-n N]` prints it through `escape_for_terminal`. Rotation is deferred (11.13).
+
+**Desktop notices** (notify-send, fixed text, device short id): connect of a device that holds a tier 2 scope, input session start, keep-awake on, remote unmute of a source.
+
+**Panic.** SIGUSR1 also ends keep-awake, aborts input and kills the launcher.
+
+**Android.** `K` stays stored as in v1 (AES-GCM under a Keystore key). Moving it to a non-exportable Keystore HMAC key is deferred: it needs a `DeviceKeyMac` interface in `:protocol` (`Proofs.kt` takes `ByteArray` today). `FLAG_SECURE` on the pair screens and the Keys screen.
+
+**New attacker rows for 5.2:**
+
+| Attacker | Answer |
+|---|---|
+| Stolen, unlocked phone with tier 2 scopes | Can run code as the owner (terminal + typing). Answers: off by default, granted by name only, lock refusal, desktop notice, audit, revoke, panic. Step-up is question 1 of the plan. |
+| Stolen phone that re-arms keep-awake | `idle.inhibit` is off by default. On-time is counted across short breaks: off/on toggling still hits the 4 h cap, and only an off period of at least `cooldown_s` (15 min, longer than swayidle's 600 s timeout) resets it. A notice shows each start. |
+| Hostile paired phone that unmutes the microphone | Plain `audio` can only mute sources. Unmute, source volume and default source need tier 2 `audio.capture`; each remote unmute shows a desktop notice. |
+| Patched client that skips the "risky" hold | The server refuses risky entries without `launch.risky`. |
+| App that claims another app's id | Gets its icon. The UI never treats an icon as identity; the Keys target always shows title and workspace. |
+| Hostile `.desktop` or icon file (flatpak export, `~/.local`) | Entries already run as the owner when launched; the phone cannot add arguments. Icons render in a child with memory, CPU and time limits, after size and node-count checks. |
+| Local program that names a PipeWire node like an option | Names starting with `-` are dropped; every pactl argv puts `--` before names. |
+
+**New known limits for 5.6:** lock detection is a process heuristic; the input TOCTOU window of 11.7 item 7; Super shortcuts reach sway bindings; keep-awake outlives a phone disconnect by design; the icon resolver misses apps with no desktop entry (the emulator).
+
+### 11.9 Configuration additions
+
+All optional, strict as before. Every child program has a path key, so tests point all of them at the testkit's `fake-proc`.
+
+```toml
+[icons]
+aliases = { Emulator = "jetbrains-studio" }   # tried last, after every other match (V2_RESEARCH 3)
+theme = "Papirus"                              # optional; searched before hicolor. Default: hicolor only
+
+[session]
+lock = ["/home/OWNER/.config/sway/scripts/lock.sh"]
+lock_processes = ["swaylock"]
+keyboard_grabbers = ["fuzzel", "wofi", "bemenu", "tofi", "swaylock"]
+
+[keep_awake]
+inhibit = "/usr/bin/systemd-inhibit"
+sleep = "/usr/bin/sleep"
+default_duration_s = 3600
+max_duration_s = 7200
+max_continuous_s = 14400
+cooldown_s = 900
+
+[notify]
+notify_send = "/usr/bin/notify-send"
+
+[audio]
+pactl = "/usr/bin/pactl"
+max_volume_pct = 100
+
+[apps]
+systemd_run = "/usr/bin/systemd-run"
+deny = []
+risky = ["gparted", "org.cachyos.KernelManager"]
+terminal = ["/usr/bin/alacritty", "-e"]
+
+[launcher]
+argv = ["/usr/bin/fuzzel"]
+
+[input]
+seat = "seat0"
+
+[wayland]
+socket = ""
+```
+
+### 11.10 Dependencies
+
+Versions from the crates.io API on 2026-11-13. Only the manifest slice edits `Cargo.toml` and `deny.toml`.
+
+| Crate | Version | Milestone | Features / note |
+|---|---|---|---|
+| resvg | 0.50.0 | M1 | `default-features = false` (no text, fonts, raster-images, svgz) |
+| tiny-skia | 0.12.0 | M1 | `png-format`; brings `png` 0.18 |
+| rustix | 1.1.6 | M1 (`process`), M2b (`fs`) | `setrlimit` in the raster child; `memfd_create` and seals for the keymap |
+| zbus | 6.3.0 | M2b | `default-features = false, features = ["tokio", "proxy"]` (`proxy` gates `#[proxy]` and the fdo proxies) |
+| wayland-client | 0.31.15 | M2b | pure Rust backend |
+| wayland-protocols-misc | 0.3.12 | M2b | feature `client`; `zwp_virtual_keyboard_v1` |
+| xkeysym | 0.2.1 | M2b | keysym names and values |
+
+`deny.toml`: add `BSD-2-Clause` (arrayref, via tiny-skia). zbus and the Wayland crates were checked on crates.io metadata only; `just deny` decides in the manifest slice. Not added: `image`, freedesktop-* crates (MPL), pipewire, libpulse-binding, mpris, xkbcommon, ddc-hi, evdev.
+
+Android: no new library. Icons are about 30 Material Symbols written as Kotlin `ImageVector` builders (`ui/theme/SwayIcons.kt`). `BitmapFactory` decodes icon PNGs.
+
+### 11.11 Android architecture
+
+```
+app/src/main/java/com/swayconnect/android/
+  ui/theme/       Theme.kt, Tokens.kt (colours, shapes, type), Motion.kt (MotionScheme), Haptics.kt, SwayIcons.kt
+  ui/shell/       AppShell.kt, PillNavBar.kt, TitleRow.kt, StatusPill.kt, NowCapsule.kt
+  ui/desktop/     DesktopScreen.kt, WorkspaceCarousel.kt, WorkspacePager.kt, WindowCards.kt, FocusDock.kt, WindowSheet.kt
+  ui/map/         LayoutMap.kt, MapGeometry.kt (pure), TileContent.kt
+  ui/audio/       AudioScreen.kt
+  ui/launch/      LaunchScreen.kt, FuzzyMatch.kt (pure)
+  ui/keys/        KeysScreen.kt, SpecialKeys.kt, TextSplit.kt (pure)
+  ui/more/        MoreScreen.kt, KeepAwakeTile.kt, LockedFeatureSheet.kt, ComputerSheet.kt, ScratchpadSheet.kt
+  ui/common/      AppIcon.kt, StatePill.kt, HoldButton.kt, DashedCard.kt
+  ui/state/       UiState.kt, reducers per area, FeatureAvailability.kt (pure), DriveController.kt (pure)
+  data/           IconCache.kt, DesktopCache.kt
+```
+
+`:protocol` gains `Layout.kt`, `Session.kt`, `Audio.kt`, `Media.kt`, `Apps.kt`, `Input.kt` and the new ops in `SwayConnectClient`. One `MainViewModel` stays; pure reducers per area keep it testable on the JVM.
+
+### 11.12 Test strategy
+
+The v1 rule stands: no test and no agent changes the owner's desktop. New backends sit behind traits with fakes in `swayconnect-testkit` or in test modules.
+
+| Area | Fake | What tests cover |
+|---|---|---|
+| Layout | fixtures from the live tree (titles removed) | basis points, collapse, depth cap, tabbed active child, floating order, fullscreen, cut rule |
+| Icons | temp dirs with `.desktop` files and small PNG/SVG | id matching order, Inherits, pixmaps fallback, path canonicalisation, size caps, hash; a blur-bomb SVG, a `<use>` fan-out SVG and a huge-IHDR PNG each end within 3 s while other icons are still served |
+| Processes | `FakeRunner` records argv and env; `fake-proc` binary for child-process tests | every argv builder: pactl (with `--`, and a node named `--server=x`), systemd-inhibit, systemd-run, launcher, lock, notify-send |
+| Keep awake | `FakeRunner` + paused tokio time | expiry, replace, cap, off/on every 60 s still hits `limit_reached` at 4 h, cooldown, release on revoke and SIGUSR1, power-on command when an output is off |
+| Audio | `FakeAudio` with pactl JSON fixtures from this machine | parse, id mapping, clamps, `not_found` after removal, capture rule, caps |
+| Media | `FakeMedia` | status, title withholding, caps |
+| Apps | temp desktop entries | filters, Exec splitting, field-code removal, quoting edge cases, risky refusal, cut rule |
+| Input | `FakeKeyboard` (records key events) + `FakeProcScan` + fake sway | keymap generation, chunking, lock and grab refusal; focus changed by the fake sway **without** an event: the second part is refused; launcher holder and exit; release-all; no newline accepted |
+| Security | integration tests with the testkit | scope per new op, grant/deny with `scopes_changed`, rate classes, audit lines without text |
+| Android | JVM tests | reducers, `MapGeometry`, `FuzzyMatch`, `TextSplit`, `FeatureAvailability`, icon cache hash check, `DriveController` (follow focus and re-sync send nothing) |
+
+Tests never call `pactl`, `playerctl`, `systemd-run`, `systemd-inhibit`, `notify-send`, `fuzzel`, the lock script or a Wayland socket. The test-environment guard of 9.2 extends: child processes in tests start with `env_clear()` and get temp `XDG_DATA_DIRS` (one `.desktop` file and one small PNG, so icon hashes are deterministic), `DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent`, no `WAYLAND_DISPLAY` and no `DBUS_SESSION_BUS_ADDRESS`. Every program path in a test config points at `fake-proc` in a temp dir; a guard test fails when a test config names a program under `/usr`.
+
+v1 transcripts stay byte-identical as client-side vectors. The daemon's replay test (`tests/transcripts.rs`) compares only v1 members: it strips members that v1 does not define from server frames, and checks `welcome.ops` and `topics` as supersets.
+
+The first real action of every new control runs by the owner's hand (`docs/V2_PLAN.md` gates).
+
+### 11.13 Roadmap after v2
+
+Later: owner buttons (`commands`), per-app stream volume, card profiles (switching to the monitor's HDMI speakers), media seek and position, Live typing mode, presets, Android Keystore HMAC key (with `DeviceKeyMac` in `:protocol`), audit rotation, `status.json` for a waybar indicator, multi-output card groups, tablet split layout, map↔list shared-element morph, touchpad (`input.pointer`), biometric step-up (if not in v2), presentation mode, output power control, URL share, clipboard to desktop, Quick Settings tiles, media notification with a foreground service, urgent alerts, Wake-on-LAN, power menu (suspend, reboot, power off), album art, input-method "safe text" mode, `GET_BINDING_STATE` for the binding mode.
+Never (unchanged and extended): raw sway commands, `exec` with client text, remote unlock, cliphist access, screen streaming, keystroke reading, cloud relay.
