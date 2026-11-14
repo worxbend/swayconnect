@@ -4,7 +4,8 @@
 //! a roundtrip, so the compositor has processed the keys before the next check. A failed
 //! connection is dropped and the next delivery connects again (a compositor restart).
 //!
-//! Tests never run this: they use `FakeKeyboard`. The owner checks it in gate G-INPUT.
+//! `just ci` never runs this: its tests use `FakeKeyboard`. `tests/real_input.rs` (`just real`)
+//! types through it into a headless sway; the owner checks the live desktop in gate G-INPUT.
 
 use std::collections::BTreeSet;
 use std::fs::File;

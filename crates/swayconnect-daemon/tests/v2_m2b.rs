@@ -194,9 +194,9 @@ async fn a_write_to_a_source_other_than_muting_it_needs_audio_capture() {
         "a fixed-text notice on a remote unmute"
     );
     let written = [
-        ["set-source-mute", "--", "test.device", "1"],
-        ["set-sink-volume", "--", "test.device", "30%"],
-        ["set-source-mute", "--", "test.device", "0"],
+        ["--", "set-source-mute", "test.device", "1"],
+        ["--", "set-sink-volume", "test.device", "30%"],
+        ["--", "set-source-mute", "test.device", "0"],
     ];
     assert_eq!(rig.pactl_writes(), written);
     let expected = summary(&[

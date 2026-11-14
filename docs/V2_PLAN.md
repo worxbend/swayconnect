@@ -3,7 +3,68 @@
 Date: 2026-11-13 (review 2). Inputs: `docs/UX.md`, `docs/DESIGN.md` section 11, `docs/PROTOCOL.md` section 17, `docs/V2_RESEARCH.md`.
 Three milestones, in the owner's order: **M1 "UI/UX"**, then **M2a "desktop controls"** (window ops, lock, keep awake), then **M2b "devices and typing"** (audio, media, launch, keyboard).
 
-Next action: the owner runs gates G-M1, then G-WIN, G-KA, G-LOCK, then G-AUDIO, G-MEDIA, G-LAUNCH, G-INPUT (section 5). Every M2 slice is written and checked against fakes only.
+Next action: the owner runs gates G-M1, then G-WIN, G-KA, G-LOCK, then G-AUDIO, G-MEDIA, G-LAUNCH, G-INPUT, G-PHONE (section 5). Since M2c, audio, media, launch and typing also ran against the real programs in a sealed session (`docs/M2C_PLAN.md`); the gates keep only what the live desktop can show.
+
+## Status: M2c review fixes on 2026-11-14
+
+All 18 review findings are fixed (none rejected, none deferred). Details in `docs/M2C_PLAN.md` 3 and 7.
+
+| Check | Result |
+|---|---|
+| `just ci` | green: 970 Rust tests, fmt-check, clippy `-D warnings`, `cargo deny` |
+| `just real` | green: 17 tests (testkit `real_session` 7, daemon `real_audio` 3, `real_input` 3, `real_launch` 2, `real_media` 2) |
+| Android gate | green: `:protocol:test` 78 (with the new vector `088`), `:app:testDebugUnitTest` 299; lint 0 errors, the same 3 warnings. No Android code changed, so no new screenshots. |
+| Live session | read only before and after: sinks (volume included), sources, sway windows, `app-swayconnect-*` units identical |
+| By hand | `just sealed-session`: SIGKILL of the session process left no process in its group and none naming its runtime dir (the temp root stays, as documented); end of stdin with `--allow-user-systemd` removed everything |
+
+Fixed: the launcher target now needs the launcher to hold the keyboard (no focused node), with a 1 s wait after `launcher.open` (DESIGN 11.7, PROTOCOL 17.13, vectors README `keyboard`); the CLI picks the player as the app does (PROTOCOL 17.10); the harness seals every start path (bare commands inherit nothing; `output`, `checked_env`), resolves symlinks, refuses links into the live runtime dir except the D1 link, falls back to `/run/user/<uid>`, kills its group through a supervisor when the test process dies, keeps logs after a panic, reads no host PipeWire/WirePlumber drop-in, and kills a timed-out helper without a pid race; `flock -o` keeps the agent lock out of every child (justfile, AGENTS.md); the D1 cleanup stops only units of the fixture entries; every real rig checks the live sound server and leftover processes outside the group; `real_input` waits on sway state, not screenshots; DESIGN 11.8 states the D2 limit in the stolen-phone row.
+
+Not verified: the SIGKILL path inside a real test with a running daemon (only the bare session by hand); the guard wait under a slow fuzzel start (the real run passed, its duration was not measured).
+
+## Status: checkpoint M2c by INT on 2026-11-14
+
+Every M2c slice (R0 to R4, G-CLI, G-APP, G-FIX) is written. INT checked the whole tree:
+
+| Check | Result |
+|---|---|
+| `just ci` | green: 961 Rust tests, fmt-check, clippy `-D warnings`, `cargo deny` |
+| `just real` | green twice in a row: 15 tests (testkit `real_session` 5, daemon `real_audio` 3, `real_input` 3, `real_launch` 2, `real_media` 2), about 10 s of tests each run; no session, process or `app-swayconnect-test-*` unit left after either run |
+| Android gate | green: `:protocol:test` 78, `:app:testDebugUnitTest` 299, 0 failures; lint 0 errors, the same 3 warnings |
+| Live session | read-only before and after: sinks, sources, both defaults, the sway tree (window ids and app ids), `app-swayconnect-*` units and the PipeWire node count (7) were identical |
+
+R5, emulator against the real programs: a sealed session like `RealSession` (private `XDG_RUNTIME_DIR` under `/tmp`, own `dbus-daemon`, PipeWire + WirePlumber `policy` with two null sinks and a null source, headless sway on pixman), started by a scratch script with `env -i` and sealed values only, and in it `swayconnectd` with `read_only = false` on `127.0.0.1:28541`, `pactl`, `systemd-run` (D1, through `<rt>/systemd/private` only) and `fuzzel` real, notices, keep awake and lock on `fake-proc`, desktop entries from `tests/fixtures/real-launch`, plus `mpris-test-player`, a `foot` running `tee` as the typing target and two read-back windows (pactl and playerctl state, once a second). API 37 emulator, separate Android user, paired by link (host rewritten to `10.0.2.2`, codes compared). Screenshots in `~/.cache/swayconnect-m2c/` (`NN-*-desktop.png` from `grim`, `NN-*-phone.png`; Keys is `FLAG_SECURE` and captures black, so its text is in `*.uiautomator.txt`):
+
+| Step on the phone | Seen on the sealed desktop |
+|---|---|
+| Audio: slider tap, then drag | `sealed_sink_1` 36 %, then 66 % (`01`) |
+| Audio: mute; tap the second sink | `Mute: yes`; default sink `sealed_sink_2` (`02`, `03`) |
+| Media: Play, Next, Previous, Pause | player log `PlayPause Next Previous PlayPause`, status and title follow (`04` to `06`) |
+| Launch: Swayconnect Test Foot | real `app-swayconnect-test-foot-16c379b9.scope`, window `swayconnect-test-r4` in the headless sway (`07`); INT stopped the unit through the sealed `systemctl --user`, window gone (`08`) |
+| Launch: the terminal entry | Locked sheet with `swayconnectd devices grant 6xWT launch.risky`, no unit (`09`) |
+| Desktop: window card tap | `FocusWindow(5)`, sway focus moved to `r5-typing` |
+| Keys: Esc, then `hello from the phone 42` + Send ⏎ | `typed.txt` = `ESC hello from the phone 42\n` (`10`); the first key was not lost here |
+| Launch round button, type `term` | real `fuzzel` (the daemon's child, sealed env only) filters to Swayconnect Test Terminal (`11`, `12`) |
+| Keys: Esc to fuzzel | fuzzel gone, the target back on `r5-typing`; `back in foot` + Send ⏎ arrives (`13`, `15`) |
+| More: Mic tap; grant `audio.capture`; Mic hold | muted with the lock badge; a tap does not unmute, the 600 ms hold does; notice "Microphone unmuted remotely (device 6xWT)" (`16` to `18`) |
+| More: Launcher tile | fuzzel opens, Keys shows "Launcher (fuzzel)"; Esc closes it (`19`) |
+
+Notices (fake `notify-send` log): one connect notice for the whole walk, across two app reinstalls and a scope change (D2), two "Remote keyboard active", one "Microphone unmuted remotely".
+
+### Fixed by INT (M2c)
+
+1. Android, media: the now-playing card showed "Nothing playing" for a paused player. The server sends `active_player_id: null` until a player has played during its run (wire vector `ext/media.json` allows it), and the app took only the active player or one that plays. A paused Spotify or browser tab could not be started from the phone. `MediaView.activePlayer` now falls back to the first paused player. Test `a paused player that has not played since the server started is the active one` (red before). UX 7.2 updated.
+2. Android, Keys: after Esc closed fuzzel, the card read "Nothing had the focus on the computer". While fuzzel holds the keyboard, sway 1.12 marks no window focused, and the `session` state (launcher closed) reached the app before the `desktop` state with the focus back, so the fallback target was null. `KeysView.awaitingFocus` now hands the target to the next focused window (`withKeysFollowingDesktop`, called on each desktop state); a target the user picks is kept. Test `a launcher that closes before sway shows the focus again hands the target to the next focused window`. UX 9.2 updated. Seen fixed on the emulator.
+3. Docs: DESIGN 11.6 pactl argv (`-- set-sink-volume <name> <N>%`, R1's fix) and 11.7 launcher focus rule (R3's fix) written in.
+
+### Not done, not verified, open (M2c)
+
+- The CLI `play` without `--player` still fails with "no active player" when no player has played yet. Fixed in the review round: the CLI uses the app's order (PROTOCOL 17.10).
+- After an app update, opening the app shows the pairing link form again ("This replaces sealed-r5"): the update drops the saved state, and the task's first intent was the link. Back returns to the computer, and the pairing window has long closed. Not fixed.
+- A slider drag that starts on the right padding, past the thumb, did not move the value; a drag from the track and a tap did. Not investigated.
+- R5 used a scratch script, not `RealSession` (a Rust test cannot stay up for a manual walk). It mirrors `RealSession` but has no guard of its own: every program got `env -i` plus sealed values, checked afterwards by reading `/proc/<pid>/environ`. Only the supervising bash shells carried the live environment. Since the review round a walk starts the session with `just sealed-session`, which has the guard and teardown of `RealSession`.
+- `launcher_closed` itself was not provoked from the phone (the session state always came first); `real_input` covers it.
+- Window ops (G-WIN), keep awake and lock were not part of M2c; only window focus ran on the sealed sway.
+- Open slice items stay as the slices reported them in `docs/M2C_PLAN.md` 7.
 
 ## Status: checkpoints M2a and M2b by INT on 2026-11-14; owner gates open
 
@@ -15,7 +76,7 @@ Every M2a and M2b slice of section 3 is written. INT checked the whole tree on 2
 | Android gate | green: `:protocol:test` 78 tests, `:app:testDebugUnitTest` 282 tests, 0 failures; lint 0 errors, the same 3 warnings (`OldTargetApi`, `MissingApplicationIcon`, `UseKtx`) |
 | Default pairing | `swayconnectd pair` on a real binary gave exactly `state.read, state.titles, control, idle.inhibit, audio, media, launch, input.keys, input.text`, to the app and to the CLI. |
 | Emulator, live sway, read-only | API 37 emulator, separate Android user, paired by link with a `read_only` daemon on the live sway (temp XDG under `/tmp/claude-1000/sc.bXLh`, `127.0.0.1:28521`; every program but `pactl` pointed at `fake-proc`; no Wayland socket). Seen with real data: the owner's workspace and window with its icon; Audio with the real sink (15 %) and source (100 %) from `pactl -f json list`, both defaults; media "Nothing playing" (`playerctl -l` also lists none); Launch with the owner's real app list and icons, the risky shield on btop++ and Kernel Manager; More with keep awake Off (topic `session`: not locked, no inhibitor), Scratchpad Empty, Lock; the Computer sheet with the nine default scopes and the three by-name scopes off. Every action control is disabled with "The computer is set to look only.". Server side, through a CLI paired with the same daemon: `window.floating`, `window.move`, `scratchpad.show`, `keep_awake.set`, `session.lock`, `audio.set_mute`, `audio.set_volume`, `app.launch`, `launcher.open`, `input.text`, `input.key` each answered `read_only`, no fake program was started, and the live sway got no command. Light and dark. |
-| Emulator, fake sway | A second daemon (`read_only = false`, `127.0.0.1:28522`) on the testkit `fake_sway` example, every program path at `fake-proc`, desktop entries from `tests/fixtures/desktop-entries`, no session bus, no Wayland socket. The fake sway recorded, in order: Float → `[con_id=6] floating enable`; Move sheet pill 2 → `[con_id=6] move container to workspace number 2`; window sheet Tabbed → `[con_id=6] layout tabbed`; Scratchpad → `[con_id=6] move scratchpad`; Close hold (after `devices grant … destructive`) → `[con_id=6] kill`, with one `window.close` audit line; Drive card tap → `workspace --no-auto-back-and-forth number 2`; window card tap → `[con_id=7] focus`. Fake programs: Audio card tap → `pactl set-default-sink -- alsa_output.pci-0000_2b_00.4.analog-stereo`; Launch Firefox → `systemd-run --user --scope --collect --unit=app-swayconnect-firefox-ab65c6f2 -- /usr/lib/firefox/firefox` and the ghost tile "Opening Firefox…"; Launch round button → fake `fuzzel` started and the app moved to Keys with the target "Launcher (fuzzel)". Keep-awake tile → fake `systemd-inhibit --what=idle --mode=block --who=swayconnect --why=… <fake sleep> 3600`, fake notice "Keep awake on (device 4o4t)", tile "Awake · 60 min left"; long press → duration sheet (15 min, 30 min, 1 h, 2 h, "1 h from now"), 30 min → a new inhibitor with `1800`; tap → off; three `keep_awake.set` audit lines. Lock round button → fake lock script. Keys Esc chip → `input.key`, fake notice "Remote keyboard active (device 4o4t)", then "This needs a service that is not running on the computer." (no Wayland socket: `backend_unavailable`); typed "hi" + Send → "Sent 0 of 2 characters.", the text stays; audit lines carry `text_len` 2, never the text. Light and dark. |
+| Emulator, fake sway | A second daemon (`read_only = false`, `127.0.0.1:28522`) on the testkit `fake_sway` example, every program path at `fake-proc`, desktop entries from `tests/fixtures/desktop-entries` (the fixture root, which lists nothing: the data dirs are `<fixture>/high:<fixture>/low`, found by G-FIX in M2c), no session bus, no Wayland socket. The fake sway recorded, in order: Float → `[con_id=6] floating enable`; Move sheet pill 2 → `[con_id=6] move container to workspace number 2`; window sheet Tabbed → `[con_id=6] layout tabbed`; Scratchpad → `[con_id=6] move scratchpad`; Close hold (after `devices grant … destructive`) → `[con_id=6] kill`, with one `window.close` audit line; Drive card tap → `workspace --no-auto-back-and-forth number 2`; window card tap → `[con_id=7] focus`. Fake programs: Audio card tap → `pactl set-default-sink -- alsa_output.pci-0000_2b_00.4.analog-stereo`; Launch Firefox → `systemd-run --user --scope --collect --unit=app-swayconnect-firefox-ab65c6f2 -- /usr/lib/firefox/firefox` and the ghost tile "Opening Firefox…"; Launch round button → fake `fuzzel` started and the app moved to Keys with the target "Launcher (fuzzel)". Keep-awake tile → fake `systemd-inhibit --what=idle --mode=block --who=swayconnect --why=… <fake sleep> 3600`, fake notice "Keep awake on (device 4o4t)", tile "Awake · 60 min left"; long press → duration sheet (15 min, 30 min, 1 h, 2 h, "1 h from now"), 30 min → a new inhibitor with `1800`; tap → off; three `keep_awake.set` audit lines. Lock round button → fake lock script. Keys Esc chip → `input.key`, fake notice "Remote keyboard active (device 4o4t)", then "This needs a service that is not running on the computer." (no Wayland socket: `backend_unavailable`); typed "hi" + Send → "Sent 0 of 2 characters.", the text stays; audit lines carry `text_len` 2, never the text. Light and dark. |
 
 Screenshots: `~/.cache/swayconnect-m2/` (`ro-*` read-only live, `fake-*` fake sway). Keys and Pair capture black: `FLAG_SECURE` works; they were read with `uiautomator dump`.
 
@@ -66,7 +127,7 @@ Nineteen review findings, each checked first. All were real. 18 are fixed with a
 Fixed, daemon:
 
 1. Terminal emulators (`TerminalEmulator` in `Categories`: Alacritty, foot, footclient, kitty) are risky. Before this, a phone with the default pairing could start them without `launch.risky`. Index test and `prepare_launch` test added; PROTOCOL 17.11 and DESIGN 11.6 updated.
-2. The tier 2 connect notice of DESIGN 11.8 is wired. It shows after each authenticated connect of a device that holds a tier 2 scope. It does not show for a pending pairing, or while the daemon is read-only, since then no tier 2 op is offered. Test expectations updated in `v2_m2a.rs`, `v2_m2b.rs` and `e2e_controls.rs`. **Owner call:** with the default pairing every phone reconnect shows a notice. The emulator walk saw 9 connect notices in about 12 minutes, across app restarts and a reboot. Keep it, rate-limit it per device, or drop it from 11.8.
+2. The tier 2 connect notice of DESIGN 11.8 is wired. It shows after each authenticated connect of a device that holds a tier 2 scope. It does not show for a pending pairing, or while the daemon is read-only, since then no tier 2 op is offered. Test expectations updated in `v2_m2a.rs`, `v2_m2b.rs` and `e2e_controls.rs`. With the default pairing every phone reconnect showed a notice (9 in about 12 minutes on the emulator). Owner answer D2 (2026-11-14): at most once per device per 12 h, in memory per daemon run (DESIGN 11.8; done in M2c G-FIX).
 3. Virtual keyboard: a part carries the time of its check. The keyboard thread refuses it when the caller has gone or the check is older than 250 ms, so a part queued behind a stuck delivery is never written late (DESIGN 11.7 item 4).
 4. The launcher check reads the child's exit through an `ExitProbe` of the child handle, not the topic view. A launcher that just ended counts as closed at once.
 5. Panic switch: `Launcher::close` and the new `KeepAwake::close` refuse every later start (`read_only`), so an `open` or `set` that passed the read-only check before the switch starts nothing after it. `app.launch` reads the flag again just before its start. The two closes run side by side (`tokio::join!`). Tests: `after_close_no_launcher_opens`, `after_the_panic_switch_a_queued_or_later_on_is_read_only`, and the daemon test that now also checks the refusals. Not unit-tested: the `app.launch` re-check after the workspace switch, because the session harness has no sway that answers.
@@ -187,7 +248,7 @@ Everything else is decided (section 6).
 
 | # | Rule | Mechanism |
 |---|---|---|
-| 1 | One heavy process at a time: cargo, Gradle and the emulator boot never overlap. | Every `just` recipe takes `flock target/.agent.lock`. Gradle takes the same lock by hand: `flock ../../target/.agent.lock ./gradlew <tasks> --max-workers=4`, then `./gradlew --stop`. |
+| 1 | One heavy process at a time: cargo, Gradle and the emulator boot never overlap. | Every `just` recipe takes `flock -o target/.agent.lock`. Gradle takes the same lock by hand: `flock -o ../../target/.agent.lock ./gradlew <tasks> --max-workers=4`, then `./gradlew --stop`. |
 | 2 | Cargo only through `just`. 4 jobs, 4 test threads. | `.cargo/config.toml`. No `CARGO_TARGET_DIR`. |
 | 3 | Gradle with `--max-workers=4`. No change to `org.gradle.jvmargs`. | command line |
 | 4 | One headless emulator, 2 cores, 3 GiB: `-no-window -no-audio -no-boot-anim -no-snapshot-save -cores 2 -memory 3072`. No build while it boots. `adb emu kill` at the end. | `AGENTS.md` section 2 |
@@ -197,7 +258,7 @@ Everything else is decided (section 6).
 ### 1.3 Done for a slice
 
 - Rust: `just fmt-check`, `just lint <crate>`, `just test <crate>`. Files under about 500 lines. `#![forbid(unsafe_code)]`.
-- Android: `flock ../../target/.agent.lock ./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=4`, 0 lint errors. A screen change is looked at on the emulator (light and dark, font scale 1.0 and 2.0, TalkBack order once per screen).
+- Android: `flock -o ../../target/.agent.lock ./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=4`, 0 lint errors. A screen change is looked at on the emulator (light and dark, font scale 1.0 and 2.0, TalkBack order once per screen).
 - The integrator (INT) runs `just ci` and the Android gate at each checkpoint.
 
 ## 2. Order
@@ -490,6 +551,8 @@ Each slice also owns the test files that mirror its source paths (`src/test/...`
 
 ## 5. Owner gates (agents never run these)
 
+What M2c proved in a sealed session (`docs/M2C_PLAN.md`) is not repeated here: the gates keep only what the live desktop shows (speakers, wob, real players, his app list and layout, keep awake, lock, a real phone).
+
 Each gate: the owner sets `read_only = false` on his own daemon, grants the scope by name (`swayconnectd devices grant <prefix> <scope>`), runs the step at his own keyboard, and reports the result. If a step fails, the logged reply goes back to the slice that owns it.
 
 | Gate | After | The owner does | Pass |
@@ -498,10 +561,11 @@ Each gate: the owner sets `read_only = false` on his own daemon, grants the scop
 | G-WIN | D-INT.2a | `swayconnect` move a window, float it, change a layout, send to scratchpad and show it, close a throw-away window | each sway reply is `success` |
 | G-KA | D-KA | first `systemd-inhibit --what=idle --mode=block --who=test --why=test sleep 420` by hand, no input for 6 min; then `swayconnect awake on --for 5m`, wait; then `off` | no lock while held; lock 300 s after release; `windows_inhibiting` and `session` match; a notice showed at start |
 | G-LOCK | D-WIRE.2a | `swayconnect lock`, then `swayconnect lock` again | screen locks; the second call says already locked and starts no second `lock.sh` |
-| G-AUDIO | D-AUDIO | volume to 30 %, mute, unmute, set default; mic unmute with and without `audio.capture` | `pactl` shows each change; wob OSD reacts; unmute refused without `audio.capture`, notice with it |
-| G-MEDIA | D-MEDIA | play/pause and next on a playing browser tab | the player reacts |
-| G-LAUNCH | D-APPS | launch a harmless app; try a terminal without and with `launch.risky`; open fuzzel and press Escape on the computer | app opens in its own `app-swayconnect-*.scope` and survives a daemon restart; terminal refused, then allowed |
-| G-INPUT | D-INPUT | type into a scratch terminal from the phone; switch focus mid-text; open fuzzel and type into it; close fuzzel with Escape and try Enter from the phone; lock the screen and try again | text arrives; `focus_changed` stops it; launcher target works; `launcher_closed` after Escape; locked refuses; desktop notice appears |
+| G-AUDIO | D-AUDIO | volume to 30 % from the phone, mute, unmute | the speakers follow; the wob OSD reacts. (pactl writes, default device and the mic capture rule passed against a real PipeWire in M2c.) |
+| G-MEDIA | D-MEDIA | play/pause and next on a browser tab, then on Spotify; once with the player paused since the daemon started | each player reacts; a paused player shows with Play. (The MPRIS client passed against a test player on a real bus in M2c.) |
+| G-LAUNCH | D-APPS | launch a harmless app of his own list; restart the daemon | the app opens on the live desktop in its own `app-swayconnect-*.scope` and survives the restart. (Real `systemd-run`, the terminal refusal and fuzzel passed in a headless sway in M2c.) |
+| G-INPUT | D-INPUT | type text with non-ASCII letters into a scratch terminal under his own keyboard layout; lock the screen and try again | text arrives as typed; locked refuses; the notice appears. (Focus change, Esc, Enter, Ctrl+C and the launcher target passed in a headless sway in M2c.) |
+| G-PHONE | S13 | pair his phone over the LAN (QR code), then one volume change and one launch | pairing pins the certificate; both actions work over Wi-Fi |
 
 ## 6. Decisions taken in this plan (no owner answer needed)
 

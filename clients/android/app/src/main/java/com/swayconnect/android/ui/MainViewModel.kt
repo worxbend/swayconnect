@@ -36,6 +36,7 @@ import com.swayconnect.android.ui.state.withArea
 import com.swayconnect.android.ui.state.withAudio
 import com.swayconnect.android.ui.state.withAudioStale
 import com.swayconnect.android.ui.state.withInputRefusal
+import com.swayconnect.android.ui.state.withKeysFollowingDesktop
 import com.swayconnect.android.ui.state.withKeysFollowingSession
 import com.swayconnect.android.ui.state.withKeysRefusalCleared
 import com.swayconnect.android.ui.state.withKeysTarget
@@ -1094,7 +1095,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             val seenAtMs = System.currentTimeMillis()
             mutableState.update {
                 val follow = pagerFacts.allowsFollow(ownRequestPending = it.pendingTargetId != null, nowMs = monotonicMs())
-                it.withDesktop(desktop, follow, seenAtMs)
+                it.withDesktop(desktop, follow, seenAtMs).withKeysFollowingDesktop()
             }
             if (fp != null) snapshots.value = Snapshot(fp, desktop, seenAtMs, keepTitles = SCOPE_TITLES in welcome.scopes)
         }

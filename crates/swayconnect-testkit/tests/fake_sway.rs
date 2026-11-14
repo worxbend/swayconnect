@@ -429,6 +429,28 @@ async fn focus_moves_in_a_scripted_tree_too() {
     assert_eq!(focused_in_tree(&mut stream).await, [other]);
 }
 
+#[tokio::test]
+async fn a_layer_surface_takes_the_focus_flag_and_the_chain_leads_to_its_window() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+    let mut stream = connect(&sway).await;
+
+    sway.hold_keyboard_in_layer_surface(7);
+
+    assert_eq!(focused_in_tree(&mut stream).await, Vec::<u64>::new());
+    send(&mut stream, 4, "").await;
+    let (_, payload) = receive(&mut stream).await;
+    let mut node: serde_json::Value = serde_json::from_str(&payload).expect("tree JSON");
+    while let Some(next) = node["focus"][0].as_u64() {
+        let children = node["nodes"].as_array().expect("children").clone();
+        node = children
+            .into_iter()
+            .find(|child| child["id"] == next)
+            .expect("the focus list names a child");
+    }
+    assert_eq!(node["id"], 7);
+}
+
 fn layout_window_ids() -> Vec<u64> {
     fn collect(node: &serde_json::Value, ids: &mut Vec<u64>) {
         let children: Vec<&serde_json::Value> = ["nodes", "floating_nodes"]

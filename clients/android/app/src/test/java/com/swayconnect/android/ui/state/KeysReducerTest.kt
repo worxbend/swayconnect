@@ -51,6 +51,24 @@ class KeysReducerTest {
     }
 
     @Test
+    fun `a launcher that closes before sway shows the focus again hands the target to the next focused window`() {
+        // Real sway 1.12 (M2c R5): while fuzzel holds the keyboard no window is focused, and the session state that
+        // says the launcher closed can arrive before the desktop state that shows the focus again.
+        val held = base.withSession(session(Launcher(open = true, holder = Holder.THIS_DEVICE)), 0).withLauncherTarget()
+        val noFocus = held.copy(desktop = desktop(focused = 0))
+        val closed = noFocus.withSession(session(Launcher(open = false, holder = null)), 1).withKeysFollowingSession()
+        assertNull(closed.keys?.target)
+        val refocused = closed.copy(desktop = desktop(focused = 7)).withKeysFollowingDesktop()
+        assertEquals(InputTarget.Window(7), refocused.keys?.target)
+        val refused = noFocus.withInputRefusal(refusal(ErrorCode.LAUNCHER_CLOSED))
+        assertEquals(InputTarget.Window(7), refused.copy(desktop = desktop(focused = 7)).withKeysFollowingDesktop().keys?.target)
+        val picked = closed.withKeysTarget(InputTarget.Window(8)).copy(desktop = desktop(focused = 7)).withKeysFollowingDesktop()
+        assertEquals("a picked target stays", InputTarget.Window(8), picked.keys?.target)
+        val opened = base.copy(desktop = desktop(focused = 0)).withArea(Area.Keys)
+        assertNull("Keys opened with no focus keeps no target", opened.copy(desktop = desktop(focused = 7)).withKeysFollowingDesktop().keys?.target)
+    }
+
+    @Test
     fun `sticky modifiers arm, disarm and go with the next key`() {
         val armed = base.withArea(Area.Keys).withModifierToggled(KeyModifier.CTRL).withModifierToggled(KeyModifier.SUPER)
         assertEquals(setOf(KeyModifier.CTRL, KeyModifier.SUPER), armed.keys?.sticky)

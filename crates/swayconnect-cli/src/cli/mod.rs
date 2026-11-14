@@ -8,6 +8,7 @@ mod control_args;
 mod duration;
 mod error;
 mod layout_map;
+mod listing;
 mod render;
 mod run;
 mod state;
@@ -15,8 +16,8 @@ mod store;
 
 pub use args::{AwakeSwitch, Cli, Command, RefusedUri, Switch};
 pub use control_args::{
-    DeviceArg, KeyArgs, LaunchArgs, MuteArgs, PlayArgs, RefusedText, TypeArgs, VolumeArgs,
-    WindowTarget,
+    AudioAction, DeviceArg, InputTargetArg, KeyArgs, LaunchArgs, LauncherAction, MediaAction,
+    MuteArgs, PlayArgs, RefusedText, TypeArgs, VolumeArgs,
 };
 pub use error::CliError;
 pub use run::{Context, run};

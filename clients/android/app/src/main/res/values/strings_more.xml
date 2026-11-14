@@ -72,6 +72,16 @@
     <string name="lock_tile">Lock</string>
     <string name="lock_tile_now">now</string>
     <string name="lock_tile_spoken">Lock the computer now</string>
+    <string name="mic_tile">Mic</string>
+    <string name="mic_tile_live">Live</string>
+    <string name="mic_tile_muted">Muted</string>
+    <string name="mic_tile_none">No microphone</string>
+    <string name="mic_tile_unreachable">Sound server not reachable</string>
+    <string name="mic_tile_mute">mute</string>
+    <string name="mic_tile_unmute">unmute</string>
+    <string name="launcher_tile">Launcher</string>
+    <string name="launcher_tile_where">on computer</string>
+    <string name="launcher_tile_spoken">Open the launcher on the computer</string>
 
     <!-- Scratchpad sheet (UX 10.3) -->
     <string name="scratchpad_sheet_empty">Nothing in the scratchpad.</string>

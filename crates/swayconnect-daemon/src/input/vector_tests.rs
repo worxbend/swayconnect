@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use swayconnect_protocol::ErrorCode;
 use swayconnect_protocol::ops::{Args, Operation};
 
-use super::tests::{Grab, Rig, Scene, other_device, this_device};
+use super::tests::{Grab, Rig, Scene, WORKSPACE, other_device, this_device};
 
 const VECTORS: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -39,7 +39,12 @@ fn apply(scene: &Scene, guard: &Value, part: usize) {
     scene.set_grab(grab);
     // Last: unknown lock state removes the whole fake /proc.
     scene.set_locked(at(&guard["locked"], part).as_bool());
-    scene.focus(at(&guard["focus"], part).as_u64());
+    let focus = at(&guard["focus"], part).as_u64();
+    match guard["keyboard"].as_str() {
+        None | Some("window") => scene.focus(focus),
+        Some("layer") => scene.hold_keyboard_in_launcher(focus.unwrap_or(WORKSPACE)),
+        other => panic!("keyboard {other:?}"),
+    }
     let launcher = &guard["launcher"];
     let open = at(&launcher["open"], part).as_bool() == Some(true);
     let holder = match launcher["holder"].as_str() {

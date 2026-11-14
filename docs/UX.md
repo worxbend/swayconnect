@@ -508,7 +508,7 @@ Tap = `window.focus`, in both Drive and Browse mode (P2: a tap always acts). Lon
 - Mic: muting is one tap under `audio`. Unmuting, the mic slider and picking the input device need `audio.capture` (the server enforces it; without it they show a lock). With it, **unmuting needs a 600ms hold** (UX only; the server shows a desktop notice). TalkBack: double tap opens a confirm dialog instead.
 - Volume keys: while the Audio area is shown, the phone's volume keys step the default sink by 5 %, and a small pill "PC 45 %" shows under the title row for 1.2 s. Other modes are later.
 - `available: false`: "Sound server not reachable on worxbox." Media card still works if `media` is granted.
-- No player: the now-playing card reads "Nothing playing".
+- No player: the now-playing card reads "Nothing playing". The card controls `active_player_id`, else the first player that plays, else the first paused one: the server names no active player until one has played, and a paused player still needs its Play button.
 - Without `state.titles`: "Playing · Chromium".
 - No seek bar, no per-app streams and no card profiles in v2 (`DESIGN.md` 11.13).
 
@@ -579,7 +579,7 @@ The pill nav is hidden while the IME is open; back closes the IME first.
   - `focus_changed`: the target card gets a 2dp `error` border and a warning icon: "Focus moved to Firefox." Buttons "Type there" and "Back to Alacritty" (the second sends `window.focus`). "Sent 16 of 40 characters." The unsent tail stays in the field. `Reject`.
   - `locked`: full-width card "The computer is locked. Typing is off, so nothing reaches the lock screen." Composer disabled.
   - `keyboard_grabbed`: "A menu or launcher on the computer has the keyboard. Close it or type into the launcher."
-  - `launcher_closed`: "The launcher on the computer is closed." The target falls back to the focused window; nothing is re-sent.
+  - `launcher_closed`: "The launcher on the computer is closed." The target falls back to the focused window; nothing is re-sent. While a launcher such as fuzzel holds the keyboard, sway shows no focused window, so when the launcher closes before the desktop state shows the focus again, the next focused window becomes the target. The same fallback follows a `session` state that says this device no longer holds the launcher.
 - `FLAG_SECURE` is set on Keys in every mode.
 - Leaving Keys or backgrounding the app ends the phone's input session indicator.
 

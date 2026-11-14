@@ -1,12 +1,12 @@
-//! Arguments of the M2b subcommands: audio, media, launch and the remote keyboard
-//! (`docs/PROTOCOL.md` 17.9 to 17.13).
+//! Arguments of the M2b subcommands: audio, media, apps, the launcher and the remote
+//! keyboard (`docs/PROTOCOL.md` 17.9 to 17.13).
 
 use std::convert::Infallible;
 use std::fmt;
 
-use clap::Args;
+use clap::{Args, Subcommand};
 use swayconnect_protocol::limits::{MAX_FOCUS_NUMBER, MAX_KEY_REPEAT, MAX_MAX_VOLUME_PCT};
-use swayconnect_protocol::{EntryId, Key, Modifier};
+use swayconnect_protocol::{EntryId, InputTarget, Key, Modifier};
 
 use super::args::Switch;
 
@@ -39,6 +39,35 @@ pub struct DeviceArg {
     pub device_id: Option<u64>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum AudioAction {
+    /// List the sinks and sources of the server's `audio` state
+    Devices,
+    /// Make a sink or a source the default one. A source needs scope `audio.capture`
+    Default {
+        /// Id of a sink or a source, as `audio devices` lists it
+        #[arg(value_name = "ID")]
+        device_id: u64,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum MediaAction {
+    /// List the players of the server's `media` state
+    Players,
+    /// Skip to the next track of the active player, or of the player given with --player
+    Next(PlayArgs),
+    /// Go back one track on the active player, or on the player given with --player
+    Previous(PlayArgs),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum LauncherAction {
+    /// Run the server's launcher, such as fuzzel. Type into it with `type --launcher` and
+    /// `key --launcher`; `key --launcher Escape` closes it
+    Open,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Args)]
 pub struct PlayArgs {
     /// Id of a player of the server's `media` state. Default: the active player
@@ -68,7 +97,7 @@ pub struct LaunchArgs {
 #[derive(Debug, Clone, PartialEq, Eq, Args)]
 pub struct TypeArgs {
     #[command(flatten)]
-    pub target: WindowTarget,
+    pub target: InputTargetArg,
 
     // Caught here so that `run` can refuse text given as an argument without echoing it,
     // which a clap "unexpected argument" message would do.
@@ -102,15 +131,33 @@ pub struct KeyArgs {
     pub repeat: u8,
 
     #[command(flatten)]
-    pub target: WindowTarget,
+    pub target: InputTargetArg,
 }
 
+/// Where `type` and `key` deliver: exactly one of `--window` and `--launcher`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Args)]
-pub struct WindowTarget {
+#[group(required = true, multiple = false)]
+pub struct InputTargetArg {
     /// Id of the focused window, as `windows` lists it. Input stops when another window
     /// has the focus
     #[arg(long = "window", value_name = "ID")]
-    pub window_id: u64,
+    pub window_id: Option<u64>,
+
+    /// The launcher this device opened with `launcher open`. Input stops when it closes
+    #[arg(long)]
+    pub launcher: bool,
+}
+
+impl InputTargetArg {
+    /// `None` unless exactly one target is set. The parser lets only that through; this
+    /// does not rely on it.
+    pub fn input_target(self) -> Option<InputTarget> {
+        match (self.window_id, self.launcher) {
+            (Some(window_id), false) => Some(InputTarget::Window(window_id)),
+            (None, true) => Some(InputTarget::Launcher),
+            (Some(_), true) | (None, false) => None,
+        }
+    }
 }
 
 /// Stands for text that was given as an argument. It does not hold the text, so nothing
@@ -252,7 +299,7 @@ mod tests {
     #[test]
     fn type_needs_a_window_and_captures_text_arguments() {
         let cli = parse(&["type", "--window", "6"]).expect("type");
-        let target = WindowTarget { window_id: 6 };
+        let target = window_target(6);
         let text_arguments = Vec::new();
         assert_eq!(
             cli.command,
@@ -281,7 +328,7 @@ mod tests {
             key: Key::from_wire("Return").expect("key"),
             modifiers: Vec::new(),
             repeat: 1,
-            target: WindowTarget { window_id: 6 },
+            target: window_target(6),
         };
         assert_eq!(cli.command, Command::Key(expected));
 
@@ -315,5 +362,104 @@ mod tests {
             &["key", "a", "--repeat", "0", "--window", "6"],
             &["key", "a", "--repeat", "33", "--window", "6"],
         ]);
+    }
+
+    fn window_target(window_id: u64) -> InputTargetArg {
+        let window_id = Some(window_id);
+        InputTargetArg {
+            window_id,
+            launcher: false,
+        }
+    }
+
+    #[test]
+    fn type_and_key_take_the_launcher_as_their_target() {
+        let launcher = InputTargetArg {
+            window_id: None,
+            launcher: true,
+        };
+        let Command::Type(typed) = parse(&["type", "--launcher"]).expect("type").command else {
+            panic!("not type");
+        };
+        assert_eq!(typed.target, launcher);
+        let Command::Key(key) = parse(&["key", "Escape", "--launcher"])
+            .expect("key")
+            .command
+        else {
+            panic!("not key");
+        };
+        assert_eq!(key.target, launcher);
+
+        assert_eq!(launcher.input_target(), Some(InputTarget::Launcher));
+        assert_eq!(
+            window_target(6).input_target(),
+            Some(InputTarget::Window(6))
+        );
+        let both = InputTargetArg {
+            window_id: Some(6),
+            launcher: true,
+        };
+        assert_eq!(both.input_target(), None);
+    }
+
+    #[test]
+    fn an_input_without_exactly_one_target_is_a_usage_error() {
+        assert_usage_errors(&[
+            &["type", "--window", "6", "--launcher"],
+            &["key", "Escape"],
+            &["key", "Escape", "--launcher", "--window", "6"],
+            &["key", "Escape", "--launcher=yes"],
+        ]);
+    }
+
+    #[test]
+    fn audio_takes_devices_or_default_with_an_id() {
+        let devices = parse(&["audio", "devices"]).expect("devices").command;
+        let action = AudioAction::Devices;
+        assert_eq!(devices, Command::Audio { action });
+        let default = parse(&["audio", "default", "7"]).expect("default").command;
+        let action = AudioAction::Default { device_id: 7 };
+        assert_eq!(default, Command::Audio { action });
+        assert_usage_errors(&[
+            &["audio"],
+            &["audio", "default"],
+            &["audio", "default", "speaker"],
+            &["audio", "default", "-1"],
+            &["audio", "devices", "7"],
+        ]);
+    }
+
+    #[test]
+    fn media_takes_players_or_a_skip_with_an_optional_player() {
+        let cases = [
+            (&["media", "players"][..], MediaAction::Players),
+            (
+                &["media", "next"],
+                MediaAction::Next(PlayArgs { player_id: None }),
+            ),
+            (
+                &["media", "previous", "--player", "2"],
+                MediaAction::Previous(PlayArgs { player_id: Some(2) }),
+            ),
+        ];
+        for (arguments, action) in cases {
+            let command = parse(arguments).expect("media").command;
+            assert_eq!(command, Command::Media { action }, "{arguments:?}");
+        }
+        assert_usage_errors(&[
+            &["media"],
+            &["media", "skip"],
+            &["media", "next", "2"],
+            &["media", "players", "--player", "2"],
+        ]);
+    }
+
+    #[test]
+    fn apps_and_launcher_open_take_no_argument() {
+        assert_eq!(parse(&["apps"]).expect("apps").command, Command::Apps);
+        let open = parse(&["launcher", "open"]).expect("open").command;
+        let action = LauncherAction::Open;
+        assert_eq!(open, Command::Launcher { action });
+        assert_usage_errors(&[&["apps", "firefox"], &["launcher"], &["launcher", "close"]]);
     }
 }

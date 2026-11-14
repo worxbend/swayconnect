@@ -1,0 +1,7 @@
+# Fixture of tests/real_launch.rs: foot with a fixed app id and title in the sealed sway.
+# No TerminalEmulator category, so the entry needs only scope `launch`.
+[Desktop Entry]
+Type=Application
+Name=Swayconnect Test Foot
+Exec=foot --app-id=swayconnect-test-r4 --title=swayconnect-test-r4 cat
+Terminal=false

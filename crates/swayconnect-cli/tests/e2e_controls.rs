@@ -134,9 +134,9 @@ async fn awake_holds_the_inhibitor_for_the_asked_time_and_off_ends_it() {
         [inhibit("300"), inhibit("3600")]
     );
     // The wait for the first snapshot and four client runs: five connects of a device with tier 2
-    // scopes, each with a notice; one keep-awake notice, because the replace came from the
-    // same device.
-    let notices = harness.calls_once_there_are("notify-send", 6);
+    // scopes, one notice for them (once per device per 12 h, DESIGN 11.8); one keep-awake
+    // notice, because the replace came from the same device.
+    let notices = harness.calls_once_there_are("notify-send", 2);
     let texts: Vec<&str> = notices
         .iter()
         .filter_map(|argv| argv.last().map(String::as_str))
@@ -145,10 +145,10 @@ async fn awake_holds_the_inhibitor_for_the_asked_time_and_off_ends_it() {
     assert_eq!(count("Keep awake on (device "), 1, "{texts:?}");
     assert_eq!(
         count("Device with remote control rights connected (device "),
-        5,
+        1,
         "{texts:?}"
     );
-    assert_eq!(texts.len(), 6, "{texts:?}");
+    assert_eq!(texts.len(), 2, "{texts:?}");
     // Every fake output is powered on, so no `output * power on`.
     assert_eq!(harness.sway.commands(), Vec::<String>::new());
 }

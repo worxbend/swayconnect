@@ -33,7 +33,7 @@ use crate::dispatch::{self, Caller, Decision, Features, Topic};
 use crate::icons::IconService;
 use crate::input::InputConnection;
 use crate::keep_awake::KeepAwake;
-use crate::notify::{self, Notice};
+use crate::notify;
 use crate::security::{Admitted, ConnectionPermit, Handshake, Security};
 use crate::session_topic::{Locker, SessionTopic};
 use crate::sway_handle::{Published, SwayHandle};
@@ -196,10 +196,7 @@ where
     let can_act = !shared.read_only.load(Ordering::SeqCst);
     if admitted.pending.is_none() && can_act && notify::holds_tier_2(&admitted.scopes) {
         let device = admitted.device_id.clone();
-        shared
-            .services
-            .notifier
-            .spawn_show(Notice::RiskyDeviceConnected, device);
+        shared.services.notifier.announce_connect(device);
     }
     wire.decoder.set_limit(MAX_FRAME_C2S_BYTES);
     wire.send_limit = MAX_FRAME_S2C_BYTES;

@@ -51,7 +51,7 @@ import com.swayconnect.protocol.OpAvailability
 
 /**
  * The More area (docs/UX.md 10.1): quick-settings tiles in two columns, keep awake first, then the computer.
- * Mic and Launcher tiles come with M2b; the settings rows wait for a settings store.
+ * The settings rows wait for a settings store.
  */
 @Composable
 fun MoreArea(state: UiState, viewModel: MainViewModel, contentPadding: PaddingValues) {
@@ -97,7 +97,7 @@ private typealias Tile = @Composable (Modifier) -> Unit
  */
 private const val LARGE_FONT_SCALE = 1.2f
 
-/** The tiles in the order of UX 10.1 that M2a has; a tile whose op the server does not offer is left out. */
+/** The tiles in the order of UX 10.1; a tile whose op the server does not offer is left out. */
 @Composable
 private fun quickTiles(state: UiState, viewModel: MainViewModel, keepAwake: KeepAwakeTile?, onKeepAwake: (KeepAwakeAction) -> Unit): List<Tile> {
     val granted = state.granted ?: return emptyList()
@@ -113,8 +113,10 @@ private fun quickTiles(state: UiState, viewModel: MainViewModel, keepAwake: Keep
     val hidden = state.desktop?.scratchpad?.size
     return listOfNotNull(
         keepAwake?.let { tile -> { modifier: Modifier -> KeepAwakeQuickTile(tile, onKeepAwake, modifier) } },
+        micTile(state)?.let { tile -> { modifier: Modifier -> MicQuickTile(tile, viewModel::setMuted, onLocked, modifier) } },
         drive?.let { gated -> { modifier: Modifier -> DriveQuickTile(gated, driving, modifier) } },
         scratchpad?.let { gated -> { modifier: Modifier -> ScratchpadQuickTile(gated, hidden, stale, modifier) } },
+        launcherTile(state)?.let { tile -> { modifier: Modifier -> LauncherQuickTile(tile, viewModel::openComputerLauncher, onLocked, modifier) } },
         lock?.let { gated -> { modifier: Modifier -> LockQuickTile(gated, state.pendingTargetId == ServerTarget.LOCK, stale, modifier) } },
     )
 }

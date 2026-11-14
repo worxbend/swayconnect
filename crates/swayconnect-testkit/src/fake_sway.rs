@@ -156,6 +156,28 @@ impl FakeSway {
         replies.insert(Request::GetTree, tree.to_string());
     }
 
+    /// Shows the `GET_TREE` reply (scripted or default) as real sway 1.12 shows it while a
+    /// layer surface such as fuzzel holds the keyboard: no node is `focused`, and each
+    /// node's `focus` list leads to the node `con_id`, which gets the keyboard back when
+    /// the surface closes. No event is sent.
+    ///
+    /// # Panics
+    ///
+    /// When the tree reply is not JSON or has no node `con_id`.
+    pub fn hold_keyboard_in_layer_surface(&self, con_id: u64) {
+        let mut replies = lock(&self.shared.scripted_replies);
+        let current = replies
+            .get(&Request::GetTree)
+            .cloned()
+            .unwrap_or_else(fixtures::tree);
+        let mut tree: Value = serde_json::from_str(&current).expect("the GET_TREE reply is JSON");
+        assert!(
+            set_layer_focus(&mut tree, con_id),
+            "no node {con_id} in the GET_TREE reply"
+        );
+        replies.insert(Request::GetTree, tree.to_string());
+    }
+
     /// Sends an event to every connection that subscribed to it.
     pub fn send_event(&self, event: Event, payload: impl Into<String>) {
         // An error only says that no connection is open; then nobody is subscribed.
@@ -248,6 +270,31 @@ fn set_focused(node: &mut Value, con_id: u64) -> bool {
         }
     }
     found
+}
+
+/// Clears every `focused` and points each `focus` list on the path to `con_id` at the next
+/// node of that path. Returns whether `con_id` is in this subtree.
+fn set_layer_focus(node: &mut Value, con_id: u64) -> bool {
+    let is_target = node["id"].as_u64() == Some(con_id);
+    let Some(fields) = node.as_object_mut() else {
+        return false;
+    };
+    fields.insert("focused".to_owned(), Value::Bool(false));
+    let mut next = None;
+    for children in ["nodes", "floating_nodes"] {
+        let Some(children) = fields.get_mut(children).and_then(Value::as_array_mut) else {
+            continue;
+        };
+        for child in children {
+            if set_layer_focus(child, con_id) {
+                next = child["id"].as_u64();
+            }
+        }
+    }
+    if let Some(next) = next {
+        fields.insert("focus".to_owned(), Value::from(vec![next]));
+    }
+    is_target || next.is_some()
 }
 
 /// A panic in a test that holds the lock must not hide the state from the next reader.

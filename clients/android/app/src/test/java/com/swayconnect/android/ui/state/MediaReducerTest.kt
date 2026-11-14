@@ -22,6 +22,14 @@ class MediaReducerTest {
     }
 
     @Test
+    fun `a paused player that has not played since the server started is the active one`() {
+        // Seen on a real MPRIS player (M2c R5): the server sends active_player_id null until a player plays.
+        val paused = base.withMedia(media(player(1, PlayerStatus.STOPPED), player(2, PlayerStatus.PAUSED), active = null))
+        assertEquals(2L, paused.media?.activePlayer?.id)
+        assertEquals(2L, paused.capsulePlayer?.id)
+    }
+
+    @Test
     fun `the capsule shows a playing or paused player, not a stopped one`() {
         assertEquals(1L, base.withMedia(media(player(1, PlayerStatus.PAUSED), active = 1)).capsulePlayer?.id)
         assertNull(base.withMedia(media(player(1, PlayerStatus.STOPPED), active = 1)).capsulePlayer)

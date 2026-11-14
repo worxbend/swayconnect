@@ -13,7 +13,7 @@ Remote control for a [sway](https://swaywm.org/) desktop. A daemon on the comput
 | V3 "phone" | Android app | Builds and passes its JVM tests locally. Ran on one emulator. The owner has not run step S13 yet. |
 | v2 M1 "UI/UX" | layout map, app icons, new Android shell and desktop | Written. `just ci` and the Android gate are green. Seen on one emulator against a `read_only` daemon on the real sway; actions only against a fake sway. The owner has not run gate G-M1 yet. What was and was not checked: `docs/V2_PLAN.md`, Status. |
 | v2 M2a "desktop controls" | move, float, layout, scratchpad, close; keep awake; lock; audit log | Written. `just ci` and the Android gate are green. Tested against a fake sway and the testkit's `fake-proc` only. No real `systemd-inhibit`, lock script or window action has run. The owner has not run gates G-WIN, G-KA, G-LOCK. |
-| v2 M2b "devices and typing" | audio, media, app launch and launcher, remote keyboard | Written. `just ci` and the Android gate are green. Tested against fakes only: fake `pactl`, fake MPRIS backend, fake `systemd-run`, fake keyboard. No real sound server write, player command, launch or virtual keyboard has run. The owner has not run gates G-AUDIO, G-MEDIA, G-LAUNCH, G-INPUT. |
+| v2 M2b "devices and typing" | audio, media, app launch and launcher, remote keyboard | Written. `just ci`, `just real` and the Android gate are green. Since M2c these run against the real programs in a sealed test session (headless sway, private PipeWire and D-Bus): real `pactl`, an MPRIS player on a real bus, real `systemd-run --user --scope`, fuzzel, and the virtual keyboard typing into foot. The app drove all four on an emulator against that session. Nothing ran on the owner's live desktop. The owner has not run gates G-AUDIO, G-MEDIA, G-LAUNCH, G-INPUT, G-PHONE. |
 
 What v2 adds, and what is proven so far:
 
@@ -23,13 +23,13 @@ What v2 adds, and what is proven so far:
 | Move, float, layout, scratchpad, close a window | `move`, `float`, `close --yes`; `raw` for layout and scratchpad | Desktop card buttons and sheets; close needs a hold | fake sway | G-WIN |
 | Keep awake (logind idle inhibitor, 1 h default, 2 h max) | `awake on [--for 90m]`, `awake off` | More: first tile, duration sheet | fake `systemd-inhibit` | G-KA |
 | Lock the screen | `lock` | More: round button | fake lock script | G-LOCK |
-| Volume, mute, default device | `volume`, `mute` (no default-device command) | Audio area, volume keys | fake `pactl` | G-AUDIO |
-| Play/pause, next, previous | `play` (play/pause only) | Audio card, now-playing capsule | fake MPRIS backend (tests only) | G-MEDIA |
-| Start an app, open the launcher | `launch` | Launch area | fake `systemd-run`, fake launcher | G-LAUNCH |
-| Type text, press keys | `type` (stdin), `key` | Keys area | fake keyboard (tests only) | G-INPUT |
+| Volume, mute, default device | `volume`, `mute`, `audio devices`, `audio default` | Audio area, volume keys, More: Mic | real `pactl` on a sealed PipeWire with null sinks | G-AUDIO: speakers and wob OSD |
+| Play/pause, next, previous | `play`, `media next`, `media previous`, `media players` | Audio card, now-playing capsule | a test MPRIS player on a sealed D-Bus | G-MEDIA: a browser tab, Spotify |
+| Start an app, open the launcher | `launch`, `apps`, `launcher open` | Launch area, More: Launcher | real `systemd-run --user --scope` (test units, stopped), real fuzzel in a headless sway | G-LAUNCH: his own apps, a daemon restart |
+| Type text, press keys | `type` (stdin), `key`, `--launcher` | Keys area | the daemon's virtual keyboard typing into foot and fuzzel in a headless sway | G-INPUT: his keyboard layout, locked screen |
 | Audit log of tier 2 actions | `swayconnectd audit` | none | tests | none |
 
-Every gate is in `docs/V2_PLAN.md` section 5. Each one is the first real run of that control, and only the owner runs it.
+Every gate is in `docs/V2_PLAN.md` section 5. Only the owner runs them. For keep awake, lock and window actions, the gate is the first real run. For audio, media, launch and typing, `just real` already runs the real programs in a sealed session (`docs/M2C_PLAN.md`), so their gates check only what needs the live desktop: speakers and the wob OSD, a browser or Spotify player, his own app list and keyboard layout, the lock screen, and a real phone over the LAN (G-PHONE).
 
 Read it this way:
 
@@ -111,7 +111,7 @@ Needs Linux with sway, and a Rust toolchain through `rustup` (the version is pin
    swayconnect fullscreen <window_id> on
    ```
 
-6. v2 controls (none has run against the real desktop yet; the owner gates of `docs/V2_PLAN.md` section 5 come first):
+6. v2 controls (none has run against the owner's live desktop yet; the owner gates of `docs/V2_PLAN.md` section 5 come first):
 
    ```
    swayconnect move <window_id> 3          # or --id <workspace_id>
@@ -119,15 +119,20 @@ Needs Linux with sway, and a Rust toolchain through `rustup` (the version is pin
    swayconnect close <window_id> --yes     # needs the destructive scope
    swayconnect awake on --for 90m          # awake off
    swayconnect lock                        # needs [session] lock in the config
+   swayconnect audio devices               # sinks and sources, with their ids
    swayconnect volume 30                   # mute on|off; --device <id>
-   swayconnect play                        # --player <id>
+   swayconnect audio default <device_id>   # a source needs audio.capture
+   swayconnect media players
+   swayconnect play                        # media next|previous; --player <id>
+   swayconnect apps                        # entry ids for launch
    swayconnect launch firefox              # desktop entry id, without .desktop
-   echo hello | swayconnect type --window <window_id>
-   swayconnect key --window <window_id> Escape
+   swayconnect launcher open               # then type or key with --launcher
+   echo hello | swayconnect type --window <window_id>   # or --launcher
+   swayconnect key --window <window_id> Escape          # or --launcher
    swayconnectd audit -n 20
    ```
 
-   Exit codes: 1 server refusal or no target in the state, 2 usage (also a risky app without `--yes`), 3 invalid state or result.
+   `audio devices`, `media players` and `apps` print a table, or with `--json` one JSON value per row. Exit codes: 1 server refusal or no target in the state, 2 usage (also a risky app without `--yes`), 3 invalid state or result.
 
 ### Reach the daemon from the LAN (phone)
 
@@ -217,8 +222,9 @@ Needs [`just`](https://github.com/casey/just) and [`cargo-deny`](https://github.
 | `just fmt-check` | formatting check |
 | `just deny` | licenses and advisories |
 | `just ci` | the full gate |
+| `just real` | audio, media, launch and typing against the real programs in a sealed session; not part of `ci` |
 
-Tests use a fake sway on a temporary Unix socket, and the testkit's `fake-proc` for every program the daemon starts. No test connects to a real sway session, sound server, session bus or compositor.
+`just ci` tests use a fake sway on a temporary Unix socket, and the testkit's `fake-proc` for every program the daemon starts. `just real` needs sway, foot, fuzzel, grim, PipeWire, WirePlumber, `pactl` and `dbus-daemon` installed. It starts its own headless sway, private D-Bus and PipeWire on a temporary runtime directory. Its one contact with your session is owner decision D1: test apps start as short `app-swayconnect-test-*` scopes in your user systemd, and each test stops its own. No test connects to your sway, sound server, session bus or compositor.
 
 Android, from `clients/android`, with an Android SDK (`platforms;android-37.0`) and a JDK (Temurin 25 is tested; `android.yml` pins 21, untested): `./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`. Rules for contributors and coding agents are in [`AGENTS.md`](AGENTS.md).
 

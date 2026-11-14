@@ -252,7 +252,10 @@ Window ops, `window.close`, `session.lock`, `keep_awake.set` and `state.subscrib
 - `guard`: what the checks of 17.13 rule 2 see before each part. `locked` is `true`, `false` or
   `null` (unknown). `grabber` is `"none"`, `"launcher"` (the only keyboard grabber running is the
   launcher the server started) or `"other"`. `focus` is the focused window id a synchronous sway
-  read returns, or `null` for none. `launcher` is the launcher the server runs: `open`, `holder`
+  read returns, or `null` for none. `keyboard` is `"window"` (the default when absent: sway marks
+  the `focus` window as focused) or `"layer"` (a layer surface such as the launcher holds the
+  keyboard: sway marks no node as focused, and `focus` is the window its focus chain leads to,
+  which gets the keyboard back). `launcher` is the launcher the server runs: `open`, `holder`
   and `focus_window_id` (the window focused when `launcher.open` ran). `locked`, `grabber`,
   `focus` and `launcher.open` may be a list: entry `i` is what the check before part `i` sees, and
   the last entry holds for later parts.

@@ -4,75 +4,16 @@
 
 #[allow(dead_code, reason = "this file uses a part of the shared support")]
 mod client_support;
-
-use std::time::Duration;
+mod m2_script;
 
 use clap::Parser as _;
-use client_support::{
-    Server, Step, auth_connector, good_config, profile, transcript, vector_fp, with_member,
+use m2_script::{
+    failed, ok_with, request, run_offline, run_recorded, script_answering, script_offering,
+    subscribe_request, subscribed,
 };
 use serde_json::{Value, json};
-use swayconnect_cli::cli::{Cli, CliError, Context, ProfileStore, run};
+use swayconnect_cli::cli::{Cli, Context, ProfileStore, run};
 use swayconnect_cli::client::Connector;
-use tempfile::TempDir;
-
-const PATIENCE: Duration = Duration::from_secs(20);
-const M2B_OPS: [&str; 8] = [
-    "ping",
-    "state.subscribe",
-    "audio.set_volume",
-    "audio.set_mute",
-    "media.play_pause",
-    "app.launch",
-    "input.text",
-    "input.key",
-];
-
-struct Outcome {
-    result: Result<(), CliError>,
-    output: String,
-}
-
-/// Transcript T2 with `ops` set to [`M2B_OPS`], then one response per entry of `responses`,
-/// each after one request.
-fn script_answering(responses: &[Value]) -> Vec<Step> {
-    let t2 = transcript("t2-auth-ok");
-    let welcome = with_member(&t2[2], "ops", json!(M2B_OPS));
-    let mut script = vec![
-        Step::Send(t2[0].clone()),
-        Step::Receive,
-        Step::Send(welcome),
-    ];
-    for response in responses {
-        script.extend([Step::Receive, Step::Send(response.to_string())]);
-    }
-    script
-}
-
-fn ok_with(id: u64, result: &Value) -> Value {
-    json!({"type": "res", "id": id, "ok": true, "result": result})
-}
-
-fn failed(id: u64, code: &str, detail: Option<Value>) -> Value {
-    let mut error = json!({"code": code, "message": "no"});
-    if let Some(detail) = detail {
-        error["detail"] = detail;
-    }
-    json!({"type": "res", "id": id, "ok": false, "error": error})
-}
-
-fn subscribed(topic: &str, data: &Value) -> Value {
-    let state = json!({"topic": topic, "rev": 1, "data": data});
-    ok_with(1, &json!({"states": [state]}))
-}
-
-fn subscribe_request(topic: &str) -> Value {
-    json!({"type": "req", "id": 1, "op": "state.subscribe", "args": {"topics": [topic]}})
-}
-
-fn request(id: u64, op: &str, args: &Value) -> Value {
-    json!({"type": "req", "id": id, "op": op, "args": args})
-}
 
 fn audio_state(available: bool, default_sink: Option<u64>) -> Value {
     let sink = json!({
@@ -87,8 +28,13 @@ fn audio_state(available: bool, default_sink: Option<u64>) -> Value {
 }
 
 fn media_state(active_player_id: Option<u64>) -> Value {
+    media_state_with("paused", active_player_id)
+}
+
+/// One player, id 4, with `status`.
+fn media_state_with(status: &str, active_player_id: Option<u64>) -> Value {
     let player = json!({
-        "id": 4, "name": "Player", "app_id": null, "icon": null, "status": "paused",
+        "id": 4, "name": "Player", "app_id": null, "icon": null, "status": status,
         "title": null, "artist": null, "album": null,
         "can_play": true, "can_pause": true, "can_next": false, "can_previous": false,
     });
@@ -104,51 +50,6 @@ fn apps_state() -> Value {
     };
     let apps = [app("notes.desktop", false), app("term.desktop", true)];
     json!({"apps": apps, "recent": [], "truncated": false})
-}
-
-/// Runs `arguments` with `stdin` against a server that plays `script`; returns what the
-/// client sent after `auth`.
-async fn run_recorded(arguments: &[&str], stdin: &str, script: Vec<Step>) -> (Outcome, Vec<Value>) {
-    let server = Server::start(good_config(), script).await;
-    let client_dir = tempfile::tempdir().expect("temp dir");
-    ProfileStore::new(client_dir.path().to_owned())
-        .save(&profile(server.port, vector_fp()))
-        .expect("profile saved");
-    let outcome = run_command(arguments, stdin, auth_connector(), &client_dir).await;
-    let mut frames = server.received().await.expect("server script").frames;
-    frames.remove(0);
-    (outcome, frames)
-}
-
-async fn run_command(
-    arguments: &[&str],
-    stdin: &str,
-    connector: Connector,
-    client_dir: &TempDir,
-) -> Outcome {
-    let cli = Cli::try_parse_from([&["swayconnect"], arguments].concat()).expect("arguments");
-    let mut output = Vec::new();
-    let context = Context {
-        connector,
-        store: ProfileStore::new(client_dir.path().to_owned()),
-        input: &mut stdin.as_bytes(),
-        output: &mut output,
-    };
-    let result = tokio::time::timeout(PATIENCE, run(&cli, context))
-        .await
-        .expect("the command ends");
-    Outcome {
-        result,
-        output: String::from_utf8(output).expect("UTF-8 output"),
-    }
-}
-
-/// Runs a command that must fail before it connects: no profile is stored.
-async fn run_offline(arguments: &[&str], stdin: &str) -> CliError {
-    let client_dir = tempfile::tempdir().expect("temp dir");
-    let outcome = run_command(arguments, stdin, Connector::new(None), &client_dir).await;
-    assert_eq!(outcome.output, "", "{arguments:?}");
-    outcome.result.expect_err("refused before connecting")
 }
 
 #[tokio::test]
@@ -225,6 +126,14 @@ async fn without_a_target_the_default_sink_or_active_player_is_read_from_the_sta
             "media.play_pause",
             json!({"player_id": 4}),
         ),
+        // No player has played yet: the first paused one (PROTOCOL 17.10).
+        (
+            &["play"],
+            "media",
+            media_state(None),
+            "media.play_pause",
+            json!({"player_id": 4}),
+        ),
     ] {
         let script = script_answering(&[subscribed(topic, &data), ok_with(2, &empty)]);
 
@@ -255,7 +164,7 @@ async fn no_default_target_in_the_state_exits_1_and_sends_no_action() {
         (
             &["play"],
             "media",
-            media_state(None),
+            media_state_with("stopped", None),
             "no active media player: choose one with --player",
         ),
     ] {
@@ -485,13 +394,7 @@ async fn a_command_the_server_does_not_offer_is_not_sent() {
         &["play", "--player", "2"],
         &["key", "a", "--window", "6"],
     ] {
-        let t2 = transcript("t2-auth-ok");
-        let welcome = with_member(&t2[2], "ops", json!(["ping", "state.subscribe"]));
-        let script = vec![
-            Step::Send(t2[0].clone()),
-            Step::Receive,
-            Step::Send(welcome),
-        ];
+        let script = script_offering(&["ping", "state.subscribe"]);
 
         let (outcome, sent) = run_recorded(arguments, "", script).await;
 

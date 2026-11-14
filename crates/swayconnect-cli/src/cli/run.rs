@@ -12,11 +12,13 @@ use swayconnect_protocol::ops::{Args, KeepAwake, TOPIC_DESKTOP, WorkspaceTarget}
 use swayconnect_protocol::text::{escape_for_terminal, is_display_name};
 use swayconnect_protocol::uri::PairingUri;
 use swayconnect_protocol::{
-    AudioChange, IconGetResult, IconHash, InvalidMember, JsonObject, KeepAwakeResult, LockResult,
+    Apps, AudioChange, IconGetResult, IconHash, InvalidMember, JsonObject, KeepAwakeResult,
+    LockResult, MediaCommand,
 };
 use tokio::time::{Instant, timeout, timeout_at};
 
 use super::args::{AwakeSwitch, Cli, Command, Switch};
+use super::control_args::LauncherAction;
 use super::duration::remaining_text;
 use super::error::CliError;
 use super::state::DesktopState;
@@ -111,16 +113,15 @@ pub async fn run(cli: &Cli, context: Context<'_>) -> Result<(), CliError> {
             let change = AudioChange::Mute(mute.switch == Switch::On);
             app.audio(mute.device, change).await
         }
-        Command::Play(play) => app.play_pause(play.player_id).await,
+        Command::Play(play) => app.media(play.player_id, MediaCommand::PlayPause).await,
+        Command::Audio { action } => app.audio_action(*action).await,
+        Command::Media { action } => app.media_action(*action).await,
+        Command::Apps => app.list::<Apps>().await,
         Command::Launch(launch) => app.launch(launch).await,
-        Command::Type(typed) => {
-            if !typed.text_arguments.is_empty() {
-                return Err(CliError::Usage(
-                    "the text is read from stdin: other local users can read arguments",
-                ));
-            }
-            app.type_text(typed.target.window_id).await
-        }
+        Command::Launcher {
+            action: LauncherAction::Open,
+        } => app.open_launcher().await,
+        Command::Type(typed) => app.type_text(typed).await,
         Command::Key(key) => app.press_key(key).await,
         Command::Layout { number, id } => app.layout(*number, *id).await,
         Command::Icon { hash, output } => app.icon(*hash, output).await,

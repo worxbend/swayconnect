@@ -6,6 +6,7 @@
     reason = "every test binary compiles this module and uses a part of it"
 )]
 
+pub mod live;
 pub mod logs;
 pub mod vectors;
 pub mod wire;

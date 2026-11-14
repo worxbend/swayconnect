@@ -17,6 +17,12 @@ data class KeysView(
     val refusal: KeysRefusal? = null,
     /** The newest text send, for the composer to drop the delivered part. */
     val typed: Typed? = null,
+    /**
+     * The launcher target went while no window had the focus: sway marks none while a layer surface such as fuzzel
+     * holds the keyboard, and the desktop state that shows the focus again can come after. The next focused window
+     * becomes the target ([withKeysFollowingDesktop]).
+     */
+    val awaitingFocus: Boolean = false,
 )
 
 /** Why typing stopped, as UX 9.2 shows it. */
@@ -66,7 +72,7 @@ fun UiState.withArea(area: Area, windowId: Long? = null): UiState {
 fun UiState.withKeysTarget(target: InputTarget): UiState {
     val view = keys ?: return this
     if (target == InputTarget.Launcher && !launcherOffered) return this
-    return copy(keys = view.copy(target = target, refusal = null))
+    return copy(keys = view.copy(target = target, refusal = null, awaitingFocus = false))
 }
 
 /** `launcher.open` made this device the holder: Keys opens with the launcher as its target (docs/UX.md 8.2). */
@@ -100,7 +106,7 @@ fun UiState.withInputRefusal(refusal: InputRefusal): UiState {
             ErrorCode.FOCUS_CHANGED -> view.copy(refusal = KeysRefusal.FocusChanged(refusal.focusedWindowId))
             ErrorCode.LOCKED -> view.copy(refusal = KeysRefusal.Locked)
             ErrorCode.KEYBOARD_GRABBED -> view.copy(refusal = KeysRefusal.KeyboardGrabbed)
-            ErrorCode.LAUNCHER_CLOSED -> view.copy(refusal = KeysRefusal.LauncherClosed, target = focusedWindowId?.let(InputTarget::Window))
+            ErrorCode.LAUNCHER_CLOSED -> view.copy(refusal = KeysRefusal.LauncherClosed).fallingBackTo(focusedWindowId)
             else -> return this
         }
     return copy(keys = next)
@@ -110,7 +116,7 @@ fun UiState.withInputRefusal(refusal: InputRefusal): UiState {
 fun UiState.withTargetFromRefusal(): UiState {
     val view = keys ?: return this
     val moved = view.refusal as? KeysRefusal.FocusChanged ?: return this
-    return copy(keys = view.copy(target = moved.focusedWindowId?.let(InputTarget::Window), refusal = null))
+    return copy(keys = view.copy(target = moved.focusedWindowId?.let(InputTarget::Window), refusal = null, awaitingFocus = false))
 }
 
 fun UiState.withKeysRefusalCleared(): UiState = keys?.let { copy(keys = it.copy(refusal = null)) } ?: this
@@ -124,11 +130,17 @@ fun UiState.withKeysFollowingSession(): UiState {
     val launcherGone = view.target == InputTarget.Launcher && session?.state?.launcher != null && !launcherOffered
     val unlocked = view.refusal == KeysRefusal.Locked && session?.state?.locked == false
     if (!launcherGone && !unlocked) return this
-    return copy(
-        keys =
-            view.copy(
-                target = if (launcherGone) focusedWindowId?.let(InputTarget::Window) else view.target,
-                refusal = if (unlocked) null else view.refusal,
-            ),
-    )
+    val followed = if (launcherGone) view.fallingBackTo(focusedWindowId) else view
+    return copy(keys = followed.copy(refusal = if (unlocked) null else view.refusal))
 }
+
+/** Follows a new `desktop` state: a target that waits for the focus after the launcher closed takes the focused window. */
+fun UiState.withKeysFollowingDesktop(): UiState {
+    val view = keys?.takeIf { it.awaitingFocus } ?: return this
+    val focused = focusedWindowId ?: return this
+    return copy(keys = view.copy(target = InputTarget.Window(focused), awaitingFocus = false))
+}
+
+/** The launcher target is gone: the focused window takes over, or the next one when none has the focus yet. */
+private fun KeysView.fallingBackTo(focusedWindowId: Long?): KeysView =
+    copy(target = focusedWindowId?.let(InputTarget::Window), awaitingFocus = focusedWindowId == null)

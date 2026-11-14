@@ -1,15 +1,26 @@
 package com.swayconnect.android.ui.more
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.swayconnect.android.R
+import com.swayconnect.android.ui.audio.AudioTap
+import com.swayconnect.android.ui.audio.DeviceCard
 import com.swayconnect.android.ui.state.Countdown
 import com.swayconnect.android.ui.theme.LocalHaptics
 import com.swayconnect.android.ui.theme.SwayHaptic
 import com.swayconnect.android.ui.theme.SwayIcons
 import com.swayconnect.protocol.OpAvailability
+import com.swayconnect.protocol.replaceUnsafe
 
 /** The keep-awake tile of docs/UX.md 10.2. [onAction] carries out what a tap or a long press asks for. */
 @Composable
@@ -154,4 +165,81 @@ internal fun LockQuickTile(gate: GatedTile, pending: Boolean, stale: Boolean, mo
     val look = TileLook(SwayIcons.Lock, stringResource(R.string.lock_tile), listOf(stringResource(R.string.lock_tile_now)), pending = pending)
     val idle = GatedTile(gate.access, { if (!pending && !stale) gate.onAvailable() }, gate.onLocked)
     OpQuickTile(idle, look, TileSpeech(state = null, clickLabel = stringResource(R.string.lock_tile_spoken)), stale, modifier)
+}
+
+/**
+ * Mic (UX 10.1, 10.3): ink while live. A tap mutes; unmuting is a 600 ms hold with `audio.capture` (a dialog under
+ * TalkBack), else the lock opens the Locked sheet. [onSetMuted] takes the device id and the new mute state.
+ */
+@Composable
+internal fun MicQuickTile(tile: MicTile, onSetMuted: (Long, Boolean) -> Unit, onLocked: (String) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHaptics.current
+    var asking by remember { mutableStateOf(false) }
+    val tap = tile.tap()
+    val card = (tile as? MicTile.Shown)?.card
+    val live = card?.device?.muted == false
+    val line = micLine(tile)
+    val look = TileLook(
+        icon = if (live) SwayIcons.Mic else SwayIcons.MicOff,
+        title = stringResource(R.string.mic_tile),
+        lines = listOf(line),
+        on = live,
+        locked = tap is AudioTap.ShowLocked,
+        pending = card?.pending == true,
+    )
+    val clickLabel = when (tap) {
+        AudioTap.Send -> stringResource(R.string.mic_tile_mute)
+        AudioTap.Hold -> stringResource(R.string.mic_tile_unmute)
+        is AudioTap.ShowLocked -> stringResource(R.string.more_show_how)
+        AudioTap.None -> null
+    }
+    val onClick: (() -> Unit)? = when (tap) {
+        // A default input that is live: Send is muting (UX 7.2).
+        AudioTap.Send -> card?.let { shown -> { haptics.perform(SwayHaptic.ToggleOff); onSetMuted(shown.device.id, true) } }
+        is AudioTap.ShowLocked -> { { onLocked(tap.scope) } }
+        AudioTap.Hold, AudioTap.None -> null
+    }
+    val hold = card?.takeIf { tap == AudioTap.Hold }?.let { shown -> TileHold(onHeld = { onSetMuted(shown.device.id, false) }, onConfirmRequest = { asking = true }) }
+    val input = TileInput(onClick, enabled = card?.toggleMute != OpAvailability.ReadOnly, stale = card?.live == false, hold = hold)
+    QuickTile(look, TileSpeech(line, clickLabel, toggled = live.takeIf { card != null }), input, modifier)
+    if (asking) {
+        MicUnmuteDialog(card?.takeIf { tap == AudioTap.Hold }, onDismiss = { asking = false }) { id ->
+            asking = false
+            onSetMuted(id, false)
+        }
+    }
+}
+
+@Composable
+private fun micLine(tile: MicTile): String =
+    when (tile) {
+        is MicTile.Locked -> stringResource(R.string.more_off_for_phone)
+        MicTile.Waiting -> stringResource(R.string.more_waiting)
+        MicTile.Unreachable -> stringResource(R.string.mic_tile_unreachable)
+        MicTile.NoMic -> stringResource(R.string.mic_tile_none)
+        is MicTile.Shown -> stringResource(if (tile.card.device.muted) R.string.mic_tile_muted else R.string.mic_tile_live)
+    }
+
+/** The TalkBack way of the unmute hold (UX 7.2, 15). A null [card] (no longer unmutable) closes it. */
+@Composable
+private fun MicUnmuteDialog(card: DeviceCard?, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
+    if (card == null) {
+        LaunchedEffect(Unit) { onDismiss() }
+        return
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.audio_unmute_title)) },
+        text = { Text(stringResource(R.string.audio_unmute_text, replaceUnsafe(card.device.description))) },
+        confirmButton = { TextButton(onClick = { onConfirm(card.device.id) }) { Text(stringResource(R.string.audio_unmute_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** Launcher on computer (UX 10.3): `launcher.open`. The view model then goes to Keys or shows the line (UX 8.2). */
+@Composable
+internal fun LauncherQuickTile(tile: LauncherTile, onOpen: () -> Unit, onLocked: (String) -> Unit, modifier: Modifier = Modifier) {
+    val look = TileLook(SwayIcons.Search, stringResource(R.string.launcher_tile), listOf(stringResource(R.string.launcher_tile_where)), pending = tile.pending)
+    val gate = GatedTile(tile.access, { if (tile.tap() == LauncherTap.Open) onOpen() }, onLocked)
+    OpQuickTile(gate, look, TileSpeech(state = null, clickLabel = stringResource(R.string.launcher_tile_spoken)), stale = !tile.live, modifier)
 }

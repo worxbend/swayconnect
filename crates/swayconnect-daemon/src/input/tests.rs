@@ -9,6 +9,7 @@ use swayconnect_sway::SwayTarget;
 use swayconnect_testkit::{FakeSway, TestDirs};
 
 use super::fake::{FakeKeyboard, Recorded};
+use super::guard::LAUNCHER_GRAB_WAIT;
 use super::*;
 use crate::apps::{Launcher, OpenLauncher};
 use crate::lockstate::{ProcScanner, SessionConfig, add_fake_process};
@@ -103,6 +104,12 @@ impl Scene {
     /// Moves focus without an event; `None` focuses the workspace.
     pub(super) fn focus(&self, window: Option<u64>) {
         self.sway.focus_without_event(window.unwrap_or(WORKSPACE));
+    }
+
+    /// The launcher holds the keyboard as a layer surface, as fuzzel does once it mapped:
+    /// sway marks no node focused, and `window` gets the keyboard back when it closes.
+    pub(super) fn hold_keyboard_in_launcher(&self, window: u64) {
+        self.sway.hold_keyboard_in_layer_surface(window);
     }
 
     pub(super) fn set_launcher(&self, open: Option<(DeviceId, Option<u64>)>) {
@@ -278,6 +285,15 @@ async fn checks_refuse_in_order_locked_launcher_grab_focus() {
     rig.scene.focus(Some(42));
     assert_eq!(
         input.type_text(launcher, &a).await,
+        Err(InputError::Refused(InputRefusal::FocusChanged {
+            delivered_chars: 0,
+            focused_window_id: Some(42),
+        })),
+        "the recorded window is focused: the launcher does not hold the keyboard"
+    );
+    rig.scene.hold_keyboard_in_launcher(42);
+    assert_eq!(
+        input.type_text(launcher, &a).await,
         Ok(InputTextResult { delivered_chars: 1 })
     );
     assert_eq!(
@@ -297,7 +313,7 @@ async fn an_ended_launcher_child_is_closed_before_its_view_clears() {
     let a = text("a");
     rig.scene.set_launcher(Some((this_device(), Some(42))));
     rig.scene.set_grab(Grab::Launcher);
-    rig.scene.focus(Some(42));
+    rig.scene.hold_keyboard_in_launcher(42);
     assert_eq!(
         input.type_text(InputTarget::Launcher, &a).await,
         Ok(InputTextResult { delivered_chars: 1 })
@@ -313,6 +329,28 @@ async fn an_ended_launcher_child_is_closed_before_its_view_clears() {
     assert_eq!(rig.keyboard.typed_parts(), ["a"]);
 }
 
+/// `launcher.open` answers before fuzzel maps its layer surface: a part sent at once waits
+/// until the launcher holds the keyboard, and goes nowhere before.
+#[tokio::test]
+async fn a_launcher_part_waits_until_the_launcher_holds_the_keyboard() {
+    let rig = Rig::new();
+    let input = rig.service.connection(this_device());
+    rig.scene.set_launcher(Some((this_device(), Some(42))));
+    rig.scene.set_grab(Grab::Launcher);
+    rig.scene.focus(Some(42));
+    let scene = rig.scene.clone();
+    let mapped = tokio::spawn(async move {
+        tokio::time::sleep(LAUNCHER_GRAB_WAIT / 4).await;
+        scene.hold_keyboard_in_launcher(42);
+    });
+
+    let typed = input.type_text(InputTarget::Launcher, &text("a")).await;
+
+    mapped.await.expect("the launcher mapped");
+    assert_eq!(typed, Ok(InputTextResult { delivered_chars: 1 }));
+    assert_eq!(rig.keyboard.typed_parts(), ["a"]);
+}
+
 #[tokio::test]
 async fn the_launcher_target_is_only_for_its_holder_while_the_child_lives() {
     let launcher_runner = FakeRunner::default();
@@ -322,6 +360,7 @@ async fn the_launcher_target_is_only_for_its_holder_while_the_child_lives() {
     launcher.open(&this_device(), Some(42)).expect("opened");
     let pid = launcher.view().borrow().as_ref().expect("open").pid;
     rig.scene.set_process(pid, "fuzzel", true);
+    rig.scene.hold_keyboard_in_launcher(42);
 
     let other = rig.service.connection(other_device());
     let closed: Result<(), InputError> = Err(InputError::Refused(InputRefusal::LauncherClosed {

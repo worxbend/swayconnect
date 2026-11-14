@@ -2171,6 +2171,7 @@
         "locked": false,
         "grabber": "launcher",
         "focus": 42,
+        "keyboard": "layer",
         "launcher": {
           "open": true,
           "holder": "this_device",
@@ -2407,6 +2408,7 @@
           "none"
         ],
         "focus": 42,
+        "keyboard": "layer",
         "launcher": {
           "open": [
             true,
@@ -2427,6 +2429,41 @@
       "delivered": [
         "bbbbbbbbbbbbbbbb"
       ]
+    },
+    {
+      "name": "088-launcher-not-holding-the-keyboard",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "launcher",
+        "focus": 42,
+        "keyboard": "window",
+        "launcher": {
+          "open": true,
+          "holder": "this_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":88,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"firefox\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 0,
+          "focused_window_id": 42
+        }
+      },
+      "sway": [],
+      "delivered": []
     },
     {
       "name": "090-without-input-text",
@@ -5482,6 +5519,7 @@
         "locked": false,
         "grabber": "launcher",
         "focus": 42,
+        "keyboard": "layer",
         "launcher": {
           "open": true,
           "holder": "this_device",

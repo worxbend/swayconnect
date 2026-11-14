@@ -12,11 +12,16 @@ data class MediaView(
     /** "Hide until next track" (docs/UX.md 4.3): the capsule stays hidden while the active player plays this track. */
     val hiddenTrack: Track? = null,
 ) {
-    /** The player the now-playing card controls: `active_player_id`, else the first that plays. Null: "Nothing playing". */
+    /**
+     * The player the now-playing card controls: `active_player_id`, else the first that plays, else the first paused
+     * one (the server names none until a player has played, so a paused player would get no Play button). Null:
+     * "Nothing playing".
+     */
     val activePlayer: Player?
         get() =
             state.players.firstOrNull { it.id == state.activePlayerId }
                 ?: state.players.firstOrNull { it.status == PlayerStatus.PLAYING }
+                ?: state.players.firstOrNull { it.status == PlayerStatus.PAUSED }
 }
 
 /**

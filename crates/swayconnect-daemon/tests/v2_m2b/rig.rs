@@ -173,7 +173,11 @@ impl Rig {
     /// The pactl calls that change something; the reads and `subscribe` are left out.
     pub fn pactl_writes(&self) -> Vec<Vec<String>> {
         let mut calls = self.programs.calls(PACTL);
-        calls.retain(|argv| argv.first().is_some_and(|verb| verb.starts_with("set-")));
+        // A write is `-- set-<what> <name> [value]` (`docs/DESIGN.md` 11.6).
+        calls.retain(|argv| match argv.as_slice() {
+            [dash, verb, ..] => dash == "--" && verb.starts_with("set-"),
+            _ => false,
+        });
         calls
     }
 

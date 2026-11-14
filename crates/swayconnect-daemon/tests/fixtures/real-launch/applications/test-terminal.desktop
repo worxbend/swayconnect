@@ -1,0 +1,6 @@
+# Fixture of tests/real_launch.rs: a terminal entry, so it needs scope `launch.risky`.
+[Desktop Entry]
+Type=Application
+Name=Swayconnect Test Terminal
+Exec=cat
+Terminal=true

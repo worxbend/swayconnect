@@ -1,5 +1,6 @@
-//! The M2b commands (`docs/PROTOCOL.md` 17.9 to 17.13). A command that needs a server id it
-//! was not given reads it from the topic state on the connection that then sends the request.
+//! The M2b and M2c commands (`docs/PROTOCOL.md` 17.9 to 17.13). A command that needs a server
+//! id it was not given reads it from the topic state on the connection that then sends the
+//! request.
 
 use std::io::Read;
 use std::time::Duration;
@@ -9,11 +10,15 @@ use swayconnect_protocol::limits::{INPUT_TEXT_SCALARS_PER_MINUTE, MAX_INPUT_TEXT
 use swayconnect_protocol::ops::{Args, TOPIC_APPS, TOPIC_AUDIO, TOPIC_MEDIA};
 use swayconnect_protocol::{
     Apps, Audio, AudioChange, ErrorBody, ErrorCode, InputRefusal, InputTarget, InputText,
-    InputTextResult, InvalidMember, JsonObject, KeyPress, Media, MediaCommand,
+    InputTextResult, InvalidMember, JsonObject, KeyPress, LauncherOpenResult, Media, MediaCommand,
 };
 
-use super::super::control_args::{DeviceArg, KeyArgs, LaunchArgs};
+use super::super::control_args::{
+    AudioAction, DeviceArg, InputTargetArg, KeyArgs, LaunchArgs, MediaAction, TypeArgs,
+};
 use super::super::error::retry_after_ms;
+use super::super::listing::{Listing, controlled_player};
+use super::super::render;
 use super::{App, CliError, within};
 use crate::client::{ClientError, Session};
 
@@ -45,18 +50,59 @@ impl App<'_> {
         self.print_result(result, "ok")
     }
 
-    /// Without `--player` the command goes to the active player of the `media` state.
-    pub(super) async fn play_pause(&mut self, player_id: Option<u64>) -> Result<(), CliError> {
+    pub(super) async fn audio_action(&mut self, action: AudioAction) -> Result<(), CliError> {
+        match action {
+            AudioAction::Devices => self.list::<Audio>().await,
+            AudioAction::Default { device_id } => {
+                let device_id = Some(device_id);
+                self.audio(DeviceArg { device_id }, AudioChange::Default)
+                    .await
+            }
+        }
+    }
+
+    pub(super) async fn media_action(&mut self, action: MediaAction) -> Result<(), CliError> {
+        match action {
+            MediaAction::Players => self.list::<Media>().await,
+            MediaAction::Next(play) => self.media(play.player_id, MediaCommand::Next).await,
+            MediaAction::Previous(play) => self.media(play.player_id, MediaCommand::Previous).await,
+        }
+    }
+
+    /// Prints the topic state as a table, or as one JSON value per row.
+    pub(super) async fn list<T: Listing>(&mut self) -> Result<(), CliError> {
+        let mut session = self.connect().await?;
+        let state = self.read_state(&mut session, T::TOPIC, T::decode).await?;
+        super::finish(session).await;
+        if self.prints_json {
+            for row in state.json_rows() {
+                self.print(&render::server_json(&row))?;
+            }
+            return Ok(());
+        }
+        self.print(&state.table())?;
+        for note in state.notes() {
+            self.print(note)?;
+        }
+        Ok(())
+    }
+
+    /// Without `--player` the command goes to [`controlled_player`] of the `media` state.
+    pub(super) async fn media(
+        &mut self,
+        player_id: Option<u64>,
+        command: MediaCommand,
+    ) -> Result<(), CliError> {
         let mut session = self.connect().await?;
         let player_id = match player_id {
             Some(player_id) => player_id,
-            None => self
-                .read_state(&mut session, TOPIC_MEDIA, Media::decode)
-                .await?
-                .active_player_id
-                .ok_or(CliError::NoActivePlayer)?,
+            None => {
+                let media = self
+                    .read_state(&mut session, TOPIC_MEDIA, Media::decode)
+                    .await?;
+                controlled_player(&media).ok_or(CliError::NoActivePlayer)?
+            }
         };
-        let command = MediaCommand::PlayPause;
         let result = self
             .request_on(session, &Args::Media { player_id, command })
             .await?;
@@ -89,12 +135,30 @@ impl App<'_> {
         self.print_result(result, "started")
     }
 
+    /// `ok` means that the launcher runs. Only the device that opened it can type into it:
+    /// when it was open already, that is not this command.
+    pub(super) async fn open_launcher(&mut self) -> Result<(), CliError> {
+        let result = self.request(&Args::LauncherOpen).await?;
+        let opened = LauncherOpenResult::decode(&result).map_err(CliError::InvalidResult)?;
+        let text = if opened.already_open {
+            "already open: type into it with --launcher only if this device opened it"
+        } else {
+            "opened: type into it with --launcher"
+        };
+        self.print_result(result, text)
+    }
+
     /// Text comes from stdin only. Every request is checked before the first is sent, and
     /// typing stops at the first error (spec 17.13).
-    pub(super) async fn type_text(&mut self, window_id: u64) -> Result<(), CliError> {
+    pub(super) async fn type_text(&mut self, typed: &TypeArgs) -> Result<(), CliError> {
+        if !typed.text_arguments.is_empty() {
+            return Err(CliError::Usage(
+                "the text is read from stdin: other local users can read arguments",
+            ));
+        }
+        let target = input_target(typed.target)?;
         let text = self.read_typed_text()?;
         let requests = input_requests(&text)?;
-        let target = InputTarget::Window(window_id);
         let mut session = self.connect().await?;
         let mut typed_chars = 0;
         for text in requests {
@@ -124,7 +188,7 @@ impl App<'_> {
                  it switches the virtual terminal",
             )
         })?;
-        let target = InputTarget::Window(key.target.window_id);
+        let target = input_target(key.target)?;
         let result = self.request(&Args::InputKey { target, press }).await?;
         self.print_result(result, "ok")
     }
@@ -192,6 +256,12 @@ impl App<'_> {
         }
         Ok(text)
     }
+}
+
+fn input_target(target: InputTargetArg) -> Result<InputTarget, CliError> {
+    target.input_target().ok_or(CliError::Usage(
+        "input goes to --window or to --launcher, not both",
+    ))
 }
 
 fn default_sink(audio: &Audio) -> Result<u64, CliError> {

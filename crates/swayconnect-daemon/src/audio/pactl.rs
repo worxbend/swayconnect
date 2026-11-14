@@ -2,7 +2,9 @@
 //! `sources`, the `pactl subscribe` event filter, and the argv of every pactl call.
 //!
 //! Every name that goes into an argv comes from pactl's own output and goes after `--`;
-//! a name that starts with `-` never gets that far (11.3 rule 8).
+//! a name that starts with `-` never gets that far (11.3 rule 8). pactl stops reading options
+//! at its command word and takes every later word as it is, a `--` too, so the `--` goes
+//! before the command word.
 
 use std::collections::HashMap;
 
@@ -225,8 +227,10 @@ pub fn default_args(direction: Direction) -> [&'static str; 1] {
 
 pub const SUBSCRIBE_ARGS: [&str; 1] = ["subscribe"];
 
-/// The arguments of one write, `--` before the name (`docs/DESIGN.md` 11.6). A volume is
-/// clamped to `max_volume_pct`.
+/// The arguments of one write: `--`, the command word, the name, the value
+/// (`docs/DESIGN.md` 11.6). The `--` ends pactl's options before any word of the daemon; after
+/// the command word pactl would take it as the device name. A volume is clamped to
+/// `max_volume_pct`.
 pub fn write_args(
     direction: Direction,
     name: &str,
@@ -245,7 +249,7 @@ pub fn write_args(
         ),
         AudioChange::Default => (format!("set-default-{word}"), None),
     };
-    [verb, "--".to_owned(), name.to_owned()]
+    ["--".to_owned(), verb, name.to_owned()]
         .into_iter()
         .chain(value)
         .collect()

@@ -250,8 +250,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-volume",
           "--",
+          "set-sink-volume",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "55%"
         ]
@@ -299,8 +299,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-volume",
           "--",
+          "set-sink-volume",
           "alsa_output.pci-0000_01_00.1.hdmi-stereo",
           "0%"
         ]
@@ -326,8 +326,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-volume",
           "--",
+          "set-sink-volume",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "100%"
         ]
@@ -595,8 +595,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-volume",
           "--",
+          "set-sink-volume",
           "bluez_output.38_18_4C_00_00_01.1",
           "20%"
         ]
@@ -648,8 +648,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-source-volume",
           "--",
+          "set-source-volume",
           "alsa_input.usb-Blue_Yeti-00.analog-stereo",
           "50%"
         ]
@@ -802,8 +802,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-volume",
           "--",
+          "set-sink-volume",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "50%"
         ]
@@ -831,8 +831,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-volume",
           "--",
+          "set-sink-volume",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "50%"
         ]
@@ -860,8 +860,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-volume",
           "--",
+          "set-sink-volume",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "50%"
         ]
@@ -909,8 +909,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-mute",
           "--",
+          "set-sink-mute",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "1"
         ]
@@ -936,8 +936,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-mute",
           "--",
+          "set-sink-mute",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "0"
         ]
@@ -963,8 +963,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-source-mute",
           "--",
+          "set-source-mute",
           "alsa_input.usb-Blue_Yeti-00.analog-stereo",
           "1"
         ]
@@ -1016,8 +1016,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-source-mute",
           "--",
+          "set-source-mute",
           "alsa_input.pci-0000_00_1f.3.analog-stereo",
           "0"
         ]
@@ -1181,8 +1181,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-sink-mute",
           "--",
+          "set-sink-mute",
           "alsa_output.pci-0000_00_1f.3.analog-stereo",
           "1"
         ]
@@ -1254,8 +1254,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-default-sink",
           "--",
+          "set-default-sink",
           "alsa_output.pci-0000_01_00.1.hdmi-stereo"
         ]
       ],
@@ -1306,8 +1306,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-default-source",
           "--",
+          "set-default-source",
           "alsa_input.usb-Blue_Yeti-00.analog-stereo"
         ]
       ],
@@ -1420,8 +1420,8 @@
       "sway": [],
       "pactl": [
         [
-          "set-default-sink",
           "--",
+          "set-default-sink",
           "alsa_output.pci-0000_01_00.1.hdmi-stereo"
         ]
       ],

@@ -1,6 +1,11 @@
 package com.swayconnect.android.ui.more
 
+import com.swayconnect.android.ui.audio.AudioTap
+import com.swayconnect.android.ui.audio.DeviceCard
+import com.swayconnect.android.ui.audio.DevicesPart
+import com.swayconnect.android.ui.audio.devicesPart
 import com.swayconnect.android.ui.state.KeepAwakeStatus
+import com.swayconnect.android.ui.state.PendingControl
 import com.swayconnect.android.ui.state.ServerTarget
 import com.swayconnect.android.ui.state.UiState
 import com.swayconnect.android.ui.state.keepAwake
@@ -104,6 +109,78 @@ private inline fun KeepAwakeTile.gated(byFace: (KeepAwakeFace) -> KeepAwakeActio
         access is OpAvailability.Locked -> KeepAwakeAction.ShowLocked(access.scope)
         access != OpAvailability.Available || !live || pending -> KeepAwakeAction.None
         else -> byFace(face)
+    }
+
+/**
+ * The Mic tile of docs/UX.md 10.1 and 10.3: the default input device of topic `audio`. It follows the mute rules
+ * of the Audio area (7.2): muting needs `audio`, unmuting needs `audio.capture` and a 600 ms hold.
+ */
+sealed interface MicTile {
+    data class Locked(val scope: String) : MicTile
+
+    /** The server offers audio but sent no `audio` state yet. */
+    data object Waiting : MicTile
+
+    data object Unreachable : MicTile
+
+    /** No input device, or none is the default. */
+    data object NoMic : MicTile
+
+    data class Shown(val card: DeviceCard) : MicTile
+}
+
+/** The tile, or null before `welcome` or when the server does not offer `audio.set_mute`. */
+fun micTile(state: UiState): MicTile? {
+    val granted = state.granted ?: return null
+    if (granted.availabilityOf(Op.AUDIO_SET_MUTE) == OpAvailability.Unsupported) return null
+    return when (val part = devicesPart(state)) {
+        DevicesPart.Hidden -> null
+        is DevicesPart.Locked -> MicTile.Locked(part.scope)
+        DevicesPart.Waiting -> MicTile.Waiting
+        DevicesPart.Unreachable -> MicTile.Unreachable
+        DevicesPart.Empty -> MicTile.NoMic
+        is DevicesPart.Shown -> part.inputs.firstOrNull { it.isDefault }?.let(MicTile::Shown) ?: MicTile.NoMic
+    }
+}
+
+/** A tap on the tile: the mute button of the default microphone (UX 7.2). */
+fun MicTile.tap(): AudioTap =
+    when (this) {
+        is MicTile.Locked -> AudioTap.ShowLocked(scope)
+        is MicTile.Shown -> card.muteTap()
+        MicTile.Waiting, MicTile.Unreachable, MicTile.NoMic -> AudioTap.None
+    }
+
+/** The Launcher tile of docs/UX.md 10.3: `launcher.open` on the computer. */
+data class LauncherTile(
+    /** [OpAvailability.Unsupported] never reaches a tile: [launcherTile] gives none. */
+    val access: OpAvailability,
+    val live: Boolean,
+    /** A `launcher.open` waits for its answer. */
+    val pending: Boolean,
+)
+
+/** What a tap on the Launcher tile does. After `Open` the view model picks Keys or the line (UX 8.2). */
+sealed interface LauncherTap {
+    data object Open : LauncherTap
+
+    data class ShowLocked(val scope: String) : LauncherTap
+
+    data object None : LauncherTap
+}
+
+/** The tile, or null before `welcome` or when the server does not offer `launcher.open`. */
+fun launcherTile(state: UiState): LauncherTile? {
+    val access = state.granted?.availabilityOf(Op.LAUNCHER_OPEN) ?: return null
+    if (access == OpAvailability.Unsupported) return null
+    return LauncherTile(access, live = state.desktopLive, pending = state.pendingControl == PendingControl.Launcher)
+}
+
+fun LauncherTile.tap(): LauncherTap =
+    when {
+        access is OpAvailability.Locked -> LauncherTap.ShowLocked(access.scope)
+        access != OpAvailability.Available || !live || pending -> LauncherTap.None
+        else -> LauncherTap.Open
     }
 
 /** A length as words name it: whole hours when it is a multiple of one, else minutes rounded up. */

@@ -351,7 +351,6 @@ async fn keep_awake_outlives_its_client_and_the_panic_switch_ends_it() {
     soon("close", first.close()).await.expect("closed");
 
     let mut second = rig.connect(&profile).await;
-    assert_eq!(notice.release().await, connected, "every connect");
     let state = session_state(&mut second, |_| true).await;
     assert!(
         state.keep_awake.active,
@@ -369,6 +368,17 @@ async fn keep_awake_outlives_its_client_and_the_panic_switch_ends_it() {
         "600",
     ];
     assert_eq!(inhibitor.release().await, inhibit_argv);
+
+    let (other, _third) = rig.device(&M2A_SCOPES).await;
+    let other_text = format!(
+        "Device with remote control rights connected (device {})",
+        &other.device_id.as_str()[..4]
+    );
+    assert_eq!(
+        notice.release().await,
+        ["--app-name=swayconnect", "--", "swayconnect", &other_text],
+        "the reconnect within 12 h showed nothing; another device gets its own notice"
+    );
 
     rig.daemon.enter_read_only();
     next_session_state(&mut second, |state| !state.keep_awake.active).await;

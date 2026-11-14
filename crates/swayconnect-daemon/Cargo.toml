@@ -10,6 +10,11 @@ license.workspace = true
 name = "swayconnectd"
 path = "src/main.rs"
 
+[features]
+# Runs tests/real_*.rs against real programs in a sealed session (docs/M2C_PLAN.md 3).
+# Only `just real` turns it on; `just ci` never does.
+real-backends = []
+
 [dependencies]
 swayconnect-protocol.workspace = true
 swayconnect-sway.workspace = true

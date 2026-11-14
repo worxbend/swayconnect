@@ -207,7 +207,7 @@ pub(super) fn or_absent(text: Option<&String>) -> String {
     text.map_or_else(|| ABSENT.to_owned(), Clone::clone)
 }
 
-fn set_flags(flags: &[(bool, &str)]) -> String {
+pub(super) fn set_flags(flags: &[(bool, &str)]) -> String {
     let names: Vec<&str> = flags
         .iter()
         .filter_map(|&(is_set, name)| is_set.then_some(name))

@@ -4,6 +4,9 @@ Input for the unit tests of `src/apps/index.rs`. Two data dirs: `high` comes fir
 search order, so its `firefox` and `hidden-here` shadow the ones in `low`. Every entry is
 invented; no `Exec` program exists on purpose.
 
+For a daemon run by hand, set `XDG_DATA_DIRS=<this dir>/high:<this dir>/low`. The root
+itself holds no `applications/`, so naming it lists no app (`tests/fake_sway_run.rs`).
+
 | Entry | Case |
 |---|---|
 | `firefox`, `mpv`, `gparted`, `htop`, `only-sway`, `sub/tool` (id `sub-tool`) | listed |

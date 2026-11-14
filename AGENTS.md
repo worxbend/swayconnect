@@ -6,7 +6,7 @@ Next action: read section 1, then the plan of the slice you work on: `docs/V2_PL
 
 ## 1. Hard rules
 
-1. The owner's desktop runs sway. Never send it a state-changing command. Read-only `swaymsg -t get_*` is the only allowed contact. A daemon that an agent connects to the real sway has `read_only = true`, temp XDG directories, a loopback address and a port that is not 28414. Actions are tried against the fake sway only.
+1. The owner's desktop runs sway. Never send it a state-changing command. Read-only `swaymsg -t get_*` is the only allowed contact. A daemon that an agent connects to the real sway has `read_only = true`, temp XDG directories, a loopback address and a port that is not 28414. Actions are tried against the fake sway, or inside the sealed session of section 2.
 2. Never start a real, nested or headless sway. Tests use the fake sway of `swayconnect-testkit` on a temp Unix socket.
 3. Android builds are allowed since the owner installed the SDK (2026-11-13), under the limits of section 2: one heavy process at a time, Gradle with `--max-workers=4`, at most one headless emulator. Never start Android Studio, a second AVD or an SDK download.
 4. No `git commit`, no `git push`, no `sudo`, no system package install. The owner does these.
@@ -25,6 +25,8 @@ Run cargo through `just` only. Each recipe takes one lock, so builds of parallel
 | `just fmt` | formats the whole workspace |
 | `just deny` | `cargo deny check` |
 | `just ci` | fmt-check, lint, test, deny |
+| `just real` | clippy and `tests/real_*.rs` of testkit and daemon with feature `real-backends`, one test thread; not part of `ci` |
+| `just sealed-session [--allow-user-systemd]` | a sealed session for a manual walk; prints `export` lines, runs until stdin ends; only the build holds the lock |
 
 No crate argument means the workspace.
 
@@ -32,14 +34,26 @@ No crate argument means the workspace.
 - When other agents edit the tree, do not run `just fmt`. Format your own files: `rustfmt --edition 2024 <files>`.
 - Do not leave a background process running.
 
+Real programs run only in the sealed session of `just real` (`docs/M2C_PLAN.md` 3, testkit `RealSession`). It is the one exception to section 1 rule 2 and to the program rules of section 6, which still hold for every test `just ci` runs.
+
+- A real-backend test lives in `tests/real_*.rs`, starts with `#![cfg(feature = "real-backends")]`, and starts programs only through `RealSession` (`command`, `spawn`, `output`, `swaymsg`, `pactl`, `screenshot`). The environment it gives the daemon's `RealRunner` comes from `RealSession::checked_env`. Never `#[ignore]`.
+- The session has its own `XDG_RUNTIME_DIR` under `/tmp`, a private `dbus-daemon`, headless sway (pixman, no input devices, one 1280x720 output `HEADLESS-1`), PipeWire with WirePlumber's `policy` profile (no device monitor), two null sinks and one null source. Every program gets a cleared environment with sealed values only.
+- The guard panics when the runtime dir overlaps the live one, a child environment names the live runtime dir, sway socket, Wayland socket, session bus or sound server (also through a symlink), or a symlink in the sealed runtime dir points into the live one (except the D1 link). Build it with `LiveEnv::from_vars(std::env::vars_os())`.
+- Owner decision D1: `systemd-run --user` may reach the real user manager, only after `allow_user_systemd()` (one symlink to its private socket). Name units `app-swayconnect-test-*` and stop only the new units of the test's own entries.
+- Drop kills the session's process group and removes its directories, also on panic; a panicking test keeps its logs in `<root>.log`. A supervisor kills the group when the test process dies. One session at a time per agent; `just real` runs one test thread.
+- Screenshots that tests keep go to `target/tmp/real-session/`.
+- A daemon with `read_only = false` on real programs runs only inside a sealed session, on a port that is not 28414. For an emulator walk (M2c R5, `docs/V2_PLAN.md` M2c status) start the session with `just sealed-session [--allow-user-systemd]` (guard and teardown of `RealSession`; end its stdin to stop it), start the daemon and every other program with `env -i` plus the printed values only, link `<rt>/systemd/private` only for D1, keep notices, keep awake and lock on `fake-proc`, and stop every `app-swayconnect-test-*` unit and every process group at the end. The headless sway has no keyboard: send one key first, or the first keys can be lost.
+- Before and after a `just real` run that touches a new feature, compare the live sink list (`pactl -f json list sinks`), the live sway tree and `systemctl --user list-units 'app-swayconnect-*'` (read only).
+
 Done for a Rust change: `just fmt-check`, `just lint <crate>`, `just test <crate>` pass. Files stay under about 500 lines. Each crate root has `#![forbid(unsafe_code)]`.
 
 Android, from `clients/android`. Gradle has no `just` recipe, so take the same lock by hand:
 
 ```
-flock ../../target/.agent.lock ./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=4
+flock -o ../../target/.agent.lock ./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=4
 ```
 
+- `-o` keeps the lock file out of the command: a process left running (a Gradle daemon, a sealed-session program) never holds the lock of the next run.
 - Run `./gradlew --stop` when you finish. Do not raise `org.gradle.jvmargs`.
 - Emulator: reuse a running one (`adb devices`). Else start the one AVD (`Medium_Phone_API_37.0`) headless: `-no-window -no-audio -no-boot-anim -no-snapshot-save -cores 2 -memory 3072`. No Gradle or cargo run while it boots. End with `adb emu kill`.
 - The emulator reaches the host's loopback at `10.0.2.2`. The daemon never needs a LAN address for it.

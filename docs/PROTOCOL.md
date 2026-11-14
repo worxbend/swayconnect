@@ -1478,6 +1478,8 @@ Errors: `bad_request` (out of range), `not_found` (id not in the current `audio`
 | `active_player_id` | int or null | yes | the player a simple client controls: the last one that played |
 | `truncated` | bool | yes | `true` when the server dropped players for the cap |
 
+A client command without a chosen player goes to `active_player_id`, else the first player whose `status` is `playing`, else the first `paused` one; with none of these it sends nothing. The server names no active player until one has played during its run, and a paused player still needs its play command. The CLI and the Android now-playing card (UX 7.2) use this order.
+
 `Player`:
 
 | Field | Type | Required | Meaning |
@@ -1581,7 +1583,7 @@ Result `{}`.
 Server rules (both ops):
 
 1. The server cuts text into parts of at most 16 characters. A key press is one part.
-2. Before each part the server checks, in order: the screen is not locked (else `locked`; unknown lock state also refuses with `locked`); for target `launcher`, the launcher this device opened is still running (else `launcher_closed`); no keyboard-grabbing surface runs other than that launcher (else `keyboard_grabbed`); the focused window, read from sway at that moment, is the target `window_id`, or for target `launcher` the window that was focused when `launcher.open` ran (else `focus_changed`).
+2. Before each part the server checks, in order: the screen is not locked (else `locked`; unknown lock state also refuses with `locked`); for target `launcher`, the launcher this device opened is still running (else `launcher_closed`); no keyboard-grabbing surface runs other than that launcher (else `keyboard_grabbed`); the focused window, read from sway at that moment, is the target `window_id`; for target `launcher`, the launcher holds the keyboard (sway marks no node as focused) and the window that gets the keyboard back is the one that was focused when `launcher.open` ran (else `focus_changed`). Because `launcher.open` answers before the launcher has taken the keyboard, the server MAY repeat the checks for up to 1 s while no layer surface holds the keyboard, and refuses only then.
 3. The focus read of rule 2 is a synchronous request to sway made after the previous part was fully processed by the compositor. The server does not reuse an earlier answer.
 4. It stops at the first failed check and reports how much was delivered.
 5. It releases every key and modifier after each request and when the connection closes.

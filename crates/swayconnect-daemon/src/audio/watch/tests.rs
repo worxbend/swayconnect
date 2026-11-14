@@ -249,6 +249,6 @@ async fn a_write_names_the_device_by_its_pactl_name() {
         .expect("written");
     assert_eq!(
         running.runner.argvs().last(),
-        Some(&argv(&["set-sink-volume", "--", CAPTURED_SINK, "30%"]))
+        Some(&argv(&["--", "set-sink-volume", CAPTURED_SINK, "30%"]))
     );
 }
