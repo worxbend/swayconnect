@@ -123,6 +123,14 @@ class ShellModelTest {
     }
 
     @Test
+    fun `the Awake pill drops its word only when the whole pill does not fit and minutes are left`() {
+        assertFalse(AwakePill(54).dropsWord(fullWidth = 120, room = 200))
+        assertFalse("exactly fits", AwakePill(54).dropsWord(fullWidth = 120, room = 120))
+        assertTrue(AwakePill(54).dropsWord(fullWidth = 121, room = 120))
+        assertFalse("no minutes: nothing shorter to show", AwakePill(null).dropsWord(fullWidth = 121, room = 40))
+    }
+
+    @Test
     fun `the Typing pill shows while a remote keyboard session is armed`() {
         assertFalse(typingPill(ready().withSession(session(), 0)))
         assertTrue(typingPill(ready().withSession(session(typing = true), 0)))

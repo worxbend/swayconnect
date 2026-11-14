@@ -3,6 +3,7 @@ package com.swayconnect.android.ui.desktop
 import com.swayconnect.android.ui.common.GroupKind
 import com.swayconnect.android.ui.common.GroupPosition
 import com.swayconnect.android.ui.state.ViewMode
+import com.swayconnect.protocol.App
 import com.swayconnect.protocol.ContainerKind
 import com.swayconnect.protocol.ContainerTile
 import com.swayconnect.protocol.Desktop
@@ -190,5 +191,79 @@ class DesktopModelTest {
         val tree = ContainerTile(ContainerKind.STACKED, whole, listOf(WindowTile(1, whole)), active = 0)
         val ws = workspace(1, "1", layout = Layout(listOf(1920L, 1080L), fullscreen = null, tiled = tree, floating = emptyList()))
         assertEquals(WindowLayout.STACKING, containerLayoutOf(ws, 1))
+    }
+
+    private fun app(entryId: String, name: String) =
+        App(entryId = entryId, name = name, genericName = null, keywords = emptyList(), icon = null, terminal = false, risky = false)
+
+    @Test
+    fun `an app id shows the name of its desktop entry, matched without the suffix and ignoring case`() {
+        val names = appNames(listOf(app("firefox.desktop", "Firefox"), app("org.gnome.Nautilus.desktop", "Files"), app("Alacritty", "Alacritty")))
+        assertEquals("Firefox", appNameFor("firefox", names))
+        assertEquals("Firefox", appNameFor("Firefox", names))
+        assertEquals("Files", appNameFor("org.gnome.Nautilus", names))
+        assertEquals("Alacritty", appNameFor("alacritty", names))
+    }
+
+    @Test
+    fun `an app id without an entry, or with a blank name, shows itself`() {
+        val names = appNames(listOf(app("firefox.desktop", "Firefox"), app("blank.desktop", " ")))
+        assertEquals("sealed_sink_1", appNameFor("sealed_sink_1", names))
+        assertEquals("blank", appNameFor("blank", names))
+        assertEquals("fire", appNameFor("fire", names))
+        assertEquals("firefox", appNameFor("firefox", appNames(emptyList())))
+    }
+
+    @Test
+    fun `a reverse-DNS app id falls back to the entry named by its last segment`() {
+        val names = appNames(listOf(app("codium.desktop", "VSCodium"), app("org.example.Notes.desktop", "Notes")))
+        assertEquals("VSCodium", appNameFor("com.vscodium.codium", names))
+        assertEquals("the exact id wins", "Notes", appNameFor("org.example.Notes", names))
+        assertEquals("no entry for the last segment either", "dev.vencord.Vesktop", appNameFor("dev.vencord.Vesktop", names))
+        assertEquals("a dot at the end matches nothing", "codium.", appNameFor("codium.", names))
+    }
+
+    @Test
+    fun `the first entry of an id names it`() {
+        val names = appNames(listOf(app("foot.desktop", "Foot"), app("Foot.desktop", "Foot server")))
+        assertEquals("Foot", appNameFor("foot", names))
+    }
+
+    @Test
+    fun `an entry name with control characters is made safe`() {
+        val shown = appNameFor("evil", appNames(listOf(app("evil.desktop", "Ev\u0007il"))))
+        assertFalse(shown.contains('\u0007'))
+    }
+
+    @Test
+    fun `the focused row keeps its labels only when the buttons, divider and Close fit`() {
+        // Full, Float, Move at 28, 35, 38dp: buttons 74 + 81 + 84, gaps 4 x 8, divider 1, Close 48 = 320dp, plus 2dp
+        // for whole-pixel rounding = 322dp.
+        val labels = listOf(28f, 35f, 38f)
+        assertTrue(FocusedRow.labelsFit(322f, labels))
+        assertTrue(FocusedRow.labelsFit(347f, labels))
+        assertFalse(FocusedRow.labelsFit(321f, labels))
+        // 360dp window: 296dp of card content.
+        assertFalse(FocusedRow.labelsFit(296f, labels))
+        // Font 1.3 on a 411dp window: labels 30 % wider no longer fit 347dp.
+        assertFalse(FocusedRow.labelsFit(347f, labels.map { it * 1.3f }))
+    }
+
+    @Test
+    fun `keep in view scrolls only a card that is cut by an edge, and only as far as needed`() {
+        assertEquals(0, keepInViewDelta(offset = 10, size = 64, start = 0, end = 300))
+        assertEquals(0, keepInViewDelta(offset = 0, size = 64, start = 0, end = 64))
+        assertEquals(-20, keepInViewDelta(offset = -20, size = 64, start = 0, end = 300))
+        assertEquals(14, keepInViewDelta(offset = 250, size = 64, start = 0, end = 300))
+        // Wider than the span: its start lines up on the start.
+        assertEquals(10, keepInViewDelta(offset = 10, size = 400, start = 0, end = 300))
+    }
+
+    @Test
+    fun `a first card cut by the start edge comes back whole only when the target stays in view`() {
+        assertEquals(-40, revealFirstDelta(firstOffset = -40, targetEnd = 200, end = 300))
+        assertEquals(-40, revealFirstDelta(firstOffset = -40, targetEnd = 260, end = 300))
+        assertEquals(0, revealFirstDelta(firstOffset = -40, targetEnd = 261, end = 300))
+        assertEquals(0, revealFirstDelta(firstOffset = 0, targetEnd = 100, end = 300))
     }
 }

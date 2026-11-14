@@ -230,7 +230,7 @@ private fun MicUnmuteDialog(card: DeviceCard?, onDismiss: () -> Unit, onConfirm:
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.audio_unmute_title)) },
-        text = { Text(stringResource(R.string.audio_unmute_text, replaceUnsafe(card.device.description))) },
+        text = { Text(stringResource(R.string.audio_unmute_text, replaceUnsafe(card.label.name))) },
         confirmButton = { TextButton(onClick = { onConfirm(card.device.id) }) { Text(stringResource(R.string.audio_unmute_confirm)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )

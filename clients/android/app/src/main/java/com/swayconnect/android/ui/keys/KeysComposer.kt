@@ -1,5 +1,6 @@
 package com.swayconnect.android.ui.keys
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +59,18 @@ internal data class ComposerLook(
     /** The target is a known terminal: "Send + ⏎" needs a hold. */
     val terminal: Boolean,
     val privateMode: Boolean,
-)
+    /** The computer is set to look only: the field stays disabled (no IME) and its placeholder says why. */
+    val readOnly: Boolean,
+) {
+    /** The field's placeholder: the reason typing is off, else what the field is for. */
+    @get:StringRes
+    val hint: Int
+        get() = when {
+            readOnly && !canType -> R.string.keys_typing_off
+            privateMode -> R.string.keys_private_field
+            else -> R.string.keys_field
+        }
+}
 
 /**
  * The composer (UX 9.1, 9.2, 17.8): a one-line field inside [NoLearningInterceptor], Send and "Send + ⏎". The IME's
@@ -92,7 +104,7 @@ private fun PlainField(field: TextFieldState, look: ComposerLook, onSend: (Boole
         modifier = Modifier.fillMaxWidth(),
         enabled = look.canType,
         readOnly = look.busy,
-        placeholder = { Text(stringResource(R.string.keys_field)) },
+        placeholder = { Text(stringResource(look.hint)) },
         lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
         onKeyboardAction = { if (!look.busy) onSend(false) },
@@ -104,7 +116,7 @@ private fun PlainField(field: TextFieldState, look: ComposerLook, onSend: (Boole
 @Composable
 private fun PrivateField(field: TextFieldState, look: ComposerLook, onSend: (Boolean) -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val hint = stringResource(R.string.keys_private_field)
+    val hint = stringResource(look.hint)
     val decorator = TextFieldDecorator { inner ->
         Surface(shape = MaterialTheme.shapes.medium, color = scheme.surfaceContainer, border = BorderStroke(1.dp, scheme.outline)) {
             Box(Modifier.heightIn(min = 56.dp).padding(16.dp)) {

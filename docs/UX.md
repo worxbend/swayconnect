@@ -80,7 +80,7 @@ Material 3 `ColorScheme` roles are set by hand. Dynamic colour is off. A setting
 | `errorContainer` ("coral" fill) | `#E8836A` | `#FF9A80` | filled coral pills behind `onErrorContainer` text |
 | `onErrorContainer` | `#141414` | `#141414` | text on the coral fill |
 | `secondaryContainer` (tinted pill) | `#E4E0D8` | `#2E2E3A` | "Floating", "Tabbed" pills |
-| `ok` (custom) | `#3B6E2E` dot on `#DCEBD3` | `#8DBF7A` dot | "Ready", "Default" dots |
+| `ok` (custom) | `#3B6E2E` dot on `#DCEBD3` | `#8DBF7A` dot on `#243A2A` | "Ready", "Default" dots |
 | `outline` | `#8A857C` | `#75757F` | dashed cards, map tile borders, dark nav stroke (non-text) |
 | `navContainer` (custom) | `#FFFFFF` | `#1B1B26` | floating nav pill |
 | `navSelected` (custom) | `#141414` | `#FFFFFF` | selected inner pill |
@@ -91,13 +91,13 @@ Custom tokens live in `SwayTokens` provided through `staticCompositionLocalOf`.
 
 Contrast (WCAG, computed 2026-11-13): ink on background 15.3:1, ink on card 18.4:1, `onSurfaceVariant` on background 5.1:1 (light) and 7.7:1 (dark), `accentOnInk` on `primary` 13.7:1 (light, lime on `#141414`) and 7.2:1 (dark, olive on `#FFFFFF`), ink on `errorContainer` 6.9:1, light `error` on white 6.1:1 and on greige 5.1:1, dark `error` on dark card 8.3:1, light `outline` on white 3.7:1 and on greige 3.05:1, dark `outline` on dark card 3.75:1 and on dark background 4.2:1, dark nav icon on dark pill 5.3:1. Lime on white is 1.35:1 and on greige 1.12:1, so lime never sits on a light surface; that is why `accentOnInk` exists.
 
-**Map tile washes.** Eight washes per theme, picked by a stable hash of `app_id` (FNV-1a 32 bit, modulo 8). Light: low-chroma pastels between `#F1E9DD` and `#E3ECEF`, each at least 12:1 with ink text. Dark: muted tones between `#262632` and `#2F2A35`, each at least 10:1 with `#F2F2F5`. Washes sit near the slab colour (about 1.2:1), so every tiled, floating and sliver tile always has a 1dp `outline` border: the edges carry the layout. With the system "high-contrast text" setting the washes drop to `surfaceContainer` and the border becomes 2dp.
+**Map tile washes.** Eight washes per theme, picked by a stable hash of `app_id` (FNV-1a 32 bit, modulo 8). The eight hues sit 45° apart at one lightness, so two apps differ by hue, not by brightness. Light: CIELAB L* 93, chroma 10 (`#FFE5E5` … `#F9E5F3`), each about 15:1 with ink text. Dark: L* 22, chroma 11 (`#452F2F` … `#40303C`), each about 11:1 with `#F2F2F5`. Every wash keeps at least 7:1 with `onSurface` in both themes (`ThemeContrastTest`). Washes sit near the slab colour (about 1.2:1), so a tiled tile has a 1dp `outlineVariant` hairline and a floating tile a 1dp `outline` border (a white float on the white slab needs the stronger edge); the 2dp insets and the hue of each wash carry the layout. The tiled hairline is below the 3:1 of section 15 on purpose (polish 2026-11-14, owner to confirm). With the system "high-contrast text" setting the washes drop to `surfaceContainer` and the border becomes 2dp.
 
 ### 3.2 Shapes
 
 | Token | Value | Used for |
 |---|---|---|
-| `extraSmall` | 8dp | map tiles |
+| `extraSmall` | 8dp | small controls (map tiles use 10dp, 6.1) |
 | `small` | 12dp | text fields, small cards |
 | `medium` | 20dp | window cards, audio cards |
 | `large` | 24dp | workspace cards, map slab |
@@ -132,7 +132,7 @@ About 30 Material Symbols (Rounded, weight 400) written as Kotlin `ImageVector` 
 ```
 
 - Title: the area name, except Desktop, which shows the computer's name (`server.name`). `headlineLarge`, one line, ellipsis.
-- The title row is `heightIn(min = 72.dp)` and grows with font scale. The title and the status line stack tight in one column (`weight(1f)`); the context pill and the round button are centred against that column. The status line is a 24dp visual row; Compose widens its touch area to 48dp.
+- The title row is `heightIn(min = 72.dp)` and grows with font scale. The title and the status line stack tight in one column; the context pill and the round button are centred against that column. The title and the status line have priority: when either would ellipsise beside the full context pill, the pill shows its icon alone in a 48dp circle and keeps its words in semantics. The status line is a 24dp visual row, one row on every area (so the header keeps its height across tabs): the word keeps its width, a pill that does not fit ends in an ellipsis and keeps its full text in semantics. Compose widens its touch area to 48dp.
 - One gutter: `max(16.dp, system gesture inset)` on each side, computed once in the shell, holds the title, the cards, the page content and the offline line on one edge (in landscape the start gutter is 16dp, since the vertical nav already stands outside the gesture zone).
 - Status line (under the title): a dot shape plus a word, then optional state pills. Tap opens the Computer sheet. Only the connection word is a polite live region; pills and counters are outside it (section 15).
 - Context pill (48dp tall, `CircleShape`, card colour, icon + label) and round action button (56dp, ink, white icon) per area:
@@ -145,7 +145,7 @@ About 30 Material Symbols (Rounded, weight 400) written as Kotlin `ImageVector` 
 | Keys | none | Private mode on or off |
 | More | none | lock the computer |
 
-Each button follows `FeatureAvailability` (`PROTOCOL.md` 17.3): locked shows its lock glyph and opens the Locked sheet (section 10); read-only shows it disabled; unsupported hides it.
+Each button follows `FeatureAvailability` (`PROTOCOL.md` 17.3): locked shows its lock glyph and opens the Locked sheet (section 10); read-only shows it disabled (the round button as a 1dp `outline` ring with an `onSurfaceVariant` icon, not as faded ink); unsupported hides it.
 
 **Status dot shapes**, so colour is never the only sign:
 
@@ -181,7 +181,7 @@ Extra pills on the status line: `☕ Awake 52 min` (keep awake on), `⌨ Typing`
 
 ### 4.3 Now-playing capsule (M2b)
 
-A 52dp floating pill directly above the nav, card colour: app icon badge, title · artist (one line, needs `state.titles`, else "Playing · Chromium"), play/pause and next (48dp each). Shown when a player is `playing` or `paused`, on Desktop, Launch and More. Not on Audio (it has the full card) and not on Keys (the IME needs the room). Tap the text: go to Audio. Long press: a small menu with "Hide until next track"; the same action is a `CustomAccessibilityAction`. No swipe (it would fight the page scroll).
+A 52dp floating pill directly above the nav, card colour: app icon badge (a play glyph on the badge while the player has no icon), title · artist (one line, needs `state.titles`, else "Playing · Chromium"), play/pause and next (48dp each). Shown when a player is `playing` or `paused`, on Desktop, Launch and More. Not on Audio (it has the full card) and not on Keys (the IME needs the room). Tap the text: go to Audio. Long press: a small menu with "Hide until next track"; the same action is a `CustomAccessibilityAction`. No swipe (it would fight the page scroll).
 
 ## 5. Desktop
 
@@ -282,7 +282,7 @@ Window card anatomy:
 
 ### 5.4 Workspace cards (the carousel)
 
-**Anatomy** (min 64dp wide, `heightIn(min = 88.dp)` with no maximum, `large` shape, 8dp apart). Edge padding: when every card fits (widths measured from their texts), the row starts on the page gutter like reference 2 and does not scroll; only when the cards overflow does each side get half the free width, so that any card can reach the centre.
+**Anatomy** (min 64dp wide, `heightIn(min = 88.dp)` with no maximum, `large` shape, 8dp apart). Edge padding: the carousel starts on the page gutter like reference 2. When every card fits (widths measured from their texts) the row does not scroll; when the cards overflow, the first card still rests on the gutter, and only the end gets the extra room that lets the last card reach the centre.
 
 1. Name line: the sway name without its `N:` prefix, `labelMedium`, one line, ellipsis. Empty when the name equals the number.
 2. Number: `titleLarge`, tabular. A workspace without a number shows its first 2 graphemes.
@@ -299,7 +299,7 @@ Window card anatomy:
 
 Pages are workspaces only, one per workspace in sway's order (all outputs together). Output groups are later. The scratchpad is not a page and has no card: it is the Scratchpad sheet (More tile, M2a), which lists `desktop.scratchpad` with "Show" (`scratchpad.show`).
 
-**Row behaviour.** The row is a snapping carousel (`rememberSnapFlingBehavior(rowState, SnapPosition.Center)`). A swipe on the row is the owner's "swipe the carousel": when a user drag of the row settles, the centred card becomes the shown page (`pagerState.scrollToPage`) and, in Drive mode, drives the desktop (5.5). When the pager moves, the row scrolls the shown card to the centre; that scroll is not user-initiated and drives nothing. Tapping a card scrolls the pager to it (and drives the desktop when Drive is on). Long press on a card opens the workspace sheet: "Show on computer", "Move focused window here" (M2a).
+**Row behaviour.** The row is a snapping carousel (`rememberSnapFlingBehavior(rowState, SnapPosition.Center)`). A swipe on the row is the owner's "swipe the carousel": when a user drag of the row settles, the centred card becomes the shown page (`pagerState.scrollToPage`) and, in Drive mode, drives the desktop (5.5). When the pager moves, the row keeps the shown card in view: a card already in view does not move, a cut card gets the least scroll, a card coming from beyond the end lands on the end gutter (17.3 keep in view). The row opens at its start and places the shown card the same way without motion. That scroll is not user-initiated and drives nothing. Tapping a card scrolls the pager to it (and drives the desktop when Drive is on). Long press on a card opens the workspace sheet: "Show on computer", "Move focused window here" (M2a).
 
 ### 5.5 Pager and swipe semantics
 
@@ -335,7 +335,7 @@ Loop guard: a follow-focus scroll is not user-initiated, so it never sends `work
 
 ### 5.6 Page header
 
-40dp: `<name> · <count>` (`titleMedium`), in Browse mode the "On screen" pill (neutral dot + word) when the page is focused on the computer, then on the right the view toggle (two 48dp icon segments, map and list, content descriptions "Layout view" and "List view"). Directly under it, 4dp apart, the page's one-line states (`bodyMedium`): why the list is forced ("Layout too large to send; showing the list" or "No layout for this workspace; showing the list"), read-only, screens off, the last refusal. Then, when needed, one row of chips: "Show on computer", "Computer moved to 7 →", "Larger text · Show list". "+N small windows", "Floating · N" and "Dense workspace · Show list" sit under the map. Chips and tonal buttons carry a 1dp `outline` edge (3:1 on the background).
+40dp: `<name> · <count>` (`titleMedium`), in Browse mode the "On screen" pill (neutral dot + word) when the page is focused on the computer, then on the right the view toggle (two 48dp icon segments, map and list, content descriptions "Layout view" and "List view"). Directly under it, 4dp apart, the page's one-line states (`bodyMedium`): why the list is forced ("Layout too large to send; showing the list" or "No layout for this workspace; showing the list"), read-only, screens off, the last refusal. Then, when needed, one row of chips: "Show on computer", "Computer moved to 7 →", "Larger text · Show list". "+N small windows", "Floating · N" and "Dense workspace · Show list" sit under the map. Chips carry a 1dp `outline` edge (3:1 on the background). The focused card's buttons are round-ended (`CircleShape`), `surfaceContainer` fill with a 1dp `outlineVariant` hairline and at least 48 × 48dp; the fill, not the hairline, marks them (polish 2026-11-14).
 
 The view choice is stored per profile. Default: map.
 
@@ -353,9 +353,11 @@ Buttons (48dp, icon + short label, icon only below 360dp width or above font sca
 | Float / Tile | `window.floating` (M2a) | control | plain |
 | Move | opens Move sheet → `window.move` (M2a) | control | plain |
 | Type | goes to Keys with this window as target (M2b) | input.text | armed (shield) |
-| Close | `window.close` (M2a), hold 600ms | destructive | destructive, last, after a 1dp divider |
+| Close | `window.close` (M2a), hold 600ms | destructive | destructive, last, icon-only after a 1dp divider |
 
 Each button follows `FeatureAvailability` (`PROTOCOL.md` 17.3): locked shows a lock and opens the Locked sheet; read-only shows it disabled; unsupported (not in `known_ops`) hides it.
+
+Close is icon-only after the divider; the row never wraps (a Close alone on a second row, with the divider at the end of the first, read as a stray line). When the labelled buttons, the divider and Close do not fit the measured width (or above font scale 1.5), every button goes icon-only. A locked icon-only button keeps its own icon with a 12dp lock badge at its bottom end; it still speaks "Close, locked". Icon-only buttons are 48dp circles. The divider and Close keep one spot at the card's end edge, whatever the label widths. On a read-only computer the locked Close is drawn in the disabled colours of its siblings (it still opens the Locked sheet).
 
 ### 5.8 Window sheet (long press on a tile or card)
 
@@ -382,7 +384,7 @@ Each button follows `FeatureAvailability` (`PROTOCOL.md` 17.3): locked shows a l
 |---|---|
 | First connect, no cache | three skeleton cards and a skeleton slab with two tiles. No shimmer under reduce motion. |
 | Connecting with cache | last desktop from `filesDir/last_desktop.json`, dimmed (`alpha = 0.6`), status "Connecting". Taps disabled; semantics say "connecting". |
-| Offline | same, "Offline · last seen 12 s ago" (ticks each second for a minute, then each minute; outside the live region), "Retry now" in the Computer sheet and as a chip. |
+| Offline | same, "Offline · last seen 12 s ago" (ticks each second for a minute, then each minute; outside the live region), "Retry now" in the Computer sheet and as a 48dp tonal pill. |
 | Sway offline | empty slab of the last output aspect, "Sway is not running on worxbox. The phone reconnects when it starts." Audio, Launch (without "on workspace") and More stay usable. |
 | Read-only | status "Read-only". Controls whose op is in `known_ops` stay visible, disabled, so nothing jumps when it ends. One line: "The computer is set to look only." |
 | Computer locked (`session.locked == true`, M2a) | status "Locked". The map shows; Drive pauses with the line "The computer is locked." |
@@ -392,7 +394,7 @@ Each button follows `FeatureAvailability` (`PROTOCOL.md` 17.3): locked shows a l
 | Layout dropped (`layouts_cut` true and `layout` null) | list view for the page, line "Layout too large to send; showing the list". |
 | No layout (`layout` null, `layouts_cut` false: no measurable area) | list view for the page, line "No layout for this workspace; showing the list". |
 | Old daemon (no `layout` field) | list view, toggle disabled with "Needs a newer swayconnectd". |
-| Many workspaces (10+) | the row scrolls and snaps; the shown card stays centred. |
+| Many workspaces (10+) | the row scrolls and snaps; the shown card is kept in view (5.4). |
 | Truncated | one line "The computer has more windows than the phone can show." |
 
 ## 6. Mini-map rendering rules
@@ -401,7 +403,7 @@ Each button follows `FeatureAvailability` (`PROTOCOL.md` 17.3): locked shows a l
 
 1. The slab is a white card (`large` shape, 8dp padding). Inside it, the map keeps the aspect `layout.size[0] : layout.size[1]` and is letterboxed.
 2. `mapW = min(innerW, innerH * size[0] / size[1])`; `mapH = mapW * size[1] / size[0]`; `offset = ((innerW - mapW) / 2, (innerH - mapH) / 2)`; `tile.x = offset.x + r[0] / 10000 * mapW`, `tile.y = offset.y + r[1] / 10000 * mapH`, `tile.w = r[2] / 10000 * mapW`, `tile.h = r[3] / 10000 * mapH`; then the 2dp inset of rule 3.
-3. Each tile is inset 2dp on every side (sway gaps are not sent), shape `extraSmall` (8dp), with a 1dp `outline` border (3.1).
+3. Each tile is inset 2dp on every side (sway gaps are not sent), corner radius 10dp, with a 1dp `outlineVariant` hairline when tiled and a 1dp `outline` border when floating (3.1).
 4. Rects outside 0..10000 are clamped. A tile whose window is not in `windows` is skipped.
 5. Pure function `MapGeometry.place(layout, mapSize, density, fontScale): List<PlacedTile>` holds all of this and is unit tested.
 
@@ -409,14 +411,16 @@ Each button follows `FeatureAvailability` (`PROTOCOL.md` 17.3): locked shows a l
 
 | Tile size | Content | Tap |
 |---|---|---|
-| ≥ 120 × 80 | 24dp icon, title (2 lines, `labelLarge`), app id (`labelSmall`), same-app index | own target |
-| ≥ 48 × 48 | 28dp centred icon, same-app index badge (`#2`) in a corner when it fits | own target |
+| ≥ 120 × 80 | 24dp icon, title (2 lines, `labelLarge`), app name (`labelSmall`: the desktop entry's name when its id matches `app_id`, else the `app_id`), same-app index | own target |
+| ≥ 48 × 48 | 28dp icon; when the tile is at least 72dp wide and 56dp + 32sp × font scale tall: the icon at the top and the title under it (`labelSmall`, centred, 2 lines, or 1 line with an ellipsis when its widest word does not fit, so a word is never split), then `#N` on the title's last line; else the icon centred and the `#2` badge in a corner when it fits | own target |
 | 24–48 in either side | 16dp icon, drawn in the shared small-tile layer; an invisible placed child of the same rect carries its semantics | the hit rule below |
 | < 24 in either side | a sliver in the app wash colour, in the shared layer | not tappable; counted in "+N small windows" |
 
 Hit rule for the shared layer: a tap inside a tile's rect hits that tile; otherwise the tile whose nearest edge is closest, within 24dp. Never the nearest centre (a long thin tile would lose to a neighbour).
 
 Classes are chosen after measuring the title at the current font scale (`rememberTextMeasurer`), so large text falls to icon-only sooner: the large class needs room for the 32dp icon disc, an 8dp gap, 8 characters of `labelLarge` and 16dp of padding; a narrower tile is medium (centred icon and `#N`).
+
+Large and medium tiles get a 4dp strip along the top edge (the wash with 8% `onSurface` over it), like a window's title bar, so a tile reads as a window and not as a block. The title sits in the tile body; without `state.titles` the body shows the app name, then the `app_id`, then "Untitled"; nothing is invented. Small tiles get no strip.
 
 A sliver (< 24dp) is a plain wash bar: no border, no shadow, corner radius at most 2dp; ink when focused, `error` when urgent.
 
@@ -428,7 +432,7 @@ When two or more tiles on a page share an `app_id`, each gets its tree-order ind
 
 ### 6.4 Focus, urgent, pending
 
-- Focused on the computer: ink fill, `onPrimary` text, icon on a `surface` 32dp disc. One shared "focus" node with its own bounds slides from tile to tile when focus moves (signature motion).
+- Focused on the computer: an ink ring (3dp `primary` border, drawn above the tile so its wash cannot hide it), not an ink fill, so the tile keeps its app wash; slivers keep the ink fill. One shared "focus" node with its own bounds slides from tile to tile when focus moves (signature motion).
 - Urgent: 2dp `error` border + "!" dot. Pulses once when it turns urgent.
 - Pending: a 16dp spinner in the tile corner; taps ignored until the answer or the next state.
 
@@ -510,6 +514,8 @@ Tap = `window.focus`, in both Drive and Browse mode (P2: a tap always acts). Lon
 - `available: false`: "Sound server not reachable on worxbox." Media card still works if `media` is granted.
 - No player: the now-playing card reads "Nothing playing". The card controls `active_player_id`, else the first player that plays, else the first paused one: the server names no active player until one has played, and a paused player still needs its Play button.
 - Without `state.titles`: "Playing · Chromium".
+- Device names: the card shows a clean name made from the sound server's description (`deviceLabel`, pure, tested). A bare node name loses its media-class tail ("sealed_sink_1 Audio/Sink sink" → "Sealed sink 1"); a trailing ALSA profile ("Analog Stereo", "Digital Stereo (HDMI 2)") moves to the kind line ("Speaker · Analog Stereo"); anything else stays as sent. Two cards of one section with the same name show "Name, profile". The same name is used in the spoken labels and the unmute dialog (Audio and the More mic tile).
+- Non-default outputs: the slider stays on the default device only (7.1). A plugged, unmuted output that is not the default shows its level in the kind line ("Sound device · 70 %") and an outlined "Make default" pill (outline, no fill: an offer, not a state) where "Default" sits; the pill is hidden when the tap is locked, read-only or the device is unplugged. Above font scale 1.15 the pill stacks under the name.
 - No seek bar, no per-app streams and no card profiles in v2 (`DESIGN.md` 11.13).
 
 ## 8. Launch (M2b)
@@ -537,7 +543,7 @@ Tap = `window.focus`, in both Drive and Browse mode (P2: a tap always acts). Lon
 
 ### 8.2 Rules
 
-- App cell: 56dp round icon badge, 2-line label (`labelMedium`, centred). Risky apps (terminal or owner-marked) carry a 14dp shield. Without `launch.risky` they show a lock and open the Locked sheet (the server refuses them anyway).
+- App cell: 56dp round icon badge, 2-line label (`labelMedium`, centred). Risky apps (terminal or owner-marked) carry a 14dp shield. Without `launch.risky` they show a lock and open the Locked sheet (the server refuses them anyway). Read-only: the label stays at full ink and only the icon badge fades to 0.6, so the list stays readable; other refusals fade the whole cell to 0.38.
 - Tap: `app.launch {entry_id, number}` with the target workspace of the context pill (default: the computer's focused workspace). Risky apps need a 600ms hold (UX only). Then the app **returns to Desktop** on the target page and draws a ghost tile ("Opening Firefox…", icon pulsing at 1 Hz) until any new window id appears on the target workspace or 10 s pass. After 10 s: one line "Firefox did not open a window yet." No toast on success.
 - Long press: "Open on workspace…". "Pin to top" (pins stored on the phone per profile) is deferred: not in M2 (`V2_PLAN.md` status, "Not done"). A risky app has no long-press menu; its press is the hold.
 - Search: client-side fuzzy match over name, generic name and keywords (`FuzzyMatch`, pure, tested). The grid reflows with `animateItem`. The keyboard opens only when the field is tapped.
@@ -578,6 +584,7 @@ The pill nav is hidden while the IME is open; back closes the IME first.
 - **Refusals.**
   - `focus_changed`: the target card gets a 2dp `error` border and a warning icon: "Focus moved to Firefox." Buttons "Type there" and "Back to Alacritty" (the second sends `window.focus`). "Sent 16 of 40 characters." The unsent tail stays in the field. `Reject`.
   - `locked`: full-width card "The computer is locked. Typing is off, so nothing reaches the lock screen." Composer disabled.
+  - Read-only: the disabled composer's placeholder reads "Typing is off on this computer" (plain and private field), so the reason sits where the user taps; no keyboard opens.
   - `keyboard_grabbed`: "A menu or launcher on the computer has the keyboard. Close it or type into the launcher."
   - `launcher_closed`: "The launcher on the computer is closed." The target falls back to the focused window; nothing is re-sent. While a launcher such as fuzzel holds the keyboard, sway shows no focused window, so when the launcher closes before the desktop state shows the focus again, the next focused window becomes the target. The same fallback follows a `session` state that says this device no longer holds the launcher.
 - `FLAG_SECURE` is set on Keys in every mode.
@@ -613,6 +620,8 @@ M1 has no settings store, so Theme, Default view, Reduce motion and Haptics come
 │  worxbox · aa51 08ad … · Scopes · Forget│
 └────────────────────────────────────────┘
 ```
+
+Tile anatomy (reference 2, a large Quick Settings tile): the 40dp icon badge on top, then the title and its lines at the full tile width. The title never splits inside a word (`Hyphens.None`, `LineBreak.Heading`). The grid has two columns; one column when a two-column tile would be narrower than 140dp or above font scale 1.2. A disabled tile that is on goes tonal (`surfaceContainerHigh`, content `onSurfaceVariant`, no `accentOnInk`) instead of fading its ink.
 
 ### 10.2 Keep awake tile
 
@@ -804,8 +813,8 @@ API 29 fallback: types the platform lacks map to `LongPress` (Confirm, Reject, G
 | `launcher_closed` | "The launcher on the computer is closed." | Reject |
 | `forbidden` | opens the Locked sheet for `detail.scope` | Reject |
 | unknown error code | "The computer refused this." | Reject |
-| Revoked | full screen: "This phone is no longer paired with worxbox." + Pair again | none |
-| Wrong fingerprint | full screen: "This is not the computer you paired with." + Pair again; no auto-retry | none |
+| Revoked | full screen: the message in a `medium` card under a 48dp warning badge (`error` icon on 12% `error`), "This phone is no longer paired with worxbox.", then Pair again | none |
+| Wrong fingerprint | full screen, same card and badge: "This is not the computer you paired with." + Pair again; no auto-retry | none |
 
 Empty states: "Nothing open on 5" (workspace), "Nothing playing" (media), "No app matches" (search), "No sound devices" (audio).
 
@@ -823,7 +832,7 @@ Stack: material3 1.4.0, foundation / ui / animation 1.12.1 (BOM 2026.09.00). No 
 
 ### 17.2 Shell (`ui/shell/`)
 
-- `Scaffold(contentWindowInsets = WindowInsets.safeDrawing)` with no `bottomBar`; the nav floats in a `Box` over the content with `Modifier.align(BottomCenter).navigationBarsPadding().padding(bottom = 12.dp)`. Content gets bottom padding = nav height + 24dp.
+- `Scaffold(contentWindowInsets = WindowInsets.safeDrawing)` with no `bottomBar`; the nav floats in a `Box` over the content with `Modifier.align(BottomCenter).navigationBarsPadding().padding(bottom = 12.dp)`. Content gets bottom padding = nav height + 24dp. Behind the capsule and the nav one vertical scrim in `background`: solid from the bottom up to the capsule top (nav lift + nav height + capsule room), then fading to transparent over the 24dp above it, so scrolled content fades out instead of peeking between the capsule and the nav. It only draws; touches reach the content.
 - Back: `BackHandler(enabled = sheet != null || area != Desktop)` (activity-compose 1.13.0). Nothing handles Back on Desktop with no sheet, so the system's predictive back-to-home runs; the manifest sets `android:enableOnBackInvokedCallback="true"`.
 - `PillNavBar`: `Surface(shape = CircleShape, color = tokens.navContainer, shadowElevation = 8.dp)` → `Row(Modifier.selectableGroup())`. Label fit: `rememberTextMeasurer().measure(label, labelLarge)` against the bar width minus the other items. Item: `Modifier.selectable(selected, role = Role.Tab, onClick)` + `Modifier.animateContentSize(motion.defaultSpatialSpec())`; inner pill colour with `animateColorAsState`; label in `AnimatedVisibility(selected, enter = fadeIn(tween(120, delayMillis = 60)) + expandHorizontally(), exit = fadeOut(tween(90)) + shrinkHorizontally())`. All stable.
 - Not used: `NavigationBar`, `ShortNavigationBar` (their look does not match the reference).
@@ -833,11 +842,11 @@ Stack: material3 1.4.0, foundation / ui / animation 1.12.1 (BOM 2026.09.00). No 
 
 - Layout: `Column { TitleRow(); WorkspaceRow(); HorizontalPager(Modifier.weight(1f)) { page -> LazyColumn { … } } }`. One vertical scroll owner per page; nothing wraps the pager in `verticalScroll`.
 - `val pagerState = rememberPagerState { pages.size }`; `HorizontalPager(state = pagerState, key = { pages[it].id }, beyondViewportPageCount = 1, flingBehavior = PagerDefaults.flingBehavior(pagerState))`. Stable. Pages other than `currentPage` wrap their content in `Modifier.clearAndSetSemantics {}`.
-- Cards: `LazyRow(state = rowState, flingBehavior = rememberSnapFlingBehavior(rowState, SnapPosition.Center), contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = spacedBy(8.dp), modifier = Modifier.selectableGroup())`, items keyed by workspace id, each `Modifier.selectable(selected = page == shown, role = Role.Tab)`. Card container colour: `animateColorAsState(if (focused) primary else surface, motion.defaultEffectsSpec())`; content colour follows. Stable. Not `PrimaryScrollableTabRow`: its indicator and tab layout fight the card look.
+- Cards: `LazyRow(state = rowState, flingBehavior = rememberSnapFlingBehavior(rowState, SnapPosition.Center), contentPadding = PaddingValues(start = gutter, end = gutter or, when the cards overflow, half the free width), horizontalArrangement = spacedBy(8.dp), modifier = Modifier.selectableGroup())`, items keyed by workspace id, each `Modifier.selectable(selected = page == shown, role = Role.Tab)`. Card container colour: `animateColorAsState(if (focused) primary else surface, motion.defaultEffectsSpec())`; content colour follows. Stable. Not `PrimaryScrollableTabRow`: its indicator and tab layout fight the card look.
 - Ring: drawn in `Modifier.drawWithContent` on the `LazyRow`. It reads `pagerState.currentPage`, `currentPageOffsetFraction` and `rowState.layoutInfo.visibleItemsInfo` in the draw phase (no recomposition per frame) and lerps left and width between the two cards.
 - `DriveController` (pure, in `ui/state/`): inputs are `userDrag` (from `pagerState.interactionSource` `DragInteraction.Start`, or a row drag), `cardTap(id)`, `settled(id)` with the id read from `pages` at settle time, and `focusedId`. Output: at most one `workspace.focus` per user-initiated settle after 250ms, never when the id equals `focusedId`. Programmatic scrolls (follow focus, re-sync, keep in view) and accessibility scroll actions never set `userDrag`.
 - Row → pager: when a user drag of the row settles, `pagerState.scrollToPage(centredIndex)` and `DriveController.userDrag()`.
-- Keep in view: `LaunchedEffect(pagerState.targetPage) { if (reduceMotion) rowState.scrollToItem(i, centreOffset) else rowState.animateScrollToItem(i, centreOffset) }`.
+- Keep in view: `LaunchedEffect(pagerState, rowState, density)` collects `(targetPage, viewport width, item count)` and calls `scrollCardIntoView`: no scroll for a card in view, the least scroll (`keepInViewDelta`, pure) for a cut card, the end gutter for a card from beyond the end, and the first card shown whole when the target stays in view (`revealFirstDelta`, pure). The row state starts at item 0; the first placement jumps, later ones animate (not under reduce motion).
 - Follow focus: `LaunchedEffect(focusedWorkspaceId) { if (!touchExploration && !pagerState.isScrollInProgress && state.pending == null && now - lastTouch > 1500) { if (reduceMotion) pagerState.scrollToPage(i) else pagerState.animateScrollToPage(i, animationSpec = motion.defaultSpatialSpec()) } else vm.showMovedChip(id) }`. `lastTouch` from `Modifier.pointerInput { awaitEachGesture { awaitFirstDown(pass = PointerEventPass.Initial) ... } }` without consuming. `touchExploration` from the platform `AccessibilityManager.isTouchExplorationEnabled` (a system service, not a View widget), observed with its listener.
 - Re-sync: `LaunchedEffect(pages.map { it.id }) { pagerState.scrollToPage(indexOf(selectedId)) }`.
 - Chip timeouts: `LocalAccessibilityManager.current?.calculateRecommendedTimeoutMillis(5000, containsIcons = false, containsText = true, containsControls = true) ?: 5000`.
@@ -846,7 +855,7 @@ Stack: material3 1.4.0, foundation / ui / animation 1.12.1 (BOM 2026.09.00). No 
 
 - `MapGeometry` (pure Kotlin, no Compose import): basis points → dp rects, size classes, same-app indexes, nearest-tile hit test, density ratio for the dense chip. JVM tests.
 - `LayoutMap`: a custom `Layout(content)`. Children carry their rect through a `ParentDataModifierNode` (`Modifier.tileRect(rect)`). The measure policy measures each child with `Constraints.fixed(w, h)` and places floats last with `placeRelativeWithLayer(x, y, zIndex = 1f)`.
-- Tiles ≥ 48dp: `Surface(onClick, shape = shapes.extraSmall, color = wash, border = …)` keyed with `key(windowId)`.
+- Tiles ≥ 48dp: `Surface(onClick, shape = RoundedCornerShape(10.dp), color = wash, border = …)` keyed with `key(windowId)`. The focus ring is one shared node at `tileZ + 1` that slides with the focused tile.
 - Tiles < 48dp: one `Canvas` node draws all of them; `Modifier.pointerInput { detectTapGestures { offset -> geometry.hit(offset, 24.dp)?.let(onTap) } }` on the map (`hit` = containment, then nearest edge). Each 24–48dp tile also gets an invisible placed child of its rect that draws nothing and carries `semantics(mergeDescendants = true) { role = Role.Button; contentDescription; customActions }`.
 - Motion: `LookaheadScope { … Modifier.animateBounds(lookaheadScope = this, boundsTransform = BoundsTransform { _, _ -> spring(0.8f, Spring.StiffnessMediumLow) }) }` when tile count ≤ 25. Stable per bytecode check; re-check the exact parameter names in the 1.12.1 jar.
 - Semantics: `Modifier.semantics { isTraversalGroup = true; contentDescription = … }` on the map, no `collectionInfo`; `Modifier.semantics(mergeDescendants = true) { role = Role.Button; traversalIndex = treeOrder; stateDescription = …; customActions = listOf(CustomAccessibilityAction("Fullscreen") { … }, …) }` on tiles.
@@ -862,7 +871,8 @@ Stack: material3 1.4.0, foundation / ui / animation 1.12.1 (BOM 2026.09.00). No 
 - `IconCache`: memory `LruCache<String, ImageBitmap>` (android.util, platform) + disk `cacheDir/icons/<hash>.png`, 4 MiB cap, oldest-first eviction.
 - Batching: missing hashes go into a set; at most one `icon.get` per 500ms with ≤ 8 hashes; after `rate_limited` wait `detail.retry_after_ms`.
 - Decode: `MessageDigest.getInstance("SHA-256")` check → `BitmapFactory.Options().apply { inJustDecodeBounds = true }` → refuse > 256 px or > 65536 bytes → decode → `asImageBitmap()`.
-- `AppIcon(appId, hash, size)`: monogram (first grapheme on the wash of `appId`) until the bitmap arrives, then a 120ms crossfade at the same size.
+- `AppIcon(appId, hash, size, monogramDisc?, fallback?)`: monogram until the bitmap arrives, then a 120ms crossfade at the same size. The monogram is the first grapheme of the trimmed id, upper-cased; a reverse-DNS id (it holds a `.`) uses its last non-blank segment (`dev.vencord.Vesktop` → "V", `org.example.Notes` → "N"); a missing or blank id gives "?". It sits on the wash of `appId` (or on `monogramDisc`), so it reads as an app badge; the window card's 44dp badge takes the same wash. `fallback` replaces the letter on the disc while there is no bitmap (the play glyph of the now-playing card and capsule).
+- `WindowCard(appName?)`: when the area knows the app's own name it is shown under the title instead of the raw `app_id`.
 
 ### 17.7 Sheets and dialogs
 

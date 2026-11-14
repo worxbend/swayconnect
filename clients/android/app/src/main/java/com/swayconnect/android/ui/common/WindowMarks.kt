@@ -33,3 +33,14 @@ fun windowMarks(window: Window, group: GroupPosition?): List<WindowMark> = build
     if (window.floating) add(WindowMark.Floating)
     if (group != null) add(WindowMark.InGroup(group))
 }
+
+/**
+ * The app line under a window's [title], or null when it would only repeat the title: [app] equal to the title
+ * ignoring case ("Volume Control" under "Volume Control"), or a reverse-DNS id whose last segment is the title
+ * (`org.example.Notes` under "Notes"). Null without a title too: then the app already stands in for it.
+ */
+fun appLine(title: String?, app: String?): String? {
+    if (title == null || app == null) return null
+    val repeats = app.equals(title, ignoreCase = true) || ('.' in app && app.substringAfterLast('.').equals(title, ignoreCase = true))
+    return app.takeUnless { repeats }
+}

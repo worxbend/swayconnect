@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -21,6 +23,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -97,8 +100,13 @@ internal class PageFacts(
     /** One-line state texts of the whole desktop (read-only, screens off, refusals, ...). */
     val lines: List<String>,
     val listHintDismissed: Boolean,
+    /** The desktop entry names of topic `apps`, by lower-cased entry id; empty without that topic. */
+    val appNames: Map<String, String>,
 ) {
     fun availabilityOf(op: String): OpAvailability? = granted?.availabilityOf(op)
+
+    /** The app name shown for [window] under its title, or null without an `app_id`. */
+    fun appNameOf(window: Window): String? = window.appId?.let { appNameFor(it, appNames) }
 }
 
 /**
@@ -162,6 +170,9 @@ private fun LazyListScope.mapItems(
 ) {
     val layout = workspace.layout ?: return
     item(key = "map") {
+        // One lambda per names map, so the slab still skips when nothing it draws changed.
+        val names = facts.appNames
+        val appName = remember(names) { { appId: String -> appNameFor(appId, names) } }
         MapSlab(
             layout = layout,
             windows = desktop.windows.filter { it.workspaceId == workspace.id },
@@ -175,6 +186,7 @@ private fun LazyListScope.mapItems(
             ),
             pendingWindowId = facts.pendingId,
             enabled = facts.live,
+            appName = appName,
         )
     }
     // 17.4.3 server rule 5: a window the layout leaves out is listed beside the map.
@@ -197,6 +209,7 @@ private fun LazyListScope.windowItems(list: List<Window>, cards: PageCards, fact
             pending = pending,
             group = cards.windows.groups[window.id],
             sameAppIndex = cards.windows.sameAppIndex[window.id],
+            appName = facts.appNameOf(window),
             modifier = Modifier.animateItem(),
             actions = if (window.id == cards.focusedId) ({ FocusedButtons(window, enabled = facts.live && !pending, facts, actions) }) else null,
         )
@@ -409,17 +422,20 @@ private fun FocusedWindowCard(window: Window?, windows: PageWindows, facts: Page
         pending = pending,
         group = windows.groups[window.id],
         sameAppIndex = windows.sameAppIndex[window.id],
+        appName = facts.appNameOf(window),
     ) {
         FocusedButtons(window, enabled = facts.live && !pending, facts, actions)
     }
 }
+
+internal fun fullscreenLabel(window: Window): Int = if (window.fullscreen) R.string.desktop_exit_fullscreen else R.string.desktop_fullscreen
 
 @Composable
 internal fun FullscreenButton(window: Window, iconOnly: Boolean, enabled: Boolean, facts: PageFacts, actions: PageActions) {
     GatedButton(
         availability = facts.availabilityOf(Op.WINDOW_FULLSCREEN),
         icon = SwayIcons.Fullscreen.outline,
-        label = stringResource(if (window.fullscreen) R.string.desktop_exit_fullscreen else R.string.desktop_fullscreen),
+        label = stringResource(fullscreenLabel(window)),
         spoken = stringResource(if (window.fullscreen) R.string.desktop_exit_fullscreen_spoken else R.string.desktop_fullscreen_spoken),
         iconOnly = iconOnly,
         enabled = enabled,
@@ -429,9 +445,11 @@ internal fun FullscreenButton(window: Window, iconOnly: Boolean, enabled: Boolea
 }
 
 /**
- * A 48dp button that follows `FeatureAvailability` (docs/PROTOCOL.md 17.3, UX 5.7): available acts; read-only
- * and "no connection" (null) show it disabled; locked shows a lock and opens the Locked sheet; unsupported
- * hides it.
+ * A 48dp pill that follows `FeatureAvailability` (docs/PROTOCOL.md 17.3, UX 5.7): available acts; read-only
+ * and "no connection" (null) show it disabled; locked opens the Locked sheet and shows a lock (icon only: the
+ * button's own icon with a lock badge, so a row of locked buttons still says which is which); unsupported hides it.
+ * Icon only, it is a 48dp circle: the 58dp minimum width of a Material button would draw an oval. [muted] draws
+ * it in the disabled colours while it still opens the Locked sheet.
  */
 @Composable
 internal fun GatedButton(
@@ -443,20 +461,46 @@ internal fun GatedButton(
     onLocked: (String) -> Unit,
     onClick: () -> Unit,
     spoken: String = label,
+    muted: Boolean = false,
 ) {
     if (availability == OpAvailability.Unsupported) return
     val locked = availability as? OpAvailability.Locked
     val lockedSpoken = stringResource(R.string.desktop_action_locked, spoken)
     val active = enabled && (availability == OpAvailability.Available || locked != null)
+    val scheme = MaterialTheme.colorScheme
+    val colors = ButtonDefaults.filledTonalButtonColors(containerColor = scheme.surfaceContainer, contentColor = scheme.onSurface)
+    val size = if (iconOnly) Modifier.size(48.dp) else Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
     FilledTonalButton(
         onClick = { if (locked != null) onLocked(locked.scope) else onClick() },
         enabled = active,
-        // The tonal fill alone is 1.1:1 on greige; the outline keeps the edge at 3:1 (UX 15).
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = if (active) 1f else DISABLED_ALPHA)),
-        contentPadding = PaddingValues(horizontal = if (iconOnly) 12.dp else 16.dp),
-        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = if (locked != null) lockedSpoken else spoken },
+        shape = CircleShape,
+        colors = if (muted) colors.copy(containerColor = colors.disabledContainerColor, contentColor = colors.disabledContentColor) else colors,
+        // A hairline only: the label or icon names the button, the fill marks it as one.
+        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = if (active && !muted) 1f else DISABLED_ALPHA)),
+        contentPadding = PaddingValues(horizontal = if (iconOnly) 0.dp else FocusedRow.SIDE_PADDING.dp),
+        modifier = size.semantics { contentDescription = if (locked != null) lockedSpoken else spoken },
     ) {
-        Icon(imageVector = if (locked != null) SwayIcons.Lock.outline else icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        if (!iconOnly) Text(label, modifier = Modifier.padding(start = 8.dp), maxLines = 1)
+        when {
+            locked == null -> Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(FocusedRow.ICON.dp))
+            iconOnly -> LockBadged(icon)
+            else -> Icon(imageVector = SwayIcons.Lock.outline, contentDescription = null, modifier = Modifier.size(FocusedRow.ICON.dp))
+        }
+        if (!iconOnly) Text(label, modifier = Modifier.padding(start = FocusedRow.ICON_GAP.dp), maxLines = 1)
     }
 }
+
+/** [icon] with a small lock at its bottom end, as Launch cells mark a locked app (UX 8.2). */
+@Composable
+private fun LockBadged(icon: ImageVector) {
+    Box {
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(FocusedRow.ICON.dp))
+        Box(
+            Modifier.align(Alignment.BottomEnd).offset(x = 5.dp, y = 5.dp).size(LOCK_BADGE + 2.dp).background(MaterialTheme.colorScheme.surface, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = SwayIcons.Lock.filled, contentDescription = null, modifier = Modifier.size(LOCK_BADGE))
+        }
+    }
+}
+
+private val LOCK_BADGE = 12.dp

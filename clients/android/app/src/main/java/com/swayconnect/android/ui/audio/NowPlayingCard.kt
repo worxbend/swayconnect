@@ -85,7 +85,11 @@ private fun TrackLines(card: NowPlaying) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AppIcon(player.appId, player.icon, size = 44.dp, monogramDisc = MaterialTheme.colorScheme.surfaceContainer)
+        // No icon: a speaker on the disc, not a letter guessed from the app id. A play glyph here read as a second
+        // transport button beside Pause.
+        AppIcon(player.appId, player.icon, size = 44.dp, monogramDisc = MaterialTheme.colorScheme.surfaceContainer) {
+            Icon(SwayIcons.Volume.outline, contentDescription = null, modifier = Modifier.size(22.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(first, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             second?.let {

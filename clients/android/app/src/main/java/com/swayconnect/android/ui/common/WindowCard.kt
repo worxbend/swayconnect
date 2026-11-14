@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.swayconnect.android.R
 import com.swayconnect.android.ui.theme.LocalHaptics
 import com.swayconnect.android.ui.theme.LocalSwayMotion
+import com.swayconnect.android.ui.theme.LocalSwayTokens
 import com.swayconnect.android.ui.theme.SwayHaptic
 import com.swayconnect.android.ui.theme.tabular
 import com.swayconnect.protocol.Window
@@ -48,6 +49,7 @@ private const val PRESSED_SCALE = 0.96f
  *
  * @param group the window's place in a tabbed or stacked container, for its pill.
  * @param sameAppIndex the tree-order index when two windows on the page share an `app_id`.
+ * @param appName the app's own name, shown instead of the raw `app_id` under the title when known.
  * @param actions buttons under the pills (the focused-window card).
  */
 @Composable
@@ -61,6 +63,7 @@ fun WindowCard(
     pending: Boolean = false,
     group: GroupPosition? = null,
     sameAppIndex: Int? = null,
+    appName: String? = null,
     actions: (@Composable () -> Unit)? = null,
 ) {
     val haptics = LocalHaptics.current
@@ -94,7 +97,7 @@ fun WindowCard(
         color = MaterialTheme.colorScheme.surface,
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            WindowHeadline(window, pending, sameAppIndex)
+            WindowHeadline(window, appName, pending, sameAppIndex)
             WindowPills(windowMarks(window, group))
             actions?.invoke()
         }
@@ -102,21 +105,23 @@ fun WindowCard(
 }
 
 @Composable
-private fun WindowHeadline(window: Window, pending: Boolean, sameAppIndex: Int?) {
+private fun WindowHeadline(window: Window, appName: String?, pending: Boolean, sameAppIndex: Int?) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // The badge takes the app's wash, so the monogram inside reads as one tinted app badge.
         Box(
-            Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape),
+            Modifier.size(44.dp).background(LocalSwayTokens.current.washFor(window.appId.orEmpty()), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             AppIcon(appId = window.appId, iconHash = window.icon, size = 28.dp)
         }
         Column(Modifier.weight(1f)) {
             // Without scope state.titles the title is absent: the app id takes its place.
-            val title = window.title ?: window.appId ?: stringResource(R.string.window_untitled)
+            val app = appName ?: window.appId
+            val title = window.title ?: app ?: stringResource(R.string.window_untitled)
             Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (window.title != null && window.appId != null) {
+            appLine(window.title, app)?.let { line ->
                 Text(
-                    text = window.appId.orEmpty(),
+                    text = line,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

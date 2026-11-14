@@ -208,3 +208,23 @@ private const val MINUTE_MS = 60_000L
 
 /** Whole minutes, rounded up, for "Available again in N min." (the line of UX 16 `limit_reached`). */
 fun minutesUp(leftMs: Long): Int = ((leftMs.coerceAtLeast(0) + MINUTE_MS - 1) / MINUTE_MS).toInt()
+
+/**
+ * Narrowest tile, in dp, that still holds "Scratchpad" in `titleMedium` beside 16dp padding on each side. Below it
+ * the grid stands in one column.
+ */
+private const val MIN_TILE_WIDTH_DP = 140f
+
+/** Spacing between two tiles, in dp (UX 10.1). */
+internal const val TILE_GAP_DP = 12f
+
+/**
+ * Above this font scale the tiles stand in one column, so a word like "Scratchpad" is never cut (UX 15).
+ */
+private const val ONE_COLUMN_FONT_SCALE = 1.2f
+
+/** Columns of the quick-settings grid (UX 10.1, 15): two, or one on a narrow width or a large font scale. */
+fun tileColumns(widthDp: Float, fontScale: Float): Int {
+    val twoColumnTile = (widthDp - TILE_GAP_DP) / 2
+    return if (fontScale > ONE_COLUMN_FONT_SCALE || twoColumnTile < MIN_TILE_WIDTH_DP) 1 else 2
+}

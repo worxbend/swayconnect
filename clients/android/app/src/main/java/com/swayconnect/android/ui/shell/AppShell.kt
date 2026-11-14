@@ -1,6 +1,7 @@
 package com.swayconnect.android.ui.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.ime
@@ -32,17 +34,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import com.swayconnect.android.R
 import com.swayconnect.android.ui.MainViewModel
 import com.swayconnect.android.ui.audio.AudioArea
 import com.swayconnect.android.ui.common.PillTone
 import com.swayconnect.android.ui.common.StatePill
+import com.swayconnect.android.ui.common.screenGutter
 import com.swayconnect.android.ui.keys.KeysArea
 import com.swayconnect.android.ui.keys.KeysPrivateButton
 import com.swayconnect.android.ui.launch.LaunchArea
@@ -90,12 +94,10 @@ fun AppShell(state: UiState, viewModel: MainViewModel, volumeKeyPresses: IntStat
             val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
             val direction = LocalLayoutDirection.current
             val safe = WindowInsets.safeDrawing.asPaddingValues()
-            val gestures = WindowInsets.systemGestures.asPaddingValues()
-            // One gutter for the title, the cards and the pages (UX 5.5): 16dp, or the part of the back-gesture
-            // zone the safe area leaves inside the content. In landscape the nav already stands past it at the start.
-            val gutterStart = if (landscape) NAV_SIDE else max(NAV_SIDE, gestures.calculateStartPadding(direction) - safe.calculateStartPadding(direction))
-            val gutterEnd = max(NAV_SIDE, gestures.calculateEndPadding(direction) - safe.calculateEndPadding(direction))
-            val gutter = PaddingValues(start = gutterStart, end = gutterEnd)
+            // One gutter for the title, the cards and the pages (UX 5.5). In landscape the nav stands at the start.
+            val gutter = screenGutter(navAtStart = landscape)
+            val gutterStart = gutter.calculateStartPadding(direction)
+            val gutterEnd = gutter.calculateEndPadding(direction)
             // The capsule hides with the nav while the IME is open (UX 4.3); while shown, the content clears it too.
             val capsule = capsuleOf(state).takeUnless { imeOpen }
             val capsuleRoom = if (capsule != null) CAPSULE_HEIGHT + CAPSULE_GAP else 0.dp
@@ -151,6 +153,7 @@ fun AppShell(state: UiState, viewModel: MainViewModel, volumeKeyPresses: IntStat
                         bottom = safe.calculateBottomPadding() + (if (imeOpen) 8.dp else NAV_LIFT + NAV_HEIGHT + CONTENT_CLEARANCE + capsuleRoom),
                     ),
                 )
+                if (!imeOpen) NavScrim(safe.calculateBottomPadding() + NAV_LIFT + NAV_HEIGHT + capsuleRoom, Modifier.align(Alignment.BottomCenter))
                 // Before the nav, so TalkBack reads the capsule first (UX 15).
                 capsule?.let {
                     NowPlayingCapsule(
@@ -187,6 +190,24 @@ fun AppShell(state: UiState, viewModel: MainViewModel, volumeKeyPresses: IntStat
         ),
     )
     MoreSheet(state, viewModel)
+}
+
+/**
+ * The background behind the capsule and nav stack: solid for [solid], then fading out over [CONTENT_CLEARANCE]
+ * above it, so scrolled content fades away instead of peeking between the capsule and the nav. Draws only; touches
+ * pass through to the content.
+ */
+@Composable
+private fun NavScrim(solid: Dp, modifier: Modifier) {
+    val background = MaterialTheme.colorScheme.background
+    val total = solid + CONTENT_CLEARANCE
+    val fadeEnd = CONTENT_CLEARANCE / total
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(total)
+            .background(Brush.verticalGradient(0f to background.copy(alpha = 0f), fadeEnd to background)),
+    )
 }
 
 @Composable
@@ -234,14 +255,17 @@ private fun ShellTitle(state: UiState, viewModel: MainViewModel, gutter: Padding
         ),
         gutter = gutter,
         onStatusClick = { viewModel.openSheet(Sheet.Computer) },
-        contextPill = {
+        contextPill = { compact ->
             if (area == Area.Desktop) {
                 DrivePill(
                     drive = state.drive == DriveMode.Drive,
                     availability = state.granted?.availabilityOf(DRIVE_OP),
-                    onDriveChange = { on -> viewModel.setDriveMode(if (on) DriveMode.Drive else DriveMode.Browse) },
-                    onLocked = showLocked,
-                    onReadOnly = { viewModel.openSheet(Sheet.Computer) },
+                    compact = compact,
+                    actions = DrivePillActions(
+                        onDriveChange = { on -> viewModel.setDriveMode(if (on) DriveMode.Drive else DriveMode.Browse) },
+                        onLocked = showLocked,
+                        onReadOnly = { viewModel.openSheet(Sheet.Computer) },
+                    ),
                 )
             }
             if (area == Area.Launch) LaunchTargetPill(state, launchTarget.value) { launchTarget.value = it }

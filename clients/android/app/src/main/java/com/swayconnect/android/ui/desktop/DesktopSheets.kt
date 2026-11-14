@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.swayconnect.android.R
 import com.swayconnect.android.ui.common.AppIcon
 import com.swayconnect.android.ui.common.WindowCard
+import com.swayconnect.android.ui.common.appLine
 import com.swayconnect.android.ui.state.Sheet
 import com.swayconnect.android.ui.theme.SwayIcons
 import com.swayconnect.protocol.Desktop
@@ -120,7 +121,7 @@ private fun closingActions(actions: PageActions, onClose: () -> Unit) =
 /** UX 5.8: header, Focus, Full, Float, Scratchpad, the move pills, the container's layout, Close. */
 @Composable
 private fun WindowSheet(window: Window, desktop: Desktop, facts: PageFacts, actions: PageActions, showLayoutNote: Boolean) {
-    WindowSheetHeader(window, desktop)
+    WindowSheetHeader(window, desktop, facts.appNameOf(window))
     HorizontalDivider()
     WindowSheetActions(window, desktop, facts, actions, showLayoutNote)
 }
@@ -128,13 +129,13 @@ private fun WindowSheet(window: Window, desktop: Desktop, facts: PageFacts, acti
 /** The Focused card's Move (UX 5.7): the window, then the move pills. */
 @Composable
 private fun MoveSheet(window: Window, desktop: Desktop, facts: PageFacts, actions: PageActions) {
-    WindowSheetHeader(window, desktop)
+    WindowSheetHeader(window, desktop, facts.appNameOf(window))
     HorizontalDivider()
     MoveSection(window, desktop, enabled = facts.live && facts.pendingId != window.id, facts, actions)
 }
 
 @Composable
-private fun WindowSheetHeader(window: Window, desktop: Desktop) {
+private fun WindowSheetHeader(window: Window, desktop: Desktop, appName: String?) {
     val workspace = desktop.workspaces.firstOrNull { it.id == window.workspaceId }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape), contentAlignment = Alignment.Center) {
@@ -142,14 +143,14 @@ private fun WindowSheetHeader(window: Window, desktop: Desktop) {
         }
         Column(Modifier.weight(1f)) {
             Text(
-                text = window.title ?: window.appId ?: stringResource(R.string.window_untitled),
+                text = window.title ?: appName ?: stringResource(R.string.window_untitled),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() },
             )
             val detail = listOfNotNull(
-                window.appId,
+                appLine(window.title, appName),
                 workspace?.let { stringResource(R.string.desktop_sheet_on_workspace, cardText(it).label()) },
                 stringResource(if (window.floating) R.string.desktop_sheet_floating else R.string.desktop_sheet_tiled),
             ).joinToString(" · ")
@@ -207,6 +208,7 @@ private fun WindowListSheet(title: String, windows: List<Window>, facts: PageFac
             onLongClick = { closing.onWindowSheet(window.id) },
             enabled = facts.live,
             pending = facts.pendingId == window.id,
+            appName = facts.appNameOf(window),
         )
     }
 }

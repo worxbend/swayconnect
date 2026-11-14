@@ -19,6 +19,9 @@
     <string name="audio_muted">Muted</string>
     <string name="audio_percent">%1$d %%</string>
     <string name="audio_make_default">make default</string>
+    <string name="audio_offer_default">Make default</string>
+    <!-- Two devices with one name: the name, then the profile that tells them apart. -->
+    <string name="audio_device_with_profile">%1$s, %2$s</string>
     <string name="audio_show_how">show how to turn it on</string>
     <string name="audio_spoken_default">default output</string>
     <string name="audio_spoken_default_input">default input</string>

@@ -77,6 +77,7 @@ private val MARK = 14.dp
 private const val FULL_TURN = 360f
 private const val TOP = -90f
 private const val DISABLED_ALPHA = 0.38f
+private const val READ_ONLY_BADGE_ALPHA = 0.6f
 
 /** What a cell can ask for. The area decides the target workspace of a plain start. */
 internal class CellActions(
@@ -111,13 +112,13 @@ internal fun AppCellView(cell: AppCell, targets: List<Int>, actions: CellActions
         LaunchTap.None -> Modifier.semantics { disabled() }
     }
     val state = cellState(cell)
-    // Read-only: the cell looks disabled, as the More tiles do (UX 4.1).
-    val dimmed = cell.looksDisabled()
+    // Read-only fades only the badge, so the label stays readable; any other refusal fades the whole cell.
+    val look = cell.look()
     Box(modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .alpha(if (dimmed) DISABLED_ALPHA else 1f)
+                .alpha(if (look == CellLook.Disabled) DISABLED_ALPHA else 1f)
                 .clip(MaterialTheme.shapes.medium)
                 .then(gesture)
                 // The label is the spoken name; the state adds risky, locked or starting.
@@ -126,7 +127,7 @@ internal fun AppCellView(cell: AppCell, targets: List<Int>, actions: CellActions
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Badge(cell, name) { progress.value }
+            Badge(cell, name, Modifier.alpha(if (look == CellLook.ReadOnly) READ_ONLY_BADGE_ALPHA else 1f)) { progress.value }
             Text(
                 text = name,
                 style = MaterialTheme.typography.labelMedium,
@@ -156,10 +157,10 @@ private fun cellState(cell: AppCell): String? =
  * reads [holdProgress] in the draw phase, so a hold redraws without recomposing.
  */
 @Composable
-private fun Badge(cell: AppCell, name: String, holdProgress: () -> Float) {
+private fun Badge(cell: AppCell, name: String, modifier: Modifier = Modifier, holdProgress: () -> Float) {
     val scheme = MaterialTheme.colorScheme
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(BADGE)
             .background(scheme.surfaceContainer, CircleShape)
             .drawBehind {

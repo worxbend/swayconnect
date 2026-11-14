@@ -26,6 +26,8 @@
     <string name="status_locked">Locked</string>
     <string name="status_awake">Awake</string>
     <string name="status_awake_minutes">Awake %1$d min</string>
+    <!-- The Awake pill when the whole text does not fit: the coffee glyph beside it says awake. -->
+    <string name="status_awake_minutes_short">%1$d min</string>
     <string name="status_typing">Typing</string>
 
     <!-- Context pill and round buttons -->

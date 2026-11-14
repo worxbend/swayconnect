@@ -45,6 +45,8 @@ data class DeviceCard(
     val live: Boolean,
     /** A mute or default change of this device waits for its answer. */
     val pending: Boolean,
+    /** The name shown for [device], made distinct within its section by [devicesPart]. */
+    val label: DeviceLabel = deviceLabel(device.description),
 ) {
     /** UX 7.1: an unplugged device is a disabled row. The default one keeps its controls. */
     val unplugged: Boolean get() = !device.available
@@ -58,6 +60,15 @@ data class DeviceCard(
 
     /** A tap on the mute button. Unmuting a microphone needs the hold (UX 7.2). */
     fun muteTap(): AudioTap = gate(toggleMute) { if (role == DeviceRole.Input && device.muted) AudioTap.Hold else AudioTap.Send }
+
+    /**
+     * The level a non-default, plugged, unmuted output shows in its kind line ("Speaker · 100 %"), so a card
+     * without the slider still reads as a working device (UX 7.1 keeps the slider on the default only).
+     */
+    val levelShown: Int? get() = volume.takeIf { !isDefault && !unplugged && !device.muted && role == DeviceRole.Output }
+
+    /** "Make default" shows where the Default pill sits on a card a tap would make the default. */
+    val offersDefault: Boolean get() = tap() == AudioTap.Send
 
     /** The slider moves only while the server would take the value. */
     val sliderEnabled: Boolean get() = setVolume == OpAvailability.Available && live
@@ -106,8 +117,8 @@ fun devicesPart(state: UiState): DevicesPart {
         !audio.available -> DevicesPart.Unreachable
         audio.sinks.isEmpty() && audio.sources.isEmpty() -> DevicesPart.Empty
         else -> DevicesPart.Shown(
-            outputs = audio.sinks.map { cardOf(it, DeviceRole.Output, view, granted, state.pendingControl) },
-            inputs = audio.sources.map { cardOf(it, DeviceRole.Input, view, granted, state.pendingControl) },
+            outputs = distinctLabels(audio.sinks.map { cardOf(it, DeviceRole.Output, view, granted, state.pendingControl) }),
+            inputs = distinctLabels(audio.sources.map { cardOf(it, DeviceRole.Input, view, granted, state.pendingControl) }),
             truncated = audio.truncated,
         )
     }
@@ -130,6 +141,46 @@ private fun cardOf(device: Device, role: DeviceRole, view: AudioView, granted: G
         live = view.live,
         pending = pending == PendingControl.Device(device.id),
     )
+}
+
+/**
+ * The shown name of a device, and the ALSA profile that was cut from it ("Analog Stereo"), if any.
+ * [detailInName]: two devices of a section share [name], so the view shows the detail beside the name
+ * ("HDA NVidia, Digital Stereo (HDMI 2)", a string resource) instead of in the kind line.
+ */
+data class DeviceLabel(val name: String, val detail: String? = null, val detailInName: Boolean = false)
+
+/** " Audio/Sink sink", " Audio/Source/Virtual source": the media class and direction a bare node name trails. */
+private val MEDIA_CLASS_TAIL = Regex("""\s+Audio/(Sink|Source)(/Virtual)?\s+(sink|source)$""")
+
+/** A trailing ALSA card profile: "Starship/Matisse HD Audio Controller Analog Stereo". */
+private val ALSA_PROFILE_TAIL =
+    Regex("""^(.+?)\s+(Analog (?:Stereo|Mono|Surround \d\.\d)|Digital Stereo \(HDMI(?: \d+)?\)|Digital Surround \d\.\d|Pro Audio)$""")
+
+/**
+ * The clean name of a device [description] as the sound server sends it. A bare node name loses its media class
+ * ("sealed_sink_1 Audio/Sink sink" -> "Sealed sink 1"); an ALSA card profile moves to the detail. Anything else,
+ * and anything that would come out blank, stays as sent.
+ */
+fun deviceLabel(description: String): DeviceLabel {
+    val stripped = MEDIA_CLASS_TAIL.find(description)?.let { description.substring(0, it.range.first) }
+    val base = when {
+        stripped == null -> description
+        stripped.isNotBlank() && stripped.none(Char::isWhitespace) -> stripped.replace('_', ' ').replaceFirstChar(Char::uppercaseChar)
+        else -> stripped
+    }
+    val profile = ALSA_PROFILE_TAIL.find(base)
+    val label = if (profile != null) DeviceLabel(profile.groupValues[1], profile.groupValues[2]) else DeviceLabel(base)
+    return if (label.name.isBlank()) DeviceLabel(description) else label
+}
+
+/** Two cards of one section with the same name keep apart by their detail: "HDA NVidia, Digital Stereo (HDMI 2)". */
+private fun distinctLabels(cards: List<DeviceCard>): List<DeviceCard> {
+    val repeated = cards.groupingBy { it.label.name }.eachCount().filterValues { it > 1 }.keys
+    return cards.map { card ->
+        val detail = card.label.detail
+        if (card.label.name in repeated && detail != null) card.copy(label = card.label.copy(detailInName = true)) else card
+    }
 }
 
 /** The now-playing card of UX 7.1. */

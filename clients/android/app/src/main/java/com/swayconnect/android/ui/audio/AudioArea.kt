@@ -138,7 +138,7 @@ private fun UnmuteDialog(devices: DevicesPart, deviceId: Long?, onDismiss: () ->
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.audio_unmute_title)) },
-        text = { Text(stringResource(R.string.audio_unmute_text, replaceUnsafe(card.device.description))) },
+        text = { Text(stringResource(R.string.audio_unmute_text, replaceUnsafe(card.label.name))) },
         confirmButton = { TextButton(onClick = { onConfirm(deviceId) }) { Text(stringResource(R.string.audio_unmute_confirm)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )

@@ -91,7 +91,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
 
-private val CARD_MIN_WIDTH = 72.dp
+private val CARD_MIN_WIDTH = 64.dp
 private val CARD_MIN_HEIGHT = 88.dp
 private val COMPACT_MIN_WIDTH = 56.dp
 private val COMPACT_HEIGHT = 40.dp
@@ -114,10 +114,10 @@ internal class CardActions(
 )
 
 /**
- * The workspace card carousel (docs/UX.md 5.4, 17.3). When every card fits, the row starts on the page gutter
- * ([edges]) like reference 2 and does not scroll. When they overflow, it snaps the card nearest the centre, and
- * every card can reach the centre because the side padding is half the free width. The ring follows the pager's
- * offset in the draw phase. The fill shows only the focus that the computer confirmed.
+ * The workspace card carousel (docs/UX.md 5.4, 17.3). The first card rests on the page gutter ([edges]) like
+ * reference 2. When every card fits, the row does not scroll. When they overflow, it snaps the card nearest the
+ * centre; only the end gets half the free width as padding, so the last card can reach the centre too. The ring
+ * follows the pager's offset in the draw phase. The fill shows only the focus that the computer confirmed.
  *
  * @param rowGesture a user drag of the row, from its start until the row settled.
  * @param onRowDragStart a user drag of the row began: user-initiated, like a pager drag.
@@ -163,7 +163,7 @@ internal fun WorkspaceRow(
             contentPadding = if (fits) {
                 PaddingValues(start = start, end = end, top = vertical, bottom = vertical)
             } else {
-                PaddingValues(horizontal = side, vertical = vertical)
+                PaddingValues(start = start, end = side, top = vertical, bottom = vertical)
             },
             horizontalArrangement = Arrangement.spacedBy(CARD_GAP),
             verticalAlignment = Alignment.CenterVertically,
@@ -207,7 +207,7 @@ internal fun WorkspaceRow(
 
 private val CARD_RADIUS = 24.dp
 private const val REMOVE_MS = 150
-private val CARD_PADDING = 10.dp
+private val CARD_PADDING = 8.dp
 private val COMPACT_PADDING = 14.dp
 private val COMPACT_SPACING = 6.dp
 
@@ -285,24 +285,44 @@ private fun RowSettleEffects(rowState: LazyListState, rowGesture: RowGesture, on
     }
 }
 
-/** The index of the card whose centre is nearest the row's centre. */
+/**
+ * The card a settled drag picked: the one whose centre is nearest the row's centre. At the start of the row the
+ * first cards rest on the gutter and can never reach the centre, so a drag back to the start picks the first card.
+ */
 internal fun centredIndex(rowState: LazyListState): Int? {
     val info = rowState.layoutInfo
+    if (!rowState.canScrollBackward && info.totalItemsCount > 0) return 0
     val centre = (info.viewportStartOffset + info.viewportEndOffset) / 2
     return info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - centre) }?.index
 }
 
-/** Scrolls the row so card [index] sits in the centre: the keep-in-view scroll. It is not user-initiated. */
-internal suspend fun centreCard(rowState: LazyListState, index: Int, animate: Boolean, spec: AnimationSpec<Float>) {
+/**
+ * The keep-in-view scroll (UX 17.3): when card [index] is off screen or cut by an edge, the row scrolls just
+ * enough to show it whole inside the gutters; a card already in view does not move. A card that comes in from
+ * beyond the end lands on the end gutter, so the cards before it stay in view. A first card cut by the start edge
+ * is shown whole when the target stays in view (ref 2: the row starts on the gutter). It is not user-initiated.
+ */
+internal suspend fun scrollCardIntoView(rowState: LazyListState, index: Int, animate: Boolean, spec: AnimationSpec<Float>) {
     if (index < 0 || index >= rowState.layoutInfo.totalItemsCount) return
-    if (rowState.layoutInfo.visibleItemsInfo.none { it.index == index }) {
+    val visible = rowState.layoutInfo.visibleItemsInfo
+    val offScreen = visible.none { it.index == index }
+    val fromEnd = offScreen && index > (visible.lastOrNull()?.index ?: -1)
+    if (offScreen) {
         if (animate) rowState.animateScrollToItem(index) else rowState.scrollToItem(index)
     }
     val info = rowState.layoutInfo
     val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
-    val delta = (item.offset + item.size / 2 - (info.viewportStartOffset + info.viewportEndOffset) / 2).toFloat()
-    if (delta == 0f) return
-    if (animate) rowState.animateScrollBy(delta, spec) else rowState.scrollBy(delta)
+    // Offset 0 is the start gutter; the end keeps a gutter of the same width.
+    val end = info.viewportEndOffset - info.beforeContentPadding
+    val first = info.visibleItemsInfo.first()
+    val delta = when {
+        fromEnd -> item.offset + item.size - end
+        first.index == 0 -> keepInViewDelta(item.offset, item.size, start = 0, end = end).takeIf { it != 0 }
+            ?: revealFirstDelta(first.offset, item.offset + item.size, end)
+        else -> keepInViewDelta(item.offset, item.size, start = 0, end = end)
+    }
+    if (delta == 0) return
+    if (animate) rowState.animateScrollBy(delta.toFloat(), spec) else rowState.scrollBy(delta.toFloat())
 }
 
 /**

@@ -25,10 +25,10 @@ internal object LightPalette {
     val Outline = Color(0xFF8A857C)
     val OutlineVariant = Color(0xFFD3CEC4)
 
-    // Low-chroma pastels between #F1E9DD and #E3ECEF, each at least 12:1 with Ink (UX 3.1).
+    // Eight hues 45 degrees apart at CIELAB L* 93, chroma 10, each about 15:1 with Ink (UX 3.1).
     val Washes = listOf(
-        Color(0xFFF1E9DD), Color(0xFFEFE6E4), Color(0xFFECE8DA), Color(0xFFE9EBDF),
-        Color(0xFFE5ECE4), Color(0xFFE3ECEF), Color(0xFFE8E7EF), Color(0xFFEEE6EA),
+        Color(0xFFFFE5E5), Color(0xFFFBE8DA), Color(0xFFECECD9), Color(0xFFDCF0E2),
+        Color(0xFFD3F1F1), Color(0xFFD9EEFC), Color(0xFFE9EAFD), Color(0xFFF9E5F3),
     )
 }
 
@@ -46,15 +46,18 @@ internal object DarkPalette {
     val Olive = Color(0xFF5C5A00)
     val Coral = Color(0xFFFF9A80)
     val Ok = Color(0xFF8DBF7A)
+
+    // A dark green at about the L* of ContainerHigh, so "Default" keeps the green of light mode (UX 3.1).
+    val OkContainer = Color(0xFF243A2A)
     val Outline = Color(0xFF75757F)
     val OutlineVariant = Color(0xFF3A3A46)
     val NavContainer = Color(0xFF1B1B26)
     val NavIcon = Color(0xFF8E8E99)
 
-    // Muted tones between #262632 and #2F2A35, each at least 10:1 with Text (UX 3.1).
+    // The same eight hues at CIELAB L* 22, chroma 11, each about 11:1 with Text (UX 3.1).
     val Washes = listOf(
-        Color(0xFF262632), Color(0xFF292733), Color(0xFF2B2834), Color(0xFF2F2A35),
-        Color(0xFF2A2C34), Color(0xFF272B33), Color(0xFF2C2B2F), Color(0xFF2E2830),
+        Color(0xFF452F2F), Color(0xFF413226), Color(0xFF353625), Color(0xFF27392E),
+        Color(0xFF1D393A), Color(0xFF223743), Color(0xFF323444), Color(0xFF40303C),
     )
 }
 
@@ -110,7 +113,7 @@ val LightSwayTokens = SwayTokens(
 val DarkSwayTokens = SwayTokens(
     accentOnInk = DarkPalette.Olive,
     ok = DarkPalette.Ok,
-    okContainer = DarkPalette.ContainerHigh,
+    okContainer = DarkPalette.OkContainer,
     navContainer = DarkPalette.NavContainer,
     navSelected = DarkPalette.White,
     navOnSelected = DarkPalette.InkText,

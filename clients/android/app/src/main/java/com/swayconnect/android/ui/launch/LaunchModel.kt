@@ -50,6 +50,26 @@ data class AppCell(
      * list is dimmed as a whole and a pending start shows its spinner, so neither dims the cell itself.
      */
     fun looksDisabled(): Boolean = live && !pending && tap() == LaunchTap.None
+
+    /** How the cell draws its refusal: a read-only cell keeps a readable label and fades only its badge. */
+    fun look(): CellLook =
+        when {
+            !looksDisabled() -> CellLook.Normal
+            access == OpAvailability.ReadOnly -> CellLook.ReadOnly
+            else -> CellLook.Disabled
+        }
+}
+
+/** The dimming of one app cell; [AppCell.look] picks it. */
+enum class CellLook {
+    /** Full ink. */
+    Normal,
+
+    /** The server looks only: the label stays at full contrast, the badge fades (UX 4.1). */
+    ReadOnly,
+
+    /** Any other refusal: the whole cell at the disabled alpha. */
+    Disabled,
 }
 
 /** The body of the Launch area. */

@@ -264,6 +264,35 @@ object MapGeometry {
     private const val INDEX_BADGE_PADDING = 12f
 
     /**
+     * UX 6.2: the title lines of a titled medium tile. Compose splits a word wider than the line inside it
+     * ("Downloa" / "ds"), so a title whose widest word ([longestWordWidth]) does not fit [lineWidth] gets one line
+     * and an ellipsis; else two.
+     */
+    fun mediumTitleLines(longestWordWidth: Float, lineWidth: Float): Int = if (longestWordWidth <= lineWidth) 2 else 1
+
+    /** Breaks at spaces, and after a slash or a hyphen, which keep their part. */
+    private val WORD_BREAK = Regex("""\s+|(?<=[/-])""")
+
+    /**
+     * The pieces of a title that a line can never split without breaking inside a word: Compose breaks lines at
+     * spaces and after `/` and `-` ("worxbend/" + "macropad"), so those are where the pieces end. Blank pieces
+     * are dropped; a blank title gives none.
+     */
+    fun titleWords(title: String): List<String> = title.split(WORD_BREAK).filter { it.isNotBlank() }
+
+    // A medium tile with a title: 8dp padding around the 32dp icon disc, an 8dp gap and two labelSmall lines.
+    private const val MEDIUM_TITLE_MIN_WIDTH = 72f
+    private const val MEDIUM_TITLE_FIXED = 32f + 8f + 16f
+    private const val TITLE_LINES_SP = 2 * 16f
+
+    /**
+     * UX 6.2: a medium tile shows its window's title under the icon, so it reads as a window and not as a block,
+     * when the disc, the gap and two `labelSmall` lines at [fontScale] fit its height and it is about 72dp wide.
+     */
+    fun mediumShowsTitle(rect: MapRect, fontScale: Float): Boolean =
+        rect.width >= MEDIUM_TITLE_MIN_WIDTH && rect.height >= MEDIUM_TITLE_FIXED + TITLE_LINES_SP * fontScale
+
+    /**
      * UX 6.3: windows that share an `app_id` get their index (from 1) in [treeOrder]. Windows without an
      * `app_id` and apps with one window get none.
      */

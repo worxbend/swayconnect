@@ -182,4 +182,17 @@ class MoreModelTest {
             error("protocol/vectors/v1/$path not found above ${System.getProperty("user.dir")}")
         }
     }
+
+    @Test
+    fun `the tile grid has two columns on a phone and one when narrow or at a large font scale`() {
+        // A 360dp phone leaves 328dp between the 16dp gutters.
+        assertEquals(2, tileColumns(widthDp = 328f, fontScale = 1f))
+        assertEquals(2, tileColumns(widthDp = 328f, fontScale = 1.15f))
+        assertEquals(1, tileColumns(widthDp = 328f, fontScale = 1.3f))
+        // Two tiles of exactly 140dp still fit; one dp less does not.
+        assertEquals(2, tileColumns(widthDp = 292f, fontScale = 1f))
+        assertEquals(1, tileColumns(widthDp = 291f, fontScale = 1f))
+        // Display size "largest" on a small phone: about 280dp of content.
+        assertEquals(1, tileColumns(widthDp = 280f, fontScale = 1f))
+    }
 }

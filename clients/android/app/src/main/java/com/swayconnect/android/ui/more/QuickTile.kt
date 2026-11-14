@@ -14,9 +14,8 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +39,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -51,10 +51,13 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.swayconnect.android.ui.common.HOLD_MS
@@ -63,8 +66,8 @@ import com.swayconnect.android.ui.theme.LocalHaptics
 import com.swayconnect.android.ui.theme.LocalReduceMotion
 import com.swayconnect.android.ui.theme.LocalSwayMotion
 import com.swayconnect.android.ui.theme.LocalSwayTokens
-import com.swayconnect.android.ui.theme.SwayIcon
 import com.swayconnect.android.ui.theme.SwayHaptic
+import com.swayconnect.android.ui.theme.SwayIcon
 import com.swayconnect.android.ui.theme.SwayIcons
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -117,15 +120,37 @@ internal class TileInput(
  */
 internal class TileHold(val onHeld: () -> Unit, val onConfirmRequest: () -> Unit)
 
-/** One quick-settings tile of docs/UX.md 10.1: 88dp or taller, an icon badge, a title and its lines. */
+/**
+ * One quick-settings tile of docs/UX.md 10.1 (reference 2, a large Quick Settings tile): 88dp or taller, the icon
+ * badge on top, then the title and its lines at the full tile width, so a title never splits inside a word.
+ */
 @Composable
 internal fun QuickTile(look: TileLook, speech: TileSpeech, input: TileInput, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val effects = LocalSwayMotion.current.defaultEffectsSpec<Color>()
-    val container by animateColorAsState(if (look.on) scheme.primary else scheme.surface, effects, label = "tile")
-    val content by animateColorAsState(if (look.on) scheme.onPrimary else scheme.onSurface, effects, label = "tileContent")
+    // Ink only when on and usable. A disabled "on" tile goes tonal instead of fading the ink, so it stays legible.
+    val inked = look.on && input.enabled
+    val dimmedOn = look.on && !input.enabled
+    val container by animateColorAsState(
+        when {
+            inked -> scheme.primary
+            dimmedOn -> scheme.surfaceContainerHigh
+            else -> scheme.surface
+        },
+        effects,
+        label = "tile",
+    )
+    val content by animateColorAsState(
+        when {
+            inked -> scheme.onPrimary
+            dimmedOn -> scheme.onSurfaceVariant
+            else -> scheme.onSurface
+        },
+        effects,
+        label = "tileContent",
+    )
     val alpha = when {
-        !input.enabled -> DISABLED_ALPHA
+        !input.enabled && !look.on -> DISABLED_ALPHA
         input.stale -> STALE_ALPHA
         else -> 1f
     }
@@ -149,7 +174,7 @@ internal fun QuickTile(look: TileLook, speech: TileSpeech, input: TileInput, mod
     } else {
         Modifier
     }
-    Row(
+    Column(
         modifier = modifier
             .heightIn(min = TILE_MIN_HEIGHT)
             .alpha(alpha)
@@ -163,14 +188,14 @@ internal fun QuickTile(look: TileLook, speech: TileSpeech, input: TileInput, mod
             }
             .clearAndSetSemantics {}
             .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TileBadge(look, content) { progress.value }
-        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
-            Text(look.title, style = MaterialTheme.typography.titleMedium, color = content, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        TileBadge(look, inked, content) { progress.value }
+        Column {
+            Text(look.title, style = TileTitle, color = content, maxLines = 2, overflow = TextOverflow.Ellipsis)
             look.lines.forEachIndexed { index, line ->
-                val accent = look.on && index == 0
+                // accentOnInk lives on ink only (UX 3.1): never on the tonal fill of a disabled tile.
+                val accent = inked && index == 0
                 Text(
                     text = line,
                     style = MaterialTheme.typography.bodyMedium,
@@ -187,8 +212,8 @@ internal fun QuickTile(look: TileLook, speech: TileSpeech, input: TileInput, mod
 
 /** The round badge; the hold ring reads [holdProgress] in the draw phase, so a hold redraws without recomposing. */
 @Composable
-private fun TileBadge(look: TileLook, content: Color, holdProgress: () -> Float) {
-    val badge = if (look.on) content.copy(alpha = BADGE_ON_INK_ALPHA) else MaterialTheme.colorScheme.surfaceContainer
+private fun TileBadge(look: TileLook, inked: Boolean, content: Color, holdProgress: () -> Float) {
+    val badge = if (inked) content.copy(alpha = BADGE_ON_INK_ALPHA) else MaterialTheme.colorScheme.surfaceContainer
     val ring = Modifier.drawBehind {
         val stroke = 2.dp.toPx()
         drawArc(
@@ -204,11 +229,34 @@ private fun TileBadge(look: TileLook, content: Color, holdProgress: () -> Float)
     Box(Modifier.size(BADGE).background(badge, CircleShape).then(ring), contentAlignment = Alignment.Center) {
         when {
             look.pending -> CircularProgressIndicator(modifier = Modifier.size(20.dp), color = content, strokeWidth = 2.dp)
-            look.locked -> Icon(SwayIcons.Lock.outline, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+            look.locked -> LockBadged(look.icon.outline, content)
             else -> Icon(if (look.on) look.icon.filled else look.icon.outline, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
         }
     }
 }
+
+private val LOCK_BADGE = 12.dp
+
+/**
+ * A locked tile keeps its own glyph with a small lock at its bottom end, as the locked Close button does: a lone
+ * padlock said nothing about which tile it was, and doubled the Lock tile's own glyph.
+ */
+@Composable
+private fun LockBadged(icon: ImageVector, tint: Color) {
+    Box {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Box(
+            Modifier.align(Alignment.BottomEnd).offset(x = 5.dp, y = 5.dp).size(LOCK_BADGE + 2.dp).background(MaterialTheme.colorScheme.surface, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = SwayIcons.Lock.filled, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(LOCK_BADGE))
+        }
+    }
+}
+
+/** Whole words only: no hyphenation, and heading line breaks that balance a two-line title. */
+private val TileTitle: TextStyle
+    @Composable get() = MaterialTheme.typography.titleMedium.copy(hyphens = Hyphens.None, lineBreak = LineBreak.Heading)
 
 /** What a running hold needs, kept across recompositions so a new state does not cancel it. */
 private class Holding(

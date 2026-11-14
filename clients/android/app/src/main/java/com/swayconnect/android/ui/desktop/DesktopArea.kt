@@ -136,6 +136,7 @@ private fun windowOps(viewModel: MainViewModel) =
 @Composable
 private fun pageFacts(state: UiState, desktop: Desktop?): PageFacts {
     val moved = state.followFocusChip?.let { id -> desktop?.workspaces?.firstOrNull { it.id == id } }
+    val apps = state.apps?.state?.apps.orEmpty()
     return PageFacts(
         viewMode = state.viewMode,
         browse = !state.isDriving,
@@ -145,6 +146,7 @@ private fun pageFacts(state: UiState, desktop: Desktop?): PageFacts {
         movedTo = moved?.let { cardText(it).number },
         lines = stateLines(state, desktop),
         listHintDismissed = state.listHintDismissed,
+        appNames = remember(apps) { appNames(apps) },
     )
 }
 
@@ -185,7 +187,7 @@ private fun DesktopPager(state: UiState, desktop: Desktop, facts: PageFacts, act
     val currentPages = rememberUpdatedState(pages)
     val startIndex = state.shownPageIndex.coerceAtLeast(0)
     val pagerState = rememberPagerState(initialPage = startIndex) { currentPages.value.size }
-    val rowState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+    val rowState = rememberLazyListState()
     val rowGesture = remember { RowGesture() }
     val scope = rememberCoroutineScope()
     val reduceMotion = LocalReduceMotion.current
@@ -344,16 +346,26 @@ private fun PagerEffects(
     }
 }
 
-/** Keep in view (UX 17.3): the row centres the pager's target card, unless the user drags the row. */
+/**
+ * Keep in view (UX 17.3): the row brings the pager's target card into view, unless the user drags the row. It
+ * runs again when cards come or go: the row keeps its first card by key, so a workspace created in front of it
+ * would otherwise stay cut at the start edge. A new font scale or display size restarts it. The row opens at its
+ * start, so the first placement jumps (no motion) the way a later one scrolls: a last card lands on the end gutter
+ * instead of the centre.
+ */
 @Composable
 private fun KeepCardInView(pagerState: PagerState, rowState: LazyListState, rowGesture: RowGesture) {
     val reduceMotion = LocalReduceMotion.current
     val spec = LocalSwayMotion.current.defaultSpatialSpec<Float>()
-    LaunchedEffect(pagerState, rowState) {
-        snapshotFlow { pagerState.targetPage to rowState.layoutInfo.viewportSize.width }
+    LaunchedEffect(pagerState, rowState, LocalDensity.current) {
+        var placed = false
+        snapshotFlow { Triple(pagerState.targetPage, rowState.layoutInfo.viewportSize.width, rowState.layoutInfo.totalItemsCount) }
             .distinctUntilChanged()
-            .collectLatest { (page, width) ->
-                if (width > 0 && !rowGesture.active) centreCard(rowState, page, animate = !reduceMotion, spec)
+            .collectLatest { (page, width, _) ->
+                if (width > 0 && !rowGesture.active) {
+                    scrollCardIntoView(rowState, page, animate = placed && !reduceMotion, spec)
+                    placed = true
+                }
             }
     }
 }

@@ -5,7 +5,7 @@ import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -112,6 +112,7 @@ data class MapActions(
  * @param workspaceLabel the workspace's name for "Nothing open on 5".
  * @param pendingWindowId a window whose action waits: spinner, taps ignored.
  * @param enabled false while the state is stale (UX 5.9); the caller also dims the page.
+ * @param appName the name an `app_id` shows as (its desktop entry's name, else the id).
  */
 @Composable
 fun MapSlab(
@@ -122,6 +123,7 @@ fun MapSlab(
     modifier: Modifier = Modifier,
     pendingWindowId: Long? = null,
     enabled: Boolean = true,
+    appName: (String) -> String,
 ) {
     // UX 6.6: the floating layer hides and shows per page, not stored.
     var showFloating by rememberSaveable { mutableStateOf(true) }
@@ -144,6 +146,7 @@ fun MapSlab(
                     actions = actions,
                     pendingWindowId = pendingWindowId,
                     enabled = enabled,
+                    appName = appName,
                     modifier = Modifier.padding(SLAB_PADDING).fillMaxWidth().height(innerHeight.dp),
                 )
             }
@@ -194,6 +197,7 @@ private fun LayoutMap(
     actions: MapActions,
     pendingWindowId: Long?,
     enabled: Boolean,
+    appName: (String) -> String,
     modifier: Modifier,
 ) {
     val reduceMotion = LocalReduceMotion.current
@@ -243,11 +247,13 @@ private fun LayoutMap(
             .then(tapModifier),
         content = {
             if (plan.tiles.isEmpty()) EmptyMap(plan.map, workspaceLabel)
-            val focusedTile = plan.tiles.firstOrNull { it.windowId == focusedId && !it.dimmed }
-            if (focusedTile != null) FocusNode(focusedTile.rect, z = tileZ.getValue(focusedTile.windowId) - 1f)
+            // A focused sliver is ink itself; a 3dp ring would swallow it.
+            val focusedTile = plan.tiles.firstOrNull { it.windowId == focusedId && !it.dimmed && it.sizeClass != SizeClass.Sliver }
+            // Over its tile and under the next one (z steps by 2), so the ring is never hidden by the tile's wash.
+            if (focusedTile != null) FocusNode(focusedTile.rect, z = tileZ.getValue(focusedTile.windowId) + 1f)
             for (group in plan.groups) {
                 val z = plan.tiles.firstOrNull { it.treeOrder >= group.treeOrder }?.let { tileZ[it.windowId] } ?: 1f
-                key(group.layer, group.treeOrder) { GroupHeader(group, windows, actions, enabled, animateTiles, z) }
+                key(group.layer, group.treeOrder) { GroupHeader(group, windows, actions, enabled, animateTiles, z, appName) }
             }
             for (tile in plan.tiles) {
                 val window = windows[tile.windowId] ?: continue
@@ -259,6 +265,7 @@ private fun LayoutMap(
                         pending = tile.windowId == pendingWindowId,
                         sameAppIndex = plan.sameAppIndex[tile.windowId],
                         pulseNewMarks = settled,
+                        appName = window.appId?.let(appName),
                     )
                     MapTile(look, actions, enabled, animate = animateTiles, grow = settled && animateTiles, z = tileZ.getValue(tile.windowId))
                 }
@@ -296,16 +303,21 @@ private fun animatedRect(target: MapRect, animate: Boolean, grow: Boolean): () -
     return { rect.value }
 }
 
-/** UX 6.4: one ink node that slides from tile to tile when focus moves; the focused tile is see-through. */
+/**
+ * UX 6.4: one ink ring that slides from tile to tile when focus moves. A ring, not a fill: the focused tile keeps
+ * its app wash, so it still reads as that app's window. It draws nothing else and takes no touch.
+ */
 @Composable
 private fun FocusNode(target: MapRect, z: Float) {
     val rect = animatedRect(target, animate = true, grow = false)
     Box(
         Modifier
             .layoutId(Slot(rect, z))
-            .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraSmall),
+            .border(FOCUS_RING, MaterialTheme.colorScheme.primary, TILE_SHAPE),
     )
 }
+
+private val FOCUS_RING = 3.dp
 
 @Composable
 private fun MapTile(look: TileLook, actions: MapActions, enabled: Boolean, animate: Boolean, grow: Boolean, z: Float) {
@@ -374,10 +386,18 @@ private fun MapTile(look: TileLook, actions: MapActions, enabled: Boolean, anima
 }
 
 @Composable
-private fun GroupHeader(group: PlacedGroup, windows: Map<Long, Window>, actions: MapActions, enabled: Boolean, animate: Boolean, z: Float) {
+private fun GroupHeader(
+    group: PlacedGroup,
+    windows: Map<Long, Window>,
+    actions: MapActions,
+    enabled: Boolean,
+    animate: Boolean,
+    z: Float,
+    appName: (String) -> String,
+) {
     val rect = animatedRect(group.header, animate, grow = false)
     val count = pluralStringResource(R.plurals.map_window_count, group.windowCount, group.windowCount)
-    val shownTitle = group.tabs.getOrNull(group.shown)?.firstOrNull()?.let { windowName(windows[it]) }.orEmpty()
+    val shownTitle = group.tabs.getOrNull(group.shown)?.firstOrNull()?.let { windowName(windows[it], appName) }.orEmpty()
     val groupText = stringResource(
         if (group.kind == GroupKind.Tabbed) R.string.map_group_tabbed else R.string.map_group_stacked,
         count,
@@ -386,7 +406,7 @@ private fun GroupHeader(group: PlacedGroup, windows: Map<Long, Window>, actions:
     val focusLabel = stringResource(R.string.map_action_focus)
     val openLabel = stringResource(R.string.map_action_open_group)
     val tabTexts = group.tabs.mapIndexed { index, ids ->
-        stringResource(R.string.map_tab, index + 1, group.tabs.size, windowName(windows[ids.firstOrNull()]))
+        stringResource(R.string.map_tab, index + 1, group.tabs.size, windowName(windows[ids.firstOrNull()], appName))
     }
     val active = enabled && !group.dimmed
     val base = Modifier
@@ -498,13 +518,14 @@ private fun mapDescription(plan: MapPlan): String {
     return stringResource(R.string.map_description, stringResource(kind), count)
 }
 
+/** The spoken name of a tab: the app name the screen shows, else the title, else "Untitled". */
 @Composable
-private fun windowName(window: Window?): String {
+private fun windowName(window: Window?, appName: (String) -> String): String {
     val untitled = stringResource(R.string.window_untitled)
-    return window?.appId ?: window?.title ?: untitled
+    return window?.appId?.let(appName) ?: window?.title ?: untitled
 }
 
-/** "Chrome, Docs, left": app id, title, place on the map. */
+/** "Chrome, Docs, left": the app name the tile shows, title, place on the map (label in name, WCAG 2.5.3). */
 @Composable
 private fun tileDescription(look: TileLook): String {
     val window = look.window
@@ -521,7 +542,7 @@ private fun tileDescription(look: TileLook): String {
         MapPosition.BottomRight -> R.string.map_pos_bottom_right
     }
     val untitled = stringResource(R.string.window_untitled)
-    val name = listOfNotNull(window.appId, window.title).distinct().ifEmpty { listOf(untitled) }
+    val name = listOfNotNull(look.appName, window.title).distinct().ifEmpty { listOf(untitled) }
     return (name + stringResource(position)).joinToString(", ")
 }
 

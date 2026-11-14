@@ -122,7 +122,11 @@ private fun CapsuleText(card: NowPlaying, actions: CapsuleActions, modifier: Mod
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AppIcon(card.player.appId, card.player.icon, size = 40.dp, monogramDisc = MaterialTheme.colorScheme.surfaceContainer)
+            // A player's id often names a browser or a bus name, not the music: a speaker says more than a letter, and
+            // names no action (a play glyph beside the pause control read as a second transport button).
+            AppIcon(card.player.appId, card.player.icon, size = 40.dp, monogramDisc = MaterialTheme.colorScheme.surfaceContainer) {
+                Icon(SwayIcons.Volume.filled, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+            }
             Text(capsuleLine(card), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {

@@ -4,6 +4,7 @@ import com.swayconnect.android.ui.common.GroupKind
 import com.swayconnect.android.ui.common.GroupPosition
 import com.swayconnect.android.ui.map.MapGeometry
 import com.swayconnect.android.ui.state.ViewMode
+import com.swayconnect.protocol.App
 import com.swayconnect.protocol.ContainerKind
 import com.swayconnect.protocol.ContainerTile
 import com.swayconnect.protocol.Desktop
@@ -227,3 +228,75 @@ data class LastSeen(val amount: Long, val inMinutes: Boolean) {
 
 /** Above this font scale the cards drop their name line and buttons go icon-only (UX 15). */
 const val LARGE_FONT_SCALE = 1.5f
+
+private const val DESKTOP_SUFFIX = ".desktop"
+
+/**
+ * The desktop entry names by entry id, lower-cased and without `.desktop`, made safe; blank names are left out.
+ * Built once per `apps` list, so a lookup per tile is a map read. The first entry of an id wins.
+ */
+fun appNames(apps: List<App>): Map<String, String> = buildMap {
+    for (app in apps) {
+        val id = app.entryId.removeSuffix(DESKTOP_SUFFIX).lowercase()
+        val name = replaceUnsafe(app.name)
+        if (name.isNotBlank() && id !in this) put(id, name)
+    }
+}
+
+/**
+ * The name a window's app shows under its title: the name of the desktop entry whose id equals [appId] ignoring
+ * case (`firefox` → "Firefox"), else the entry named by its last reverse-DNS segment (`com.vscodium.codium` →
+ * `codium.desktop`). [appId] itself when neither matches.
+ */
+fun appNameFor(appId: String, names: Map<String, String>): String {
+    val id = appId.lowercase()
+    return names[id] ?: names[id.substringAfterLast('.')] ?: appId
+}
+
+/** The parts of the focused-window row (UX 5.7) in dp: Full, Float and Move with labels, a divider, Close. */
+object FocusedRow {
+    const val GAP = 8f
+    const val DIVIDER = 1f
+
+    /** The icon-only Close: a 48dp circle, as the hold button and as the locked or read-only gated button. */
+    const val CLOSE = 48f
+
+    /** Side padding of a labelled button: 10dp, so Full, Float and Move keep their labels beside Close on a 411dp phone. */
+    const val SIDE_PADDING = 10f
+    const val ICON = 18f
+    const val ICON_GAP = 8f
+
+    /**
+     * Each part is laid out in whole pixels (at 420dpi 12dp is 31.5px and rounds to 32, the 1dp divider takes
+     * 3px), so the row can run about 1dp past its dp sum; a label short by one pixel wraps and is cut.
+     */
+    const val PIXEL_SLACK = 2f
+
+    /**
+     * True when the labelled buttons (their measured [labelWidths]), the divider and the icon-only Close fit in
+     * [available] with [PIXEL_SLACK] to spare. Otherwise all buttons go icon-only, so the row never wraps.
+     */
+    fun labelsFit(available: Float, labelWidths: List<Float>): Boolean {
+        val buttons = labelWidths.sumOf { (2 * SIDE_PADDING + ICON + ICON_GAP + it).toDouble() }.toFloat()
+        val gaps = GAP * (labelWidths.size + 1)
+        return buttons + gaps + DIVIDER + CLOSE + PIXEL_SLACK <= available
+    }
+}
+
+/**
+ * The keep-in-view scroll of the card row (UX 17.3), in px: 0 while the card lies inside [start, end], else the
+ * least scroll that brings its near edge back inside. A card wider than the span lines up on [start].
+ */
+fun keepInViewDelta(offset: Int, size: Int, start: Int, end: Int): Int =
+    when {
+        offset < start -> offset - start
+        offset + size > end -> minOf(offset + size - end, offset - start)
+        else -> 0
+    }
+
+/**
+ * The scroll (px, negative) that shows the row's first card whole when the start edge cuts it ([firstOffset] < 0)
+ * and the target card's end ([targetEnd]) still fits inside [end] after it; else 0.
+ */
+fun revealFirstDelta(firstOffset: Int, targetEnd: Int, end: Int): Int =
+    if (firstOffset < 0 && targetEnd - firstOffset <= end) firstOffset else 0

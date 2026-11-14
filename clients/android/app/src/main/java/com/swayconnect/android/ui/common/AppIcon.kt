@@ -38,9 +38,18 @@ private const val MONOGRAM_TEXT_RATIO = 0.45f
  * [iconHash] arrives, then a 120 ms crossfade at the same size. Decorative: the card or tile around it carries
  * the words. Only this icon recomposes when its own bitmap arrives, and a bitmap once shown stays, even when the
  * memory cache later evicts it.
+ *
+ * @param fallback drawn on the disc instead of the letter while there is no bitmap (a player's play glyph).
  */
 @Composable
-fun AppIcon(appId: String?, iconHash: String?, modifier: Modifier = Modifier, size: Dp = 28.dp, monogramDisc: Color? = null) {
+fun AppIcon(
+    appId: String?,
+    iconHash: String?,
+    modifier: Modifier = Modifier,
+    size: Dp = 28.dp,
+    monogramDisc: Color? = null,
+    fallback: (@Composable () -> Unit)? = null,
+) {
     val cache = LocalIconCache.current
     val image by produceState(iconHash?.let { cache?.image(it) }, cache, iconHash) {
         if (cache == null || iconHash == null || value != null) return@produceState
@@ -51,33 +60,42 @@ fun AppIcon(appId: String?, iconHash: String?, modifier: Modifier = Modifier, si
         if (bitmap != null) {
             Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.fillMaxSize())
         } else {
-            Monogram(appId, size, monogramDisc)
+            Monogram(appId, size, monogramDisc, fallback)
         }
     }
 }
 
 @Composable
-private fun Monogram(appId: String?, size: Dp, disc: Color?) {
+private fun Monogram(appId: String?, size: Dp, disc: Color?, fallback: (@Composable () -> Unit)?) {
     val wash = disc ?: LocalSwayTokens.current.washFor(appId.orEmpty())
-    // Sized from the circle, not the font scale: the letter must stay inside its disc at 200 %.
-    val fontSize = with(LocalDensity.current) { (size * MONOGRAM_TEXT_RATIO).toSp() }
     Box(Modifier.fillMaxSize().background(wash, CircleShape), contentAlignment = Alignment.Center) {
-        Text(
-            text = monogramOf(appId),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = fontSize,
-            // The inherited body line height (48dp at font scale 2.0) would push the letter below a small disc.
-            lineHeight = fontSize,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        if (fallback != null) fallback() else MonogramLetter(appId, size)
     }
 }
 
-/** The first grapheme of [appId], upper-cased (docs/UX.md 17.6). "?" for a missing or blank id. */
+@Composable
+private fun MonogramLetter(appId: String?, size: Dp) {
+    // Sized from the circle, not the font scale: the letter must stay inside its disc at 200 %.
+    val fontSize = with(LocalDensity.current) { (size * MONOGRAM_TEXT_RATIO).toSp() }
+    Text(
+        text = monogramOf(appId),
+        color = MaterialTheme.colorScheme.onSurface,
+        fontSize = fontSize,
+        // The inherited body line height (48dp at font scale 2.0) would push the letter below a small disc.
+        lineHeight = fontSize,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+    )
+}
+
+/**
+ * The first grapheme of [appId], upper-cased (docs/UX.md 17.6). A reverse-DNS id names the app in its last
+ * segment, so `dev.vencord.Vesktop` gives "V", not "D". "?" for a missing or blank id.
+ */
 fun monogramOf(appId: String?): String {
-    val name = appId?.trim()
-    if (name.isNullOrEmpty()) return "?"
+    val id = appId?.trim()
+    if (id.isNullOrEmpty()) return "?"
+    val name = id.split('.').lastOrNull { it.isNotBlank() }?.trim() ?: id
     val graphemes = BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(name) }
     return name.substring(0, graphemes.next()).uppercase(Locale.ROOT)
 }

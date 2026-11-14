@@ -117,6 +117,7 @@ private fun KeysBody(state: UiState, viewModel: MainViewModel, desktop: Desktop?
                 busy = typingBusy(state),
                 terminal = terminal,
                 privateMode = keys.privateMode,
+                readOnly = text == OpAvailability.ReadOnly,
             )
             Composer(field, look) { thenReturn -> send(viewModel, field, thenReturn) }
         }

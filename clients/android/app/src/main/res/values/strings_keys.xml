@@ -18,6 +18,7 @@
 
     <!-- Composer -->
     <string name="keys_field">Text for the computer</string>
+    <string name="keys_typing_off">Typing is off on this computer</string>
     <string name="keys_private_field">Private text for the computer</string>
     <string name="keys_send">Send</string>
     <string name="keys_sending">typing on the computer</string>

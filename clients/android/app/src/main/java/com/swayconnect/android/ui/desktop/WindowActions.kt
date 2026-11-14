@@ -3,6 +3,7 @@ package com.swayconnect.android.ui.desktop
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
@@ -26,15 +28,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.swayconnect.android.R
 import com.swayconnect.android.ui.common.HoldButton
@@ -44,8 +48,6 @@ import com.swayconnect.protocol.Op
 import com.swayconnect.protocol.OpAvailability
 import com.swayconnect.protocol.Window
 import com.swayconnect.protocol.WindowLayout
-
-private const val NARROW_WIDTH_DP = 360
 
 /** Above this font scale the four layout choices stand in a column of radio rows (UX 15). */
 private const val STACKED_FONT_SCALE = 1.5f
@@ -98,47 +100,61 @@ internal fun WindowOps.closing(onClose: () -> Unit) =
     )
 
 /**
- * The buttons of the focused window (UX 5.7): Full, Float, Move, then Close after a 1dp divider. Icon only
- * below 360dp width or above font scale 1.5.
+ * The buttons of the focused window (UX 5.7): Full, Float, Move, a 1dp divider, then Close, icon only. One row
+ * that never wraps: when the labelled buttons do not fit the card's real width, or above font scale 1.5, every
+ * button goes icon only.
  */
 @Composable
 internal fun FocusedButtons(window: Window, enabled: Boolean, facts: PageFacts, actions: PageActions) {
-    val density = LocalDensity.current
-    val widthDp = LocalWindowInfo.current.containerSize.width / density.density
-    val iconOnly = widthDp < NARROW_WIDTH_DP || density.fontScale > LARGE_FONT_SCALE
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        itemVerticalAlignment = Alignment.CenterVertically,
-    ) {
-        FullscreenButton(window, iconOnly, enabled, facts, actions)
-        FloatButton(window, iconOnly, enabled, facts, actions)
-        GatedButton(
-            availability = facts.availabilityOf(Op.WINDOW_MOVE),
-            icon = SwayIcons.Move.outline,
-            label = stringResource(R.string.desktop_move),
-            spoken = stringResource(R.string.desktop_move_spoken),
-            iconOnly = iconOnly,
-            enabled = enabled,
-            onLocked = actions.onLocked,
-            onClick = { actions.window.onOpenMove(window.id) },
-        )
-        // One item, so a wrap moves the divider with Close instead of leaving it alone at the end of a row.
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (facts.availabilityOf(Op.WINDOW_CLOSE) != OpAvailability.Unsupported) {
-                VerticalDivider(Modifier.height(32.dp), color = MaterialTheme.colorScheme.outline)
+    val labels = listOf(stringResource(fullscreenLabel(window)), stringResource(floatLabel(window)), stringResource(R.string.desktop_move))
+    // The style a button's label is drawn in: labelLarge over the theme's text style. labelLarge alone left out
+    // the inherited 0.5sp letter spacing, so the budget ran about 2dp short per label and clipped "Move".
+    val labelWidths = measuredWidths(labels, LocalTextStyle.current.merge(MaterialTheme.typography.labelLarge))
+    val largeFont = LocalDensity.current.fontScale > LARGE_FONT_SCALE
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val iconOnly = largeFont || !FocusedRow.labelsFit(maxWidth.value, labelWidths)
+        val gap = Arrangement.spacedBy(FocusedRow.GAP.dp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = gap, verticalAlignment = Alignment.CenterVertically) {
+            // Takes what is left, so the divider and Close keep one spot at the card's end edge ("Float" and
+            // "Tile" differ in width). Same gap count as one flat row, so [FocusedRow.labelsFit] still holds.
+            Row(Modifier.weight(1f), horizontalArrangement = gap, verticalAlignment = Alignment.CenterVertically) {
+                FullscreenButton(window, iconOnly, enabled, facts, actions)
+                FloatButton(window, iconOnly, enabled, facts, actions)
+                GatedButton(
+                    availability = facts.availabilityOf(Op.WINDOW_MOVE),
+                    icon = SwayIcons.Move.outline,
+                    label = labels[2],
+                    spoken = stringResource(R.string.desktop_move_spoken),
+                    iconOnly = iconOnly,
+                    enabled = enabled,
+                    onLocked = actions.onLocked,
+                    onClick = { actions.window.onOpenMove(window.id) },
+                )
             }
-            CloseButton(window, stringResource(R.string.desktop_close), iconOnly, enabled, facts, actions)
+            if (facts.availabilityOf(Op.WINDOW_CLOSE) != OpAvailability.Unsupported) {
+                VerticalDivider(Modifier.height(32.dp), thickness = FocusedRow.DIVIDER.dp, color = MaterialTheme.colorScheme.outline)
+            }
+            CloseButton(window, stringResource(R.string.desktop_close), iconOnly = true, enabled, facts, actions)
         }
     }
 }
+
+/** The width in dp of each of [texts] on one line in [style]. */
+@Composable
+private fun measuredWidths(texts: List<String>, style: TextStyle): List<Float> {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    return remember(texts, style, density) { texts.map { measurer.measure(it, style, maxLines = 1).size.width / density.density } }
+}
+
+internal fun floatLabel(window: Window): Int = if (window.floating) R.string.desktop_tile else R.string.desktop_float
 
 @Composable
 internal fun FloatButton(window: Window, iconOnly: Boolean, enabled: Boolean, facts: PageFacts, actions: PageActions) {
     GatedButton(
         availability = facts.availabilityOf(Op.WINDOW_FLOATING),
         icon = SwayIcons.Float.outline,
-        label = stringResource(if (window.floating) R.string.desktop_tile else R.string.desktop_float),
+        label = stringResource(floatLabel(window)),
         spoken = stringResource(if (window.floating) R.string.desktop_tile_spoken else R.string.desktop_float_spoken),
         iconOnly = iconOnly,
         enabled = enabled,
@@ -149,7 +165,8 @@ internal fun FloatButton(window: Window, iconOnly: Boolean, enabled: Boolean, fa
 
 /**
  * Close (UX 5.7, 5.8): destructive tier, `error` colour, a 600ms hold. Locked, read-only and unsupported follow
- * [GatedButton]: without `destructive` it shows a lock and opens the Locked sheet instead of a hold.
+ * [GatedButton]: without `destructive` it shows a lock and opens the Locked sheet instead of a hold. On a
+ * read-only computer the locked Close is drawn muted like its disabled siblings: a grant would not make it work.
  */
 @Composable
 internal fun CloseButton(window: Window, label: String, iconOnly: Boolean, enabled: Boolean, facts: PageFacts, actions: PageActions) {
@@ -164,6 +181,7 @@ internal fun CloseButton(window: Window, label: String, iconOnly: Boolean, enabl
             enabled = enabled,
             onLocked = actions.onLocked,
             onClick = {},
+            muted = facts.granted?.readOnly == true,
         )
         return
     }

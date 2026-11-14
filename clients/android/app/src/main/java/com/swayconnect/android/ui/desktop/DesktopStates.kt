@@ -20,12 +20,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -43,6 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.swayconnect.android.R
 import com.swayconnect.android.ui.common.DashedCard
+import com.swayconnect.android.ui.common.screenGutter
 import com.swayconnect.android.ui.state.ConnectionStatus
 import com.swayconnect.android.ui.state.UiState
 import com.swayconnect.android.ui.theme.LocalReduceMotion
@@ -78,12 +82,14 @@ internal fun StaleBanner(state: UiState, onRetry: () -> Unit, modifier: Modifier
     ) {
         text?.let { StateLine(it, Modifier.padding(vertical = 12.dp)) }
         if (retry) {
-            AssistChip(
+            FilledTonalButton(
                 onClick = onRetry,
-                label = { Text(stringResource(R.string.desktop_retry)) },
-                border = outlinedChipBorder(enabled = true),
+                shape = CircleShape,
+                colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier.heightIn(min = 48.dp),
-            )
+            ) {
+                Text(stringResource(R.string.desktop_retry))
+            }
         }
         state.connectionProblem?.let { StateLine(it) }
     }
@@ -172,10 +178,25 @@ fun TrustLostPage(wrongKey: Boolean, serverName: String?, onPairAgain: () -> Uni
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 24.dp, vertical = 48.dp),
+                .padding(screenGutter(navAtStart = false))
+                .padding(vertical = 48.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Icon(SwayIcons.Warning.filled, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(32.dp))
+            TrustLostCard(wrongKey, serverName)
+            Button(onClick = onPairAgain, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.desktop_pair_again)) }
+        }
+    }
+}
+
+/** The message of [TrustLostPage] on a white card, under a warning badge. */
+@Composable
+private fun TrustLostCard(wrongKey: Boolean, serverName: String?) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(shape = MaterialTheme.shapes.medium, color = scheme.surface, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(48.dp).background(scheme.error.copy(alpha = WARNING_BADGE_ALPHA), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(SwayIcons.Warning.filled, contentDescription = null, tint = scheme.error, modifier = Modifier.size(28.dp))
+            }
             val title = if (wrongKey) {
                 stringResource(R.string.desktop_wrong_key)
             } else {
@@ -183,7 +204,8 @@ fun TrustLostPage(wrongKey: Boolean, serverName: String?, onPairAgain: () -> Uni
             }
             Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
             if (wrongKey) StateLine(stringResource(R.string.desktop_wrong_key_detail))
-            Button(onClick = onPairAgain, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.desktop_pair_again)) }
         }
     }
 }
+
+private const val WARNING_BADGE_ALPHA = 0.12f

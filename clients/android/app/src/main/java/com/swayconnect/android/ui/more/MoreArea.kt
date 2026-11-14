@@ -3,6 +3,7 @@ package com.swayconnect.android.ui.more
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -91,12 +92,6 @@ fun MoreArea(state: UiState, viewModel: MainViewModel, contentPadding: PaddingVa
 
 private typealias Tile = @Composable (Modifier) -> Unit
 
-/**
- * Above this font scale the tiles stand in one column, so a word like "Scratchpad" is never cut (UX 15). At 1.3
- * (Android's fourth step) it already breaks in two columns on a 360dp phone; 1.15 still fits.
- */
-private const val LARGE_FONT_SCALE = 1.2f
-
 /** The tiles in the order of UX 10.1; a tile whose op the server does not offer is left out. */
 @Composable
 private fun quickTiles(state: UiState, viewModel: MainViewModel, keepAwake: KeepAwakeTile?, onKeepAwake: (KeepAwakeAction) -> Unit): List<Tile> {
@@ -121,13 +116,13 @@ private fun quickTiles(state: UiState, viewModel: MainViewModel, keepAwake: Keep
     )
 }
 
-/** Two columns, one above a large font scale (UX 15); the tiles of one row share the taller one's height. */
+/** Two columns, one when narrow or above a large font scale (UX 15); a row's tiles share the taller one's height. */
 @Composable
-private fun TileGrid(tiles: List<Tile>) {
-    val columns = if (LocalDensity.current.fontScale > LARGE_FONT_SCALE) 1 else 2
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun TileGrid(tiles: List<Tile>) = BoxWithConstraints {
+    val columns = tileColumns(maxWidth.value, LocalDensity.current.fontScale)
+    Column(verticalArrangement = Arrangement.spacedBy(TILE_GAP_DP.dp)) {
         for (row in tiles.chunked(columns)) {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(TILE_GAP_DP.dp)) {
                 for (tile in row) tile(Modifier.weight(1f).fillMaxHeight())
                 if (row.size < columns) Spacer(Modifier.weight(1f))
             }

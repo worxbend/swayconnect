@@ -2,12 +2,14 @@ package com.swayconnect.android.ui.audio
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -33,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -55,6 +58,9 @@ import kotlin.math.roundToInt
 /** Above this font scale the header stacks its pill under the name (UX 15). */
 private const val LARGE_FONT_SCALE = 1.5f
 
+/** "Make default" is wider than "Default": above this font scale it stacks under the name, so the name keeps its room. */
+private const val OFFER_FONT_SCALE = 1.15f
+
 private const val DISABLED_ALPHA = 0.38f
 private const val STALE_ALPHA = 0.6f
 private val BADGE = 44.dp
@@ -76,7 +82,7 @@ internal class DeviceActions(
  */
 @Composable
 internal fun DeviceCardView(card: DeviceCard, actions: DeviceActions, modifier: Modifier = Modifier) {
-    val name = replaceUnsafe(card.device.description)
+    val name = shownName(card.label)
     val alpha = when {
         card.unplugged && !card.isDefault -> DISABLED_ALPHA
         !card.live -> STALE_ALPHA
@@ -115,48 +121,79 @@ private fun DeviceHeader(card: DeviceCard, name: String, actions: DeviceActions)
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DeviceBadge(card)
-        // Above a large font scale the pill goes under the name and the state line may wrap, so the state word
-        // (the non-colour sign of UX 7.1) is never cut off.
-        val large = LocalDensity.current.fontScale > LARGE_FONT_SCALE
+        // Above a large font scale the pill goes under the name, so the state word (the non-colour sign of UX 7.1)
+        // keeps its room.
+        val fontScale = LocalDensity.current.fontScale
+        val stacked = fontScale > LARGE_FONT_SCALE || (card.offersDefault && fontScale > OFFER_FONT_SCALE)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
                 kindLine(card),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = if (large) 2 else 1,
+                // Two lines: the profile ("Analog Stereo") must not push the state word out of view.
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (large) HeaderMark(card, tap)
+            if (stacked) HeaderMark(card, tap)
         }
-        if (!large) HeaderMark(card, tap)
+        if (!stacked) HeaderMark(card, tap)
     }
 }
 
-/** Default or Unplugged as a pill, or the lock of a device this phone may not change. */
+/** Default, Unplugged or Make default as a pill, or the lock of a device this phone may not change. */
 @Composable
 private fun HeaderMark(card: DeviceCard, tap: AudioTap) {
     when {
         card.isDefault -> StatePill(stringResource(R.string.audio_default), PillTone.Ok)
         card.unplugged -> StatePill(stringResource(R.string.audio_unplugged), PillTone.Tinted)
+        card.offersDefault -> OfferPill(stringResource(R.string.audio_offer_default))
         tap is AudioTap.ShowLocked -> Icon(SwayIcons.Lock.outline, contentDescription = null, modifier = Modifier.size(20.dp))
     }
 }
 
 /**
- * Kind, then the state as a word: "Microphone · Live", "Speaker · Muted" (UX 7.1, colour never alone). An unplugged
- * input is never "Live"; an unplugged default device says so here, because its pill reads "Default".
+ * "Make default" is an offer, not a state: an outline with no fill, so it never reads like the "Default" pill.
+ * The header row takes the tap and already says "make default" to TalkBack, so the pill itself is silent.
  */
+@Composable
+private fun OfferPill(text: String) {
+    Box(
+        Modifier
+            .clearAndSetSemantics {}
+            .heightIn(min = 28.dp)
+            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+    }
+}
+
+/**
+ * Kind and profile, then the state as a word: "Microphone · Live", "Speaker · Analog Stereo · Muted" (UX 7.1, colour
+ * never alone). An unplugged input is never "Live"; an unplugged default device says so here, because its pill reads
+ * "Default". A non-default output without its slider shows its level: "HDMI · 100 %".
+ */
+/** The name, with the profile beside it when another device of the section has the same name. */
+@Composable
+private fun shownName(label: DeviceLabel): String {
+    val name = replaceUnsafe(label.name)
+    val detail = label.detail?.takeIf { label.detailInName } ?: return name
+    return stringResource(R.string.audio_device_with_profile, name, replaceUnsafe(detail))
+}
+
 @Composable
 private fun kindLine(card: DeviceCard): String {
     val kind = stringResource(kindWord(card.device.kind))
+    val detail = card.label.detail?.takeUnless { card.label.detailInName }?.let(::replaceUnsafe)
     val unplugged = stringResource(R.string.audio_unplugged).takeIf { card.unplugged && card.isDefault }
     val state = when {
         card.device.muted -> stringResource(R.string.audio_muted)
         card.role == DeviceRole.Input && !card.unplugged -> stringResource(R.string.audio_live)
-        else -> null
+        else -> card.levelShown?.let { stringResource(R.string.audio_percent, it) }
     }
-    return listOfNotNull(kind, unplugged, state).joinToString(" · ")
+    return listOfNotNull(kind, detail, unplugged, state).joinToString(" · ")
 }
 
 @Composable

@@ -5,6 +5,7 @@ import com.swayconnect.android.ui.theme.DarkSwayTokens
 import com.swayconnect.android.ui.theme.LightSwayTokens
 import com.swayconnect.protocol.Window
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class CommonComponentsTest {
@@ -17,6 +18,17 @@ class CommonComponentsTest {
         assertEquals("👨‍👩‍👧", monogramOf("👨‍👩‍👧app"))
         assertEquals("?", monogramOf(null))
         assertEquals("?", monogramOf("   "))
+    }
+
+    @Test
+    fun `a reverse-DNS id gives the first grapheme of its last non-blank segment`() {
+        assertEquals("V", monogramOf("dev.vencord.Vesktop"))
+        assertEquals("N", monogramOf("org.example.Notes"))
+        assertEquals("D", monogramOf("org.telegram.desktop"))
+        assertEquals("N", monogramOf(" org.example.Notes. "))
+        assertEquals("É", monogramOf("org.gnome.évince"))
+        // No segment with a letter: the id itself, as before.
+        assertEquals(".", monogramOf("..."))
     }
 
     @Test
@@ -42,6 +54,18 @@ class CommonComponentsTest {
         )
         assertEquals(emptyList<WindowMark>(), windowMarks(window(), group = null))
         assertEquals(listOf(WindowMark.Urgent), windowMarks(window(urgent = true), group = null))
+    }
+
+    @Test
+    fun `the app line is left out when it only repeats the title`() {
+        assertEquals("Firefox", appLine("Mozilla Firefox Private", "Firefox"))
+        assertEquals("VSCodium", appLine("main.rs - swayconnect", "VSCodium"))
+        assertNull("same text", appLine("Volume Control", "Volume Control"))
+        assertNull("same text ignoring case", appLine("vesktop", "Vesktop"))
+        assertNull("last reverse-DNS segment", appLine("Vesktop", "dev.vencord.Vesktop"))
+        assertEquals("an id whose last segment is not the title stays", "com.vscodium.codium", appLine("VSCodium", "com.vscodium.codium"))
+        assertNull("no title: the app stands in for it", appLine(null, "Firefox"))
+        assertNull("no app", appLine("Untitled thing", null))
     }
 
     @Test(expected = IllegalArgumentException::class)

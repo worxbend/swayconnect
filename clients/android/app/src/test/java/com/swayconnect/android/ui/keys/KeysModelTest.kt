@@ -1,6 +1,7 @@
 package com.swayconnect.android.ui.keys
 
 import android.view.inputmethod.EditorInfo
+import com.swayconnect.android.R
 import com.swayconnect.android.ui.state.Area
 import com.swayconnect.android.ui.state.Granted
 import com.swayconnect.android.ui.state.PairForm
@@ -33,6 +34,17 @@ import org.junit.Test
 class KeysModelTest {
     private val typing = Granted(ops = setOf(Op.INPUT_TEXT, Op.INPUT_KEY, Op.WINDOW_FOCUS), scopes = listOf("input.text", "input.keys"), readOnly = false)
     private val keys = UiState(pair = PairForm(deviceName = "Pixel"), granted = typing, desktop = desktop(focused = 7)).withArea(Area.Keys)
+
+    @Test
+    fun `a read-only computer turns the composer placeholder into the reason typing is off`() {
+        val look = ComposerLook(canType = true, canPressReturn = true, busy = false, terminal = false, privateMode = false, readOnly = false)
+        assertEquals(R.string.keys_field, look.hint)
+        assertEquals(R.string.keys_private_field, look.copy(privateMode = true).hint)
+        val readOnly = look.copy(canType = false, canPressReturn = false, readOnly = true)
+        assertEquals(R.string.keys_typing_off, readOnly.hint)
+        assertEquals("private mode shows the reason too", R.string.keys_typing_off, readOnly.copy(privateMode = true).hint)
+        assertEquals("locked or no target is not read-only", R.string.keys_field, look.copy(canType = false).hint)
+    }
 
     @Test
     fun `the terminals of UX 9_2 by their Wayland app ids, exact matches only`() {

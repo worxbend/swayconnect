@@ -62,6 +62,17 @@ class LaunchModelTest {
     }
 
     @Test
+    fun `a read-only cell fades only its badge, another refusal the whole cell`() {
+        val firefox = shown(withoutRisky).all.first { it.app.entryId == "firefox" }
+        assertEquals(CellLook.Normal, firefox.look())
+        assertEquals(CellLook.ReadOnly, firefox.copy(access = OpAvailability.ReadOnly).look())
+        assertEquals(CellLook.Disabled, firefox.copy(access = OpAvailability.Unsupported).look())
+        assertEquals("the stale grid dims as a whole", CellLook.Normal, firefox.copy(access = OpAvailability.ReadOnly, live = false).look())
+        assertEquals("a pending start shows its spinner", CellLook.Normal, firefox.copy(pending = true).look())
+        assertEquals("a locked cell shows its lock", CellLook.Normal, firefox.copy(access = OpAvailability.Locked(SCOPE_LAUNCH_RISKY)).look())
+    }
+
+    @Test
     fun `risky apps need the hold with launch risky, others a tap`() {
         val taps = shown(withRisky).all.associate { it.app.entryId to it.tap() }
         assertEquals(LaunchTap.Hold, taps["Alacritty"])

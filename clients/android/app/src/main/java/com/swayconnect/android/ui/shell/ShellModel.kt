@@ -64,7 +64,14 @@ private fun readyKind(state: UiState): StatusKind {
 }
 
 /** The `Awake N min` pill of the status line (UX 4.1, 10.2). [minutesLeft] is null when the server sent no time. */
-data class AwakePill(val minutesLeft: Int?)
+data class AwakePill(val minutesLeft: Int?) {
+    /**
+     * True when the pill drops its word and shows the minutes alone ("54 min"; the coffee glyph already says
+     * awake): the whole pill ([fullWidth]) does not fit its [room], and there are minutes to keep. Without
+     * minutes there is nothing shorter, so the word stays and ends in an ellipsis.
+     */
+    fun dropsWord(fullWidth: Int, room: Int): Boolean = minutesLeft != null && fullWidth > room
+}
 
 /** The Awake pill while keep-awake is on, from any device; null otherwise. */
 fun awakePill(state: UiState): AwakePill? =

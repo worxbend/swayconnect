@@ -91,6 +91,23 @@ class MapGeometryTest {
     }
 
     @Test
+    fun `a medium title whose widest word does not fit gets one line, never a split word`() {
+        assertEquals(2, MapGeometry.mediumTitleLines(longestWordWidth = 60f, lineWidth = 80f))
+        assertEquals(2, MapGeometry.mediumTitleLines(longestWordWidth = 80f, lineWidth = 80f))
+        assertEquals(1, MapGeometry.mediumTitleLines(longestWordWidth = 80.1f, lineWidth = 80f))
+        assertEquals(1, MapGeometry.mediumTitleLines(longestWordWidth = 10f, lineWidth = 0f))
+    }
+
+    @Test
+    fun `a title splits into the pieces a line can break between`() {
+        assertEquals(listOf("worxbend/", "macropad"), MapGeometry.titleWords("worxbend/macropad"))
+        assertEquals(listOf("cargo", "test"), MapGeometry.titleWords("cargo test"))
+        assertEquals(listOf("sway-", "connect", "notes"), MapGeometry.titleWords("sway-connect  notes"))
+        assertEquals(listOf("Downloads"), MapGeometry.titleWords(" Downloads "))
+        assertEquals(emptyList<String>(), MapGeometry.titleWords("   "))
+    }
+
+    @Test
     fun `one sliver among three windows is not a dense workspace`() {
         val tiled = ContainerTile(
             ContainerKind.SPLIT_H,
@@ -226,6 +243,18 @@ class MapGeometryTest {
         assertRect(MapRect(0f, 0f, 100f, 50f), plan.map)
         assertTrue(plan.tiles.isEmpty())
         assertEquals(MapKind.Empty, plan.kind)
+    }
+
+    @Test
+    fun `a medium tile shows its title when the disc, the gap and two lines fit at the font scale`() {
+        // 32 disc + 8 gap + 16 padding + 2 x 16sp lines: 88dp at 1.0, 97.6dp at 1.3, 120dp at 2.0.
+        assertTrue(MapGeometry.mediumShowsTitle(MapRect(0f, 0f, 72f, 88f), 1f))
+        assertFalse(MapGeometry.mediumShowsTitle(MapRect(0f, 0f, 72f, 87.9f), 1f))
+        assertFalse(MapGeometry.mediumShowsTitle(MapRect(0f, 0f, 71.9f, 200f), 1f))
+        assertFalse(MapGeometry.mediumShowsTitle(MapRect(0f, 0f, 100f, 97f), 1.3f))
+        assertTrue(MapGeometry.mediumShowsTitle(MapRect(0f, 0f, 100f, 98f), 1.3f))
+        assertFalse(MapGeometry.mediumShowsTitle(MapRect(0f, 0f, 100f, 119.9f), 2f))
+        assertTrue(MapGeometry.mediumShowsTitle(MapRect(0f, 0f, 100f, 120f), 2f))
     }
 
     private fun assertRect(expected: MapRect, actual: MapRect) {

@@ -189,6 +189,57 @@ class AudioModelTest {
         assertNull(sliderHapticOf(50, 50, 100))
     }
 
+    @Test
+    fun `device labels - a bare node name loses its media class, an ALSA profile moves to the detail`() {
+        assertEquals(DeviceLabel("Sealed sink 1"), deviceLabel("sealed_sink_1 Audio/Sink sink"))
+        assertEquals(DeviceLabel("Echo cancel source"), deviceLabel("echo_cancel_source Audio/Source/Virtual source"))
+        assertEquals(DeviceLabel("Starship/Matisse HD Audio Controller", "Analog Stereo"), deviceLabel("Starship/Matisse HD Audio Controller Analog Stereo"))
+        assertEquals(DeviceLabel("HDA NVidia", "Digital Stereo (HDMI 2)"), deviceLabel("HDA NVidia Digital Stereo (HDMI 2)"))
+        assertEquals(DeviceLabel("HDA NVidia", "Digital Stereo (HDMI)"), deviceLabel("HDA NVidia Digital Stereo (HDMI)"))
+        assertEquals(DeviceLabel("Built-in Audio", "Analog Surround 5.1"), deviceLabel("Built-in Audio Analog Surround 5.1"))
+        assertEquals("a plain name stays", DeviceLabel("WH-1000XM4"), deviceLabel("WH-1000XM4"))
+        assertEquals("a name of several words keeps its underscores", DeviceLabel("my_sink two"), deviceLabel("my_sink two Audio/Sink sink"))
+        assertEquals("empty stays empty", DeviceLabel(""), deviceLabel(""))
+        assertEquals("nothing but the tail: the raw text", DeviceLabel("Analog Stereo"), deviceLabel("Analog Stereo"))
+        assertEquals("blank after the cut: the raw text", DeviceLabel(" Audio/Sink sink"), deviceLabel(" Audio/Sink sink"))
+    }
+
+    @Test
+    fun `two cards of one section with the same name keep apart by their detail`() {
+        val base = audioState("01-two-sinks-two-sources")
+        val sinks = listOf(
+            base.sinks[0].copy(description = "HDA NVidia Digital Stereo (HDMI)"),
+            base.sinks[1].copy(description = "HDA NVidia Digital Stereo (HDMI 2)"),
+            base.sinks[2].copy(description = "sealed_sink_1 Audio/Sink sink"),
+        )
+        val part = shown(base.copy(sinks = sinks), withCapture)
+        assertEquals(
+            listOf(
+                DeviceLabel("HDA NVidia", "Digital Stereo (HDMI)", detailInName = true),
+                DeviceLabel("HDA NVidia", "Digital Stereo (HDMI 2)", detailInName = true),
+                DeviceLabel("Sealed sink 1"),
+            ),
+            part.outputs.map { it.label },
+        )
+        assertEquals("the input section is apart", DeviceLabel("Built-in Audio", "Analog Stereo"), part.inputs[0].label)
+    }
+
+    @Test
+    fun `a non-default plugged output shows its level and offers to become the default`() {
+        val part = shown(audioState("01-two-sinks-two-sources"), withCapture)
+        val (default, other, unplugged) = part.outputs
+        assertNull("the default shows its slider instead", default.levelShown)
+        assertFalse(default.offersDefault)
+        assertEquals(100, other.levelShown)
+        assertTrue(other.offersDefault)
+        assertNull(unplugged.levelShown)
+        assertFalse(unplugged.offersDefault)
+        assertNull("muted reads Muted, not a level", other.copy(device = other.device.copy(muted = true)).levelShown)
+        assertNull("inputs read Live", part.inputs[1].levelShown)
+        assertTrue(part.inputs[1].offersDefault)
+        assertFalse("without capture the input shows the lock", shown(audioState("01-two-sinks-two-sources"), withoutCapture).inputs[1].offersDefault)
+    }
+
     private fun shown(audio: AudioState, granted: Granted): DevicesPart.Shown = devicesPart(stateWith(granted).withAudio(audio)) as DevicesPart.Shown
 
     private fun nowPlaying(media: MediaState): NowPlaying = (mediaPart(stateWith(withCapture).withMedia(media)) as MediaPart.Shown).card
