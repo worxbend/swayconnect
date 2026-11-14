@@ -71,3 +71,48 @@ pub const MAX_OUTPUTS: usize = 16;
 pub const MAX_LAYOUT_DEPTH: usize = 16;
 /// Upper end of a basis-point value of `Tile.r`.
 pub const MAX_BASIS_POINTS: u16 = 10_000;
+/// Shortest `keep_awake.set` `duration_s`. The longest is the server's `max_duration_s` (17.8).
+pub const MIN_KEEP_AWAKE_DURATION_S: u64 = 60;
+
+/// M2b (spec 17.9 to 17.14, 17.17).
+///
+/// Encoded state of every topic of section 17, compact JSON, UTF-8 not escaped.
+pub const MAX_TOPIC_STATE_BYTES: usize = 262_144;
+/// `Device.volume_pct`.
+pub const MAX_DEVICE_VOLUME_PCT: u16 = 1000;
+/// Range of `audio.max_volume_pct`, the highest `volume_pct` a client may send.
+pub const MIN_MAX_VOLUME_PCT: u16 = 100;
+pub const MAX_MAX_VOLUME_PCT: u16 = 150;
+/// Sinks and sources in topic `audio`, each.
+pub const MAX_AUDIO_DEVICES: usize = 64;
+pub const MAX_PLAYERS: usize = 16;
+/// Player `name`, in Unicode scalar values.
+pub const MAX_PLAYER_NAME_SCALARS: usize = 64;
+pub const MAX_APPS: usize = 512;
+pub const MAX_RECENT_APPS: usize = 8;
+pub const MAX_KEYWORDS: usize = 16;
+/// Each keyword, in Unicode scalar values.
+pub const MAX_KEYWORD_SCALARS: usize = 64;
+/// All keywords of one app together, in bytes of UTF-8.
+pub const MAX_KEYWORDS_BYTES: usize = 512;
+/// A desktop entry id: 1 to 255 bytes of `A-Z a-z 0-9 . _ -`.
+pub const MAX_ENTRY_ID_BYTES: usize = 255;
+/// `input.text` `text`, in bytes of UTF-8.
+pub const MAX_INPUT_TEXT_BYTES: usize = 1024;
+/// Unicode scalar values per part of remote input (17.13 rule 1).
+pub const MAX_INPUT_PART_SCALARS: usize = 16;
+/// `input.key` `repeat`.
+pub const MAX_KEY_REPEAT: u8 = 32;
+/// Rate class `continuous` (`audio.set_volume`): token bucket.
+pub const CONTINUOUS_BURST: u32 = 10;
+pub const CONTINUOUS_REFILL_PER_SECOND: u32 = 10;
+/// Rate class `launch`: token bucket, one token per interval.
+pub const LAUNCH_BURST: u32 = 3;
+pub const LAUNCH_REFILL_INTERVAL_MS: u64 = 5_000;
+/// Rate class `input` (`input.key`): token bucket.
+pub const INPUT_BURST: u32 = 20;
+pub const INPUT_REFILL_PER_SECOND: u32 = 10;
+/// Rate class `input_text`: token bucket, and a cap on characters per minute.
+pub const INPUT_TEXT_BURST: u32 = 4;
+pub const INPUT_TEXT_REFILL_PER_SECOND: u32 = 1;
+pub const INPUT_TEXT_SCALARS_PER_MINUTE: usize = 4096;

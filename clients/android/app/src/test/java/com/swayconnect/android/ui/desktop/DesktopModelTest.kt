@@ -9,6 +9,7 @@ import com.swayconnect.protocol.Desktop
 import com.swayconnect.protocol.Layout
 import com.swayconnect.protocol.SwayStatus
 import com.swayconnect.protocol.Window
+import com.swayconnect.protocol.WindowLayout
 import com.swayconnect.protocol.WindowTile
 import com.swayconnect.protocol.Workspace
 import org.junit.Assert.assertEquals
@@ -155,5 +156,39 @@ class DesktopModelTest {
         assertEquals(LastSeen(1, inMinutes = true), LastSeen.of(nowMs = 60_000, seenAtMs = 0))
         assertEquals(LastSeen(0, inMinutes = false), LastSeen.of(nowMs = 0, seenAtMs = 5_000))
         assertTrue(LastSeen(1, inMinutes = true).nextTickMs > LastSeen(1, inMinutes = false).nextTickMs)
+    }
+
+    @Test
+    fun `new workspace number is the lowest free one from 1`() {
+        assertEquals(1, lowestFreeNumber(desktop(emptyList(), emptyList())))
+        // Unnumbered workspaces and number 0 take no number from 1 up; a gap is filled first.
+        val some = listOf(workspace(10, "0", number = 0), workspace(11, "1", number = 1), workspace(12, "mail", number = null), workspace(13, "3", number = 3))
+        assertEquals(2, lowestFreeNumber(desktop(some, emptyList())))
+        val upTo998 = (1L..998L).map { workspace(it, "$it") }
+        assertEquals(999, lowestFreeNumber(desktop(upTo998, emptyList())))
+        assertNull(lowestFreeNumber(desktop(upTo998 + workspace(999, "999"), emptyList())))
+    }
+
+    @Test
+    fun `container layout is the kind of the window's nearest parent`() {
+        val tabbed = ContainerTile(ContainerKind.TABBED, whole, listOf(WindowTile(2, whole), WindowTile(3, whole)), active = 0)
+        val tree = ContainerTile(ContainerKind.SPLIT_H, whole, listOf(WindowTile(1, whole), ContainerTile(ContainerKind.SPLIT_V, whole, listOf(tabbed, WindowTile(4, whole)))))
+        val ws = workspace(1, "1", layout = Layout(listOf(1920L, 1080L), fullscreen = null, tiled = tree, floating = listOf(WindowTile(5, whole))))
+        assertEquals(WindowLayout.SPLIT_H, containerLayoutOf(ws, 1))
+        assertEquals(WindowLayout.TABBED, containerLayoutOf(ws, 3))
+        assertEquals(WindowLayout.SPLIT_V, containerLayoutOf(ws, 4))
+        // Floating, not in the tree, no layout, or the only tile: no container to mark.
+        assertNull(containerLayoutOf(ws, 5))
+        assertNull(containerLayoutOf(ws, 9))
+        assertNull(containerLayoutOf(workspace(2, "2"), 1))
+        val single = workspace(3, "3", layout = Layout(listOf(1920L, 1080L), fullscreen = null, tiled = WindowTile(7, whole), floating = emptyList()))
+        assertNull(containerLayoutOf(single, 7))
+    }
+
+    @Test
+    fun `stacked containers map to the stacking layout`() {
+        val tree = ContainerTile(ContainerKind.STACKED, whole, listOf(WindowTile(1, whole)), active = 0)
+        val ws = workspace(1, "1", layout = Layout(listOf(1920L, 1080L), fullscreen = null, tiled = tree, floating = emptyList()))
+        assertEquals(WindowLayout.STACKING, containerLayoutOf(ws, 1))
     }
 }

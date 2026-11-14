@@ -3,7 +3,94 @@
 Date: 2026-11-13 (review 2). Inputs: `docs/UX.md`, `docs/DESIGN.md` section 11, `docs/PROTOCOL.md` section 17, `docs/V2_RESEARCH.md`.
 Three milestones, in the owner's order: **M1 "UI/UX"**, then **M2a "desktop controls"** (window ops, lock, keep awake), then **M2b "devices and typing"** (audio, media, launch, keyboard).
 
-Next action: the owner runs gate G-M1 (section 5) and answers questions 2a and 3 of section 0. Then M2a starts with C2a.
+Next action: the owner runs gates G-M1, then G-WIN, G-KA, G-LOCK, then G-AUDIO, G-MEDIA, G-LAUNCH, G-INPUT (section 5). Every M2 slice is written and checked against fakes only.
+
+## Status: checkpoints M2a and M2b by INT on 2026-11-14; owner gates open
+
+Every M2a and M2b slice of section 3 is written. INT checked the whole tree on 2026-11-14:
+
+| Check | Result |
+|---|---|
+| `just ci` | green: fmt-check, clippy `-D warnings`, 908 Rust tests, `cargo deny` (warnings only: duplicate `getrandom`, `miniz_oxide`, `syn`) |
+| Android gate | green: `:protocol:test` 78 tests, `:app:testDebugUnitTest` 282 tests, 0 failures; lint 0 errors, the same 3 warnings (`OldTargetApi`, `MissingApplicationIcon`, `UseKtx`) |
+| Default pairing | `swayconnectd pair` on a real binary gave exactly `state.read, state.titles, control, idle.inhibit, audio, media, launch, input.keys, input.text`, to the app and to the CLI. |
+| Emulator, live sway, read-only | API 37 emulator, separate Android user, paired by link with a `read_only` daemon on the live sway (temp XDG under `/tmp/claude-1000/sc.bXLh`, `127.0.0.1:28521`; every program but `pactl` pointed at `fake-proc`; no Wayland socket). Seen with real data: the owner's workspace and window with its icon; Audio with the real sink (15 %) and source (100 %) from `pactl -f json list`, both defaults; media "Nothing playing" (`playerctl -l` also lists none); Launch with the owner's real app list and icons, the risky shield on btop++ and Kernel Manager; More with keep awake Off (topic `session`: not locked, no inhibitor), Scratchpad Empty, Lock; the Computer sheet with the nine default scopes and the three by-name scopes off. Every action control is disabled with "The computer is set to look only.". Server side, through a CLI paired with the same daemon: `window.floating`, `window.move`, `scratchpad.show`, `keep_awake.set`, `session.lock`, `audio.set_mute`, `audio.set_volume`, `app.launch`, `launcher.open`, `input.text`, `input.key` each answered `read_only`, no fake program was started, and the live sway got no command. Light and dark. |
+| Emulator, fake sway | A second daemon (`read_only = false`, `127.0.0.1:28522`) on the testkit `fake_sway` example, every program path at `fake-proc`, desktop entries from `tests/fixtures/desktop-entries`, no session bus, no Wayland socket. The fake sway recorded, in order: Float → `[con_id=6] floating enable`; Move sheet pill 2 → `[con_id=6] move container to workspace number 2`; window sheet Tabbed → `[con_id=6] layout tabbed`; Scratchpad → `[con_id=6] move scratchpad`; Close hold (after `devices grant … destructive`) → `[con_id=6] kill`, with one `window.close` audit line; Drive card tap → `workspace --no-auto-back-and-forth number 2`; window card tap → `[con_id=7] focus`. Fake programs: Audio card tap → `pactl set-default-sink -- alsa_output.pci-0000_2b_00.4.analog-stereo`; Launch Firefox → `systemd-run --user --scope --collect --unit=app-swayconnect-firefox-ab65c6f2 -- /usr/lib/firefox/firefox` and the ghost tile "Opening Firefox…"; Launch round button → fake `fuzzel` started and the app moved to Keys with the target "Launcher (fuzzel)". Keep-awake tile → fake `systemd-inhibit --what=idle --mode=block --who=swayconnect --why=… <fake sleep> 3600`, fake notice "Keep awake on (device 4o4t)", tile "Awake · 60 min left"; long press → duration sheet (15 min, 30 min, 1 h, 2 h, "1 h from now"), 30 min → a new inhibitor with `1800`; tap → off; three `keep_awake.set` audit lines. Lock round button → fake lock script. Keys Esc chip → `input.key`, fake notice "Remote keyboard active (device 4o4t)", then "This needs a service that is not running on the computer." (no Wayland socket: `backend_unavailable`); typed "hi" + Send → "Sent 0 of 2 characters.", the text stays; audit lines carry `text_len` 2, never the text. Light and dark. |
+
+Screenshots: `~/.cache/swayconnect-m2/` (`ro-*` read-only live, `fake-*` fake sway). Keys and Pair capture black: `FLAG_SECURE` works; they were read with `uiautomator dump`.
+
+### UX 18 two-tap audit (QA2)
+
+| Action | Path seen | Result |
+|---|---|---|
+| Focus a window | Desktop → card | 2, `[con_id=7] focus` |
+| Switch the desktop workspace | Desktop → card (Drive) | 2, `workspace … number 2` |
+| Fullscreen / float the focused window | Desktop → card button | 2, `floating enable` |
+| Move a window to a workspace | long press → number pill; or Move → pill | long press + 1, or 2 |
+| Close a window | Desktop → Close + hold | 2, `kill` (needs `destructive`) |
+| Volume of the default output | Audio → slider, or volume keys | not exercised: the single-stdout fake `pactl` cannot report a default device, so no slider shows; the live read-only run showed the slider disabled |
+| Mute the mic | Audio → Mute | not exercised for the same reason; More has no Mic tile (open, see below) |
+| Unmute the mic (`audio.capture`) | More → Mic + hold | not possible: no Mic tile |
+| Play / pause | capsule | not exercised: the daemon binary has no fake media backend, and the live session had no player |
+| Keep awake on / off | More → tile | 2, fake `systemd-inhibit`; the status-line pill is not wired (A3.2a note) |
+| Lock the computer | More → round button | 2, fake lock script |
+| Launch an app | Launch → recent icon | 2, fake `systemd-run`; Firefox showed under Recent after the first launch |
+| Open fuzzel | Launch → round button | 2, fake `fuzzel` |
+| Type into the focused window | Keys → type → Send | 2 + typing, reaches the daemon; `backend_unavailable` because the binary has no fake keyboard |
+| Esc / Ctrl+C | Keys → chip | 2, same |
+
+### Fixed by INT
+
+1. `tests/limits.rs`: the two "closed after N s" tests measured on a paused clock. The M2b audio watcher retries a missing `pactl` on a 1, 2, 4 … s backoff, and the paused clock jumped along those timers while the accept or close was still in the kernel, so the tests read 7, 15 or 31 s (2 of 5 runs). They now measure real time (5 s added to the run).
+2. `proc/tests.rs` (D-PROC flake reported by four slices): `spawn` returns when close-on-exec fires, before the kernel has set up the child's environment, so `/proc/<pid>/environ` sometimes read empty. The test now waits for the fake's own call line through a FIFO log.
+3. Pair step 4 lacked the UX 11 line for the default pairing: it now says "This phone can type and start apps on the computer. Remove it there if the phone is lost:" with `swayconnectd revoke` in mono (`PairCapabilities.canRunCode`, unit tested; seen on the emulator).
+4. Pair "Done" kept the area shown before pairing (More); it now opens the Desktop area (UX 11 step 4; view-model test extended; seen).
+5. Focused window card: the 1dp divider before Close stayed alone at the end of the first row when Close wrapped. Divider and Close are now one item (seen).
+6. Audio card: an unplugged default microphone read "Microphone · Live". It now reads "Microphone · Unplugged" (seen with the live source, whose ports are all "not available").
+
+### Not done, not verified, open
+
+- More has no Mic and Launcher tiles (UX 10.1, M2b): UX 18 "More → Mic" cannot be done; "Audio → Mute" and "Launch → round button" can. No settings rows (no settings store; A11 note).
+- Emulator: the host ran other heavy jobs (load 50 to 80) for part of the walk. The emulator then reported 93 % CPU pressure, and the app, the Pixel launcher, Play services and `system` all showed "isn't responding" dialogs; INT rebooted the emulator once. The app used 1.6 % CPU in that ANR report and its main thread was in a normal recomposition; the same steps ran without a dialog once the load fell. Read as starvation, not an app hang, but not proven. Not seen on the device: `scratchpad.show` (the fixture scratchpad is empty), the capsule, the "PC 45 %" pill, font scale 2.0, landscape, TalkBack as a service.
+- Daemon binary has no test mode for the fake media backend or the fake keyboard, and one fake `pactl` prints the same text for every call; so audio volume and mute, media and typing were exercised only in the integration tests (`tests/v2_m2b.rs`, `crates/swayconnect-cli/tests/e2e_m2b.rs`), not on the device.
+- No real program ran: `systemd-inhibit`, `notify-send`, the lock script, `pactl` writes, `systemd-run`, `fuzzel`, MPRIS commands, the virtual keyboard. Those are the owner gates.
+- Launch on the live data: the Blanket entry shows an empty disc, no icon and no monogram. Not investigated.
+- Spec gaps the slices reported and not yet written into `PROTOCOL.md`, `DESIGN.md` or `UX.md`: sway offline for `session.lock`, `keep_awake.set` and every M2b op; `backend_unavailable` with no producing state for keep-awake and lock; `duration_s` ignored when `enabled` is false; no Required column in the 17.6 and 17.8 result tables; `limit_reached` retry equal to `cooldown_remaining_ms`; power-on only after the inhibitor started; scratchpad ids `not_found` for `window.*`; audio `available:false` with a stale id; "character" in 17.13 (scalar values); `input.key` repeat failing part-way; the `input_text` per-minute budget error; `entry_id` format (no `.desktop`) and collation of `apps`; media order, active player with none played, artist join; `play_pause` and `CanPause`; the step of the topic scope in `state.subscribe`; DESIGN 11.6 volume clamp versus PROTOCOL `bad_request`; audit line member names and which refusals are audited; notice texts; `[keep_awake]` config bounds; DESIGN 11.4 variant shapes (`Layout { con_id, kind }`, `Floating { con_id, enabled }`); `devices deny … idle.inhibit` not ending a running keep-awake (17.8 rule 6 names only revoke; owner call); UX 16 `not_found` text outside windows; UX 10.2 "about 50" rounding; the launcher name in UX texts; (the Awake and Typing status pills of UX 4.1 are now done, see below).
+- File size: `MainViewModel.kt` is about 1250 lines, `SwayConnectClient.kt` 522, `admin.rs` 541, CLI `args.rs` 521 and `run.rs` 504, over the about-500 guide.
+- `cargo run` was run once by INT outside `just` (an example binary that was already built); not repeated.
+
+### Review fixes after checkpoints M2a and M2b (2026-11-14)
+
+Nineteen review findings, each checked first. All were real. 18 are fixed with a test or an emulator check (the two panic-switch findings share one change, item 5), and 1 is deferred. `just ci` green (921 Rust tests). Android gate green (`:protocol:test` 78, `:app:testDebugUnitTest` 287, 0 failures; lint 0 errors and the same 3 warnings).
+
+Fixed, daemon:
+
+1. Terminal emulators (`TerminalEmulator` in `Categories`: Alacritty, foot, footclient, kitty) are risky. Before this, a phone with the default pairing could start them without `launch.risky`. Index test and `prepare_launch` test added; PROTOCOL 17.11 and DESIGN 11.6 updated.
+2. The tier 2 connect notice of DESIGN 11.8 is wired. It shows after each authenticated connect of a device that holds a tier 2 scope. It does not show for a pending pairing, or while the daemon is read-only, since then no tier 2 op is offered. Test expectations updated in `v2_m2a.rs`, `v2_m2b.rs` and `e2e_controls.rs`. **Owner call:** with the default pairing every phone reconnect shows a notice. The emulator walk saw 9 connect notices in about 12 minutes, across app restarts and a reboot. Keep it, rate-limit it per device, or drop it from 11.8.
+3. Virtual keyboard: a part carries the time of its check. The keyboard thread refuses it when the caller has gone or the check is older than 250 ms, so a part queued behind a stuck delivery is never written late (DESIGN 11.7 item 4).
+4. The launcher check reads the child's exit through an `ExitProbe` of the child handle, not the topic view. A launcher that just ended counts as closed at once.
+5. Panic switch: `Launcher::close` and the new `KeepAwake::close` refuse every later start (`read_only`), so an `open` or `set` that passed the read-only check before the switch starts nothing after it. `app.launch` reads the flag again just before its start. The two closes run side by side (`tokio::join!`). Tests: `after_close_no_launcher_opens`, `after_the_panic_switch_a_queued_or_later_on_is_read_only`, and the daemon test that now also checks the refusals. Not unit-tested: the `app.launch` re-check after the workspace switch, because the session harness has no sway that answers.
+6. `DBUS_SYSTEM_BUS_ADDRESS` is written into the DESIGN 11.6 env list with its reason. The list covers every child.
+7. Keep-awake waits 500 ms (`START_CHECK`) for the new inhibitor. If it ends in that time, the answer is `backend_unavailable`, no notice shows, and a replace keeps the old inhibitor and its expiry (PROTOCOL 17.8 errors). FakeRunner test for a first start and for a replace.
+8. Media: a failed bus read publishes no players but keeps every id and mark. A player whose own read failed stays known through the name list (`Players::unread`). Tracker and service tests added.
+9. Audio watcher: a test now covers the backoff reset after a healthy run of `pactl subscribe`.
+
+Fixed, Android (emulator, API 37, separate user, read-only daemon on the live sway at `127.0.0.1:28521` and a fake-sway daemon at `28522`; screenshots `*-fixed*.png` in `~/.cache/swayconnect-m2/`):
+
+10. Keep-awake duration buttons keep their unit ("15 min"). The padding is 8dp, labels never wrap, and the row stacks when the widest label does not fit. Seen at font scale 1.0 and 1.3, and at 360 dp width.
+11. Status line: `Locked` (padlock) after "Sway not running" and before "Screens off", inside the polite live region. The `Awake N min` pill (tap opens the duration sheet) and the `Typing` pill both show. Unit tests added; both pills seen.
+12. A read-only app grid dims its cells to 0.38 (`AppCell.looksDisabled`, tested). A stale grid keeps its own 0.6.
+13. The search pill has no underline.
+14. The refusal line moved above the cards in Audio. In every area it is a polite live region (shared `StateLine`). UX 15 now names it as the one other announcement.
+15. Keys: the key rows stay below a scrolling part (`weight(1f, fill = false)`), so they sit directly above the IME. `uiautomator` at 360x780 dp with the keyboard up, font scale 1.0 and 1.3, also with the Sent line and a refusal line shown: the Copy row ended at 1242 px with the IME top at 1263 px.
+16. Font scale: More tiles take one column above 1.2. At 1.3, "Scratchpad" broke in two columns. The Audio card stacks its pill under the name above 1.5, and its state line may wrap. The Launch grid cell grows with the font scale ("Alacritty" broke mid-word at 2.0). Audio, More and Launch were seen at 2.0.
+17. Typing: after `rate_limited`, a part waits `detail.retry_after_ms` once (at most 60 s) and is sent again under the same spinner. View-model test with 5 parts.
+
+Deferred:
+
+18. "Pin to top" (UX 8.2) is not in M2. UX 8.2 now says so.
+
+Environment: the owner's daemon (pid 243449) and the windowed emulator were gone when this work resumed (uptime 2 h, likely a reset). As AGENTS.md 2 allows, the AVD was started headless, used, and stopped again. The test user is removed, and font scale and display size are back to their defaults. Installing for the test user also replaced the APK of user 0 with this debug build; its data stays.
 
 ## Status: checkpoint M1 passed by INT on 2026-11-13; owner gate G-M1 open
 
@@ -64,6 +151,15 @@ Deferred or not verified:
 - M1 Settings (Theme, Default view, Reduce motion, Haptics) have no store; they move to A11 in M2a (UX 10 heading corrected).
 
 ## 0. Questions for the owner
+
+**Answered by the owner on 2026-11-14 (final):**
+
+- **Q1: no step-up in v2.** Step-up stays in `DESIGN.md` 11.13.
+- **Q2a and Q2b: approved.** The amended rules 2, 8, 9 (with the `input.text` exception), 10 and 11 of `DESIGN.md` 11.3 hold; `AGENTS.md` section 5 carries them. M2a and M2b are both unblocked.
+- **Typing "on at pairing" (owner addition).** `swayconnectd pair` now gives by default: `state.read`, `state.titles`, `control`, `audio`, `media`, `idle.inhibit`, `launch`, `input.keys`, `input.text`. Still off at pairing and granted only by name: `destructive`, `audio.capture`, `launch.risky`. Every other safeguard of `DESIGN.md` 11 stays: lock refusal, focus check per part, desktop notice when a remote keyboard session starts, audit, revoke, panic switch. Only new pairings get the new default; `devices.json` entries keep their scopes. Who does it: D-WIRE adds each milestone's scopes to the `pair` default in its step .2a (`idle.inhibit`) and .2b (`audio`, `media`, `launch`, `input.keys`, `input.text`), so the default never names a scope the daemon does not know yet. D-INT.2a and D-INT.2b test that a default pairing holds exactly that set and none of the three by-name scopes. The risk is in `DESIGN.md` D30.
+- **Q3: deferrals kept** (section 6 item 9).
+
+The questions as they were asked:
 
 1. **Biometric step-up before remote typing ships?** With it, `input.*` (and optionally `launch.risky`) need a user check on the phone, verified by the daemon (a second Keystore key that signs a server challenge, an enrol flow confirmed at the desktop, about two more slices). API facts: on API 29, per-use auth needs a strong biometric; a time-bound key (for example 30 s) accepts PIN, pattern or password through `BiometricPrompt.Builder.setDeviceCredentialAllowed(true)`, a system dialog. On API 30+: `setUserAuthenticationParameters(30, AUTH_BIOMETRIC_STRONG or AUTH_DEVICE_CREDENTIAL)`. So the time-bound ECDSA step-up key works on `minSdk` 29 without fingerprint hardware. Without step-up, typing relies on: off by default, granted only at the desktop, lock refusal, desktop notice, audit, revoke, panic switch. **Default if unanswered: no step-up in v2.**
 2. **Approve the amended security rules of `docs/DESIGN.md` 11.3.** `AGENTS.md` section 5 calls these rules "must never be broken", so no agent edits them without your yes. Two parts, asked separately:
@@ -413,11 +509,11 @@ Each gate: the owner sets `read_only = false` on his own daemon, grants the scop
 2. Swipe drives the desktop by default when `control` is granted; Browse is one tap away. Both the page body and the card row (snapping to the centre card) change the workspace.
 3. Card fill = focused on the computer; ring = shown on the phone.
 4. Map in M1 needs only additive protocol fields; no breaking change exists in v2.
-5. Keep awake = logind block inhibitor held by an expiring `systemd-inhibit` child; outputs powered on if off; 1 h default, 2 h max, 4 h continuous cap counted across breaks shorter than 15 min, 15 min cooldown; survives phone disconnect; tier 2, granted by name.
+5. Keep awake = logind block inhibitor held by an expiring `systemd-inhibit` child; outputs powered on if off; 1 h default, 2 h max, 4 h continuous cap counted across breaks shorter than 15 min, 15 min cooldown; survives phone disconnect; tier 2, on at pairing (owner, 2026-11-14), removable with `devices deny`.
 6. Audio through pactl; media through zbus; no album art; launch through `systemd-run --user --scope`; text through a daemon virtual keyboard.
-7. No presets. New pairings keep the v1 default scopes; every new scope is granted by name. Microphone opening (`audio.capture`) and risky launches (`launch.risky`) are their own tier 2 scopes, enforced by the server.
+7. No named presets (deferred). The `pair` default is one fixed set (owner, 2026-11-14): `state.read`, `state.titles`, `control`, `audio`, `media`, `idle.inhibit`, `launch`, `input.keys`, `input.text`. `destructive`, microphone opening (`audio.capture`) and risky launches (`launch.risky`) are their own tier 2 scopes, off at pairing, granted by name and enforced by the server.
 8. material3 stays 1.4.0; no new Android library; no dynamic colour.
-9. Deferred to `DESIGN.md` 11.13 (question 3 can bring one back): owner buttons, per-app streams, card profiles, media seek, Live typing, presets, Keystore key hardening, audit rotation, `status.json`, multi-output card groups, tablet split, landscape side panel, map↔list shared-element morph (a crossfade instead), first-reveal cascade, desaturation effect (an alpha dim instead), drag-to-workspace, pinch overview, touchpad, step-up (unless question 1 says yes), power menu, album art.
+9. Deferred to `DESIGN.md` 11.13 (question 3 can bring one back): owner buttons, per-app streams, card profiles, media seek, Live typing, presets, Keystore key hardening, audit rotation, `status.json`, multi-output card groups, tablet split, landscape side panel, map↔list shared-element morph (a crossfade instead), first-reveal cascade, desaturation effect (an alpha dim instead), drag-to-workspace, pinch overview, touchpad, step-up (question 1: no), power menu, album art.
 
 ## 7. Risks
 
@@ -429,6 +525,6 @@ Each gate: the owner sets `read_only = false` on his own daemon, grants the scop
 | Virtual keyboard side effects with the owner's per-window layout tool (skbd) | one device per daemon run; G-INPUT checks both layouts |
 | Lock detection misses a different locker | config `lock_processes`; documented limit |
 | Keep awake while the screen is off | power-on command after taking the inhibitor (swayidle drops its pending resume) |
-| A stolen phone with tier 2 scopes | off by default, granted by name, revoke, panic, audit, notices; question 1 |
+| A stolen, unlocked phone with the default scopes can run code as the owner (open fuzzel, start a terminal by name, type) | owner's choice (2026-11-14, `DESIGN.md` D30); lock refusal, focus check per part, notices, audit, revoke, panic; no step-up (question 1) |
 | Hostile icon files | raster child with memory, CPU and time limits |
 | Compose APIs named here differ in the 1.12.1 jars | each slice checks its APIs against the jars before use; `UX.md` 17 lists the ones to re-check |

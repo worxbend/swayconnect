@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
+use serde_json::Value;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast::error::RecvError;
@@ -77,6 +78,7 @@ pub struct FakeSway {
 #[derive(Debug)]
 struct Shared {
     scripted_replies: Mutex<HashMap<Request, String>>,
+    command_replies: Mutex<HashMap<String, String>>,
     commands: Mutex<Vec<String>>,
     answering: AtomicBool,
     events: broadcast::Sender<(Event, String)>,
@@ -124,6 +126,36 @@ impl FakeSway {
         lock(&self.shared.scripted_replies).insert(request, payload.into());
     }
 
+    /// Sets the reply to every later `RUN_COMMAND` whose payload is exactly `command`,
+    /// for example a refusal of the kill of window 7. Other commands keep the reply of
+    /// [`set_reply`](Self::set_reply) or the default `[{"success":true}]`.
+    pub fn set_command_reply(&self, command: impl Into<String>, payload: impl Into<String>) {
+        lock(&self.shared.command_replies).insert(command.into(), payload.into());
+    }
+
+    /// Moves focus to the node `con_id` in the `GET_TREE` reply (scripted or default):
+    /// its `focused` becomes true and every other node's false. No event is sent, so
+    /// only a fresh `GET_TREE` sees the change, as when a focus event is still in
+    /// flight (`docs/DESIGN.md` 11.7 item 3.4). The `focus` lists and the
+    /// `GET_WORKSPACES` reply stay as they are.
+    ///
+    /// # Panics
+    ///
+    /// When the tree reply is not JSON or has no node `con_id`.
+    pub fn focus_without_event(&self, con_id: u64) {
+        let mut replies = lock(&self.shared.scripted_replies);
+        let current = replies
+            .get(&Request::GetTree)
+            .cloned()
+            .unwrap_or_else(fixtures::tree);
+        let mut tree: Value = serde_json::from_str(&current).expect("the GET_TREE reply is JSON");
+        assert!(
+            set_focused(&mut tree, con_id),
+            "no node {con_id} in the GET_TREE reply"
+        );
+        replies.insert(Request::GetTree, tree.to_string());
+    }
+
     /// Sends an event to every connection that subscribed to it.
     pub fn send_event(&self, event: Event, payload: impl Into<String>) {
         // An error only says that no connection is open; then nobody is subscribed.
@@ -169,11 +201,16 @@ impl Shared {
     fn new() -> Self {
         Self {
             scripted_replies: Mutex::new(HashMap::new()),
+            command_replies: Mutex::new(HashMap::new()),
             commands: Mutex::new(Vec::new()),
             answering: AtomicBool::new(true),
             events: broadcast::channel(EVENT_BACKLOG).0,
             close_generation: watch::channel(0).0,
         }
+    }
+
+    fn command_reply(&self, command: &str) -> Option<String> {
+        lock(&self.command_replies).get(command).cloned()
     }
 
     fn reply(&self, request: Request) -> String {
@@ -192,6 +229,25 @@ fn default_reply(request: Request) -> String {
         Request::GetTree => fixtures::tree(),
         Request::GetVersion => fixtures::version(),
     }
+}
+
+/// Sets `focused` on `node` and every descendant; true when `con_id` was found.
+fn set_focused(node: &mut Value, con_id: u64) -> bool {
+    let is_target = node["id"].as_u64() == Some(con_id);
+    let Some(fields) = node.as_object_mut() else {
+        return false;
+    };
+    fields.insert("focused".to_owned(), Value::Bool(is_target));
+    let mut found = is_target;
+    for children in ["nodes", "floating_nodes"] {
+        let Some(children) = fields.get_mut(children).and_then(Value::as_array_mut) else {
+            continue;
+        };
+        for child in children {
+            found |= set_focused(child, con_id);
+        }
+    }
+    found
 }
 
 /// A panic in a test that holds the lock must not hide the state from the next reader.
@@ -268,6 +324,12 @@ impl Connection {
 
     /// Picks the reply and, for a valid `SUBSCRIBE`, records the subscription.
     fn reply_to(&self, request: Request, payload: &[u8]) -> String {
+        if request == Request::RunCommand {
+            let command = String::from_utf8_lossy(payload);
+            if let Some(reply) = self.shared.command_reply(&command) {
+                return reply;
+            }
+        }
         if request == Request::Subscribe {
             let Ok(event_names) = serde_json::from_slice::<Vec<String>>(payload) else {
                 return SUBSCRIBE_REFUSED.to_owned();

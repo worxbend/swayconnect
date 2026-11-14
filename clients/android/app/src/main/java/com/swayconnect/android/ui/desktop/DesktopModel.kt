@@ -7,8 +7,10 @@ import com.swayconnect.android.ui.state.ViewMode
 import com.swayconnect.protocol.ContainerKind
 import com.swayconnect.protocol.ContainerTile
 import com.swayconnect.protocol.Desktop
+import com.swayconnect.protocol.MAX_WORKSPACE_NUMBER
 import com.swayconnect.protocol.Tile
 import com.swayconnect.protocol.Window
+import com.swayconnect.protocol.WindowLayout
 import com.swayconnect.protocol.WindowTile
 import com.swayconnect.protocol.Workspace
 import com.swayconnect.protocol.replaceUnsafe
@@ -166,6 +168,43 @@ private class TreeWalk(private val known: Set<Long>) {
 /** The window focused on the computer, when it is on [workspace]. */
 fun focusedWindowOn(desktop: Desktop, workspace: Workspace): Window? =
     desktop.windows.firstOrNull { it.focused && it.workspaceId == workspace.id }
+
+/**
+ * "+ new" of the Move sheet (UX 5.8): the lowest number from 1 that no workspace has. Sway creates that workspace
+ * on the move. Null when 1 to 999 are all taken.
+ */
+fun lowestFreeNumber(desktop: Desktop): Int? {
+    val taken = desktop.workspaces.mapNotNullTo(HashSet()) { it.number }
+    return (1..MAX_WORKSPACE_NUMBER).firstOrNull { it.toLong() !in taken }
+}
+
+/**
+ * The layout of the container that holds [windowId] (UX 5.8 "Layout of its container"), to mark the current
+ * segment. Display only (17.4.3). Null when the workspace has no layout, the window is floating or not in the
+ * tiled tree, or it is the workspace's only tile (no container is sent around it).
+ */
+fun containerLayoutOf(workspace: Workspace, windowId: Long): WindowLayout? {
+    val root = workspace.layout?.tiled as? ContainerTile ?: return null
+    return parentOf(root, windowId)?.kind?.let(::windowLayoutOf)
+}
+
+private fun parentOf(container: ContainerTile, windowId: Long): ContainerTile? {
+    for (child in container.children) {
+        when (child) {
+            is WindowTile -> if (child.windowId == windowId) return container
+            is ContainerTile -> parentOf(child, windowId)?.let { return it }
+        }
+    }
+    return null
+}
+
+private fun windowLayoutOf(kind: ContainerKind): WindowLayout =
+    when (kind) {
+        ContainerKind.SPLIT_H -> WindowLayout.SPLIT_H
+        ContainerKind.SPLIT_V -> WindowLayout.SPLIT_V
+        ContainerKind.TABBED -> WindowLayout.TABBED
+        ContainerKind.STACKED -> WindowLayout.STACKING
+    }
 
 fun windowCount(desktop: Desktop, workspace: Workspace): Int = desktop.windows.count { it.workspaceId == workspace.id }
 

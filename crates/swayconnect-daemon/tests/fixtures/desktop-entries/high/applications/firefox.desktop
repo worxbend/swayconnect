@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Firefox
+Name[de]=Feuerfuchs
+GenericName=Web Browser
+Keywords=internet;web;browser;
+Icon=firefox
+Exec=/usr/lib/firefox/firefox %u
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
+
+[Desktop Action new-private-window]
+Name=New Private Window
+Exec=/usr/lib/firefox/firefox --private-window %u

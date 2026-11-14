@@ -1,0 +1,274 @@
+{
+  "states": [
+    {
+      "name": "01-spec-example",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":3,\"data\":{\"keep_awake\":{\"active\":true,\"remaining_ms\":3600000,\"holder\":\"this_device\",\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "02-off",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "03-on-other-device",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":true,\"remaining_ms\":2700000,\"holder\":\"other_device\",\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "04-cooldown",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":540000},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "05-locked",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":true,\"remaining_ms\":1800000,\"holder\":\"this_device\",\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":true}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "06-lock-state-unknown",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":null}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "07-a-window-inhibits",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":2,\"locked\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "08-input-and-launcher",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":true,\"remaining_ms\":3120000,\"holder\":\"this_device\",\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":1,\"locked\":false,\"input\":{\"active\":true,\"holder\":\"this_device\"},\"launcher\":{\"open\":true,\"holder\":\"other_device\"}}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "09-input-and-launcher-off",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"input\":{\"active\":false,\"holder\":null},\"launcher\":{\"open\":false,\"holder\":null}}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "10-remaining-at-int-max",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":true,\"remaining_ms\":9007199254740991,\"holder\":\"this_device\",\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "20-unknown-holder-is-other-device",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":true,\"remaining_ms\":600000,\"holder\":\"a-phone\",\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": {
+        "normalized": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":true,\"remaining_ms\":600000,\"holder\":\"other_device\",\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}"
+      }
+    },
+    {
+      "name": "21-unknown-input-and-launcher-holder",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"input\":{\"active\":true,\"holder\":\"THIS_DEVICE\"},\"launcher\":{\"open\":true,\"holder\":\"\"}}}}",
+      "expect": {
+        "normalized": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"input\":{\"active\":true,\"holder\":\"other_device\"},\"launcher\":{\"open\":true,\"holder\":\"other_device\"}}}}"
+      }
+    },
+    {
+      "name": "22-unknown-members-ignored",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null,\"sleep_pid\":4242},\"windows_inhibiting\":0,\"locked\":false,\"audio_hint\":true,\"input\":{\"active\":false,\"holder\":null,\"seat\":\"seat0\"}}}}",
+      "expect": {
+        "normalized": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"input\":{\"active\":false,\"holder\":null}}}}"
+      }
+    },
+    {
+      "name": "30-keep-awake-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "31-keep-awake-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":null,\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "32-active-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "33-active-string",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":\"false\",\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "34-remaining-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "35-remaining-negative",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":-1,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "36-holder-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "37-holder-number",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":1,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "38-default-duration-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":null,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "39-max-duration-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "40-max-continuous-string",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":\"14400\",\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "41-cooldown-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "42-windows-inhibiting-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "43-windows-inhibiting-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":null,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "44-locked-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "45-locked-string",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":\"unknown\"}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "46-input-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"input\":null}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "47-input-active-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"input\":{\"holder\":null}}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "48-input-holder-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"input\":{\"active\":false}}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "49-launcher-open-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"launcher\":{\"holder\":null}}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "50-launcher-not-an-object",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":null,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false,\"launcher\":true}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "51-keep-awake-is-an-array",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":[],\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "52-remaining-with-fraction",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":1.5,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "53-remaining-with-exponent",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":6e5,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "54-remaining-above-int",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"session\",\"rev\":1,\"data\":{\"keep_awake\":{\"active\":false,\"remaining_ms\":9007199254740992,\"holder\":null,\"default_duration_s\":3600,\"max_duration_s\":7200,\"max_continuous_s\":14400,\"cooldown_remaining_ms\":null},\"windows_inhibiting\":0,\"locked\":false}}}",
+      "expect": "bad"
+    }
+  ],
+  "results": [
+    {
+      "name": "01-keep-awake-spec-example",
+      "op": "keep_awake.set",
+      "payload": "{\"type\":\"res\",\"id\":8,\"ok\":true,\"result\":{\"remaining_ms\":3600000}}",
+      "expect": "ok"
+    },
+    {
+      "name": "02-keep-awake-off",
+      "op": "keep_awake.set",
+      "payload": "{\"type\":\"res\",\"id\":2,\"ok\":true,\"result\":{\"remaining_ms\":null}}",
+      "expect": "ok"
+    },
+    {
+      "name": "03-keep-awake-unknown-member",
+      "op": "keep_awake.set",
+      "payload": "{\"type\":\"res\",\"id\":3,\"ok\":true,\"result\":{\"remaining_ms\":60000,\"holder\":\"this_device\"}}",
+      "expect": "ok"
+    },
+    {
+      "name": "04-lock-spec-example",
+      "op": "session.lock",
+      "payload": "{\"type\":\"res\",\"id\":9,\"ok\":true,\"result\":{\"already_locked\":true}}",
+      "expect": "ok"
+    },
+    {
+      "name": "05-lock-started",
+      "op": "session.lock",
+      "payload": "{\"type\":\"res\",\"id\":5,\"ok\":true,\"result\":{\"already_locked\":false}}",
+      "expect": "ok"
+    },
+    {
+      "name": "06-window-op-empty-result",
+      "op": "window.move",
+      "payload": "{\"type\":\"res\",\"id\":6,\"ok\":true,\"result\":{}}",
+      "expect": "ok"
+    },
+    {
+      "name": "10-keep-awake-remaining-missing",
+      "op": "keep_awake.set",
+      "payload": "{\"type\":\"res\",\"id\":10,\"ok\":true,\"result\":{}}",
+      "expect": "bad"
+    },
+    {
+      "name": "11-keep-awake-remaining-string",
+      "op": "keep_awake.set",
+      "payload": "{\"type\":\"res\",\"id\":11,\"ok\":true,\"result\":{\"remaining_ms\":\"3600000\"}}",
+      "expect": "bad"
+    },
+    {
+      "name": "12-keep-awake-remaining-negative",
+      "op": "keep_awake.set",
+      "payload": "{\"type\":\"res\",\"id\":12,\"ok\":true,\"result\":{\"remaining_ms\":-1}}",
+      "expect": "bad"
+    },
+    {
+      "name": "13-lock-already-locked-missing",
+      "op": "session.lock",
+      "payload": "{\"type\":\"res\",\"id\":13,\"ok\":true,\"result\":{}}",
+      "expect": "bad"
+    },
+    {
+      "name": "14-lock-already-locked-null",
+      "op": "session.lock",
+      "payload": "{\"type\":\"res\",\"id\":14,\"ok\":true,\"result\":{\"already_locked\":null}}",
+      "expect": "bad"
+    },
+    {
+      "name": "15-lock-already-locked-number",
+      "op": "session.lock",
+      "payload": "{\"type\":\"res\",\"id\":15,\"ok\":true,\"result\":{\"already_locked\":1}}",
+      "expect": "bad"
+    }
+  ]
+}

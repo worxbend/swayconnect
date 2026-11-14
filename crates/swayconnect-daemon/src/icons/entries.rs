@@ -135,7 +135,12 @@ pub fn flatpak_id_from_cgroup(cgroup: &str) -> Option<String> {
 
 /// `(id, path)` of every `.desktop` file under `dir`, sorted, so a scan is deterministic.
 /// Symlinked directories are not followed (a loop would never end); symlinked files are.
-fn collect_files(dir: &Path, prefix: &str, depth: usize, files: &mut Vec<(String, PathBuf)>) {
+pub(crate) fn collect_files(
+    dir: &Path,
+    prefix: &str,
+    depth: usize,
+    files: &mut Vec<(String, PathBuf)>,
+) {
     let Ok(listing) = fs::read_dir(dir) else {
         return;
     };

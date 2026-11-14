@@ -7,6 +7,7 @@ use std::io::{IsTerminal as _, Write as _};
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
@@ -14,11 +15,17 @@ use clap::{Parser, Subcommand};
 use qrcode::QrCode;
 use qrcode::render::unicode::Dense1x2;
 use swayconnect_daemon::admin::{AdminClient, AdminError, PairingRequest, PairingResult};
+use swayconnect_daemon::apps::index::IndexDirs;
+use swayconnect_daemon::audit;
 use swayconnect_daemon::config::Config;
-use swayconnect_daemon::daemon::{Daemon, IconSources};
+use swayconnect_daemon::daemon::services::{KeyboardHost, MediaHost};
+use swayconnect_daemon::daemon::{Daemon, Host, IconSources};
 use swayconnect_daemon::devices::{DeviceInfo, ScopeChange};
 use swayconnect_daemon::icons::{self, raster};
+use swayconnect_daemon::input::WaylandTarget;
+use swayconnect_daemon::media::session_bus_address;
 use swayconnect_daemon::paths::{Paths, own_uid};
+use swayconnect_daemon::proc::{ChildEnv, RealRunner};
 use swayconnect_protocol::text::escape_for_terminal;
 use swayconnect_protocol::uri::PairingUri;
 use swayconnect_protocol::{DeviceId, Scope};
@@ -53,7 +60,7 @@ enum Command {
             long,
             value_delimiter = ',',
             value_parser = parse_scope,
-            default_value = "state.read,state.titles,control"
+            default_value = "state.read,state.titles,control,audio,media,idle.inhibit,launch,input.keys,input.text"
         )]
         scopes: Vec<Scope>,
         /// Lifetime of the pairing window in seconds
@@ -70,6 +77,12 @@ enum Command {
     },
     /// Delete a device and drop its sessions
     Revoke { device_id: String },
+    /// Print the newest lines of the audit log
+    Audit {
+        /// How many lines
+        #[arg(short = 'n', default_value_t = 20)]
+        lines: usize,
+    },
 }
 
 #[derive(Subcommand)]
@@ -157,6 +170,7 @@ async fn run_cli() -> ExitCode {
             change: Some(DevicesChange::Deny(args)),
         } => change_scopes(ScopeChange::Deny, args).await,
         Command::Revoke { device_id } => revoke(&device_id).await,
+        Command::Audit { lines } => print_audit(lines),
     };
     match outcome {
         Ok(exit_code) => exit_code,
@@ -218,18 +232,25 @@ fn paths_from_environment() -> Result<Paths, Failure> {
     })
 }
 
-/// The icon service reads `$XDG_DATA_HOME` and `$XDG_DATA_DIRS`, caches below
-/// `$XDG_CACHE_HOME`, and runs this program as its raster child (`docs/DESIGN.md` 11.5).
-fn icon_sources() -> Result<IconSources, Failure> {
+/// `$XDG_DATA_HOME`, then `$XDG_DATA_DIRS`: where icons and desktop entries are found.
+fn data_dirs() -> Result<Vec<PathBuf>, Failure> {
     let data_home = xdg_dir("XDG_DATA_HOME", ".local/share")?;
-    let data_dirs = std::env::var_os("XDG_DATA_DIRS");
+    Ok(icons::search_dirs(
+        &data_home,
+        std::env::var_os("XDG_DATA_DIRS").as_deref(),
+    ))
+}
+
+/// The icon service reads `search_dirs`, caches below `$XDG_CACHE_HOME`, and runs this
+/// program as its raster child (`docs/DESIGN.md` 11.5).
+fn icon_sources(search_dirs: Vec<PathBuf>) -> Result<IconSources, Failure> {
     let raster_program = std::env::current_exe().map_err(|error| {
         Failure::runtime(anyhow!(
             "cannot name the own program for the icon raster child: {error}"
         ))
     })?;
     Ok(IconSources {
-        search_dirs: icons::search_dirs(&data_home, data_dirs.as_deref()),
+        search_dirs,
         cache_dir: xdg_dir("XDG_CACHE_HOME", ".cache")?.join(APP_DIR),
         raster_program,
     })
@@ -257,14 +278,33 @@ async fn run() -> Result<ExitCode, Failure> {
 
     let paths = paths_from_environment()?;
     let config = Config::load(&paths.config_file).map_err(Failure::usage)?;
-    let target = sway_target(&config, &paths)?;
-    let icons = icon_sources()?;
+    let runtime_dir = Some(paths.runtime_dir.clone()).filter(|dir| !dir.as_os_str().is_empty());
+    let display = std::env::var_os("WAYLAND_DISPLAY");
+    let bus = std::env::var_os("DBUS_SESSION_BUS_ADDRESS");
+    let data_dirs = data_dirs()?;
+    let host = Host {
+        icons: Some(icon_sources(data_dirs.clone())?),
+        // Children get the desktop session's variables, filtered by the allowlist.
+        runner: Arc::new(RealRunner::new(ChildEnv::allowlisted(std::env::vars_os()))),
+        keyboard: KeyboardHost::Wayland(WaylandTarget::new(
+            &config.wayland,
+            runtime_dir.clone(),
+            display,
+        )),
+        media: MediaHost::Bus(session_bus_address(bus.as_deref(), runtime_dir.as_deref())),
+        apps: IndexDirs {
+            data_dirs,
+            exec_path: std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+                .collect(),
+        },
+        ..Host::new(sway_target(&config, &paths)?)
+    };
     // Registered before the start is logged, so a signal sent right after it is not lost.
     let mut interrupt = signal(SignalKind::interrupt()).map_err(Failure::runtime)?;
     let mut terminate = signal(SignalKind::terminate()).map_err(Failure::runtime)?;
     let mut panic_switch = signal(SignalKind::user_defined1()).map_err(Failure::runtime)?;
 
-    let daemon = Daemon::start_with_icons(config, paths, target, icons)
+    let daemon = Daemon::start_on(config, paths, host)
         .await
         .map_err(|error| Failure {
             exit_code: error.exit_code(),
@@ -445,6 +485,20 @@ async fn revoke(device_id: &str) -> Result<ExitCode, Failure> {
     } else {
         Err(Failure::runtime(anyhow!("no such device")))
     }
+}
+
+/// Reads the file itself: the log is useful while the daemon is stopped, too.
+fn print_audit(count: usize) -> Result<ExitCode, Failure> {
+    let file = audit::audit_file(&paths_from_environment()?);
+    let uid = own_uid().map_err(Failure::runtime)?;
+    let lines = audit::newest_lines_for_terminal(&file, uid, count).map_err(Failure::usage)?;
+    if lines.is_empty() {
+        println!("no audit lines");
+    }
+    for line in &lines {
+        println!("{line}");
+    }
+    Ok(ExitCode::SUCCESS)
 }
 
 #[cfg(test)]

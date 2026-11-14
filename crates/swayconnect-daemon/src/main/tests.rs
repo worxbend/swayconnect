@@ -50,10 +50,25 @@ fn pair_takes_scopes_ttl_and_host_and_refuses_values_outside_the_limits() {
     let Some(Command::Pair { scopes, ttl, host }) = cli.command else {
         panic!("pair was parsed as another command");
     };
+    // The owner's default of 2026-11-14 (`docs/DESIGN.md` 11.8, D30). Never by default:
+    // `destructive`, `audio.capture`, `launch.risky`.
     assert_eq!(
         scopes,
-        [Scope::StateRead, Scope::StateTitles, Scope::Control]
+        [
+            Scope::StateRead,
+            Scope::StateTitles,
+            Scope::Control,
+            Scope::Audio,
+            Scope::Media,
+            Scope::IdleInhibit,
+            Scope::Launch,
+            Scope::InputKeys,
+            Scope::InputText,
+        ]
     );
+    for by_name_only in [Scope::Destructive, Scope::AudioCapture, Scope::LaunchRisky] {
+        assert!(!scopes.contains(&by_name_only), "{by_name_only:?}");
+    }
     assert_eq!((ttl, host), (300, None));
 
     let narrowed = [

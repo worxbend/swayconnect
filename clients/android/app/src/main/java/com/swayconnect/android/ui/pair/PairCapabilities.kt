@@ -10,9 +10,16 @@ import com.swayconnect.android.ui.state.Granted
  * so [locked] stays empty. `known_scopes` never counts as granted.
  */
 data class PairCapabilities(val granted: List<String>, val locked: List<String>, val readOnly: Boolean) {
+    /**
+     * The phone can type or start apps, which can run code as the owner (DESIGN 11.8, D30): step 4 then says how
+     * to remove it if the phone is lost. Read-only mode does not change what the pairing holds.
+     */
+    val canRunCode: Boolean get() = granted.any { it in CODE_SCOPES }
+
     companion object {
         /** Scopes with no operation in this protocol revision (PROTOCOL 17.2): a pill would promise a feature. */
         private val RESERVED = setOf("commands", "input.pointer")
+        private val CODE_SCOPES = setOf("launch", "launch.risky", "input.keys", "input.text")
 
         fun of(granted: Granted): PairCapabilities {
             val mine = granted.scopes.filterNot { it in RESERVED }.distinct()

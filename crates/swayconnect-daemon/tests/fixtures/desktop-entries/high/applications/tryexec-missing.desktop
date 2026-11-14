@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=TryExec Missing
+TryExec=/nonexistent/swayconnect-tool
+Exec=/nonexistent/swayconnect-tool

@@ -10,11 +10,22 @@ use tokio::time::Instant;
 
 use super::*;
 use crate::actions;
+use crate::sway_handle::ActionError;
 use crate::throttle::{Rate, RateClass};
 
 const VECTORS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../protocol/vectors/v1");
 const EVERY_SCOPE: [Scope; 3] = [Scope::StateRead, Scope::StateTitles, Scope::Control];
 const RETRY_AFTER: Duration = Duration::from_millis(500);
+/// A daemon with a lock command.
+pub(super) const LOCK: Features = Features { lock: true };
+
+/// Not read-only or read-only, with a lock command.
+pub(super) fn mode(is_read_only: bool) -> Mode {
+    Mode {
+        is_read_only,
+        features: LOCK,
+    }
+}
 
 fn request(op: &str, args: Option<Value>) -> Req {
     Req {
@@ -63,7 +74,7 @@ fn action_requests() -> [(Req, Action); 5] {
 /// A daemon that is not read-only and a bucket that is never empty.
 fn checked(scopes: &[Scope], request: &Req) -> Result<Decision, ErrorBody> {
     let scopes = scopes.iter().copied().collect();
-    check(&scopes, false, |_| Ok(()), request)
+    check(&scopes, mode(false), |_| Ok(()), request)
 }
 
 fn refused(scopes: &[Scope], op: &str, args: Option<Value>) -> ErrorBody {
@@ -79,7 +90,7 @@ fn ping_needs_no_scope_and_ignores_missing_args() {
 fn subscribe_to_desktop_is_granted_with_state_read() {
     let subscribe = request("state.subscribe", Some(json!({"topics": ["desktop"]})));
     let outcome = checked(&[Scope::StateRead], &subscribe);
-    assert_eq!(outcome, Ok(Decision::SubscribeDesktop));
+    assert_eq!(outcome, Ok(Decision::Subscribe(vec![Topic::Desktop])));
 }
 
 #[test]
@@ -91,7 +102,7 @@ fn each_action_is_handed_on_as_its_typed_value_and_takes_one_token() {
             taken.set(taken.get() + 1);
             Ok(())
         };
-        let outcome = check(&scopes, false, take_token, &request);
+        let outcome = check(&scopes, mode(false), take_token, &request);
         assert_eq!(outcome, Ok(Decision::Act(action)), "{request:?}");
         assert_eq!(taken.get(), 1, "{request:?}");
     }
@@ -102,7 +113,7 @@ fn in_read_only_mode_no_action_is_handed_on_and_no_token_is_taken() {
     let scopes = EVERY_SCOPE.into_iter().collect();
     for (request, _) in action_requests() {
         let take_token = |_| panic!("read-only is checked before the rate limit");
-        let outcome = check(&scopes, true, take_token, &request);
+        let outcome = check(&scopes, mode(true), take_token, &request);
         let error = outcome.expect_err("no `Decision::Act` in read-only mode");
         assert_eq!(error.code, ErrorCode::ReadOnly, "{request:?}");
         assert_eq!(error.detail, None);
@@ -115,11 +126,11 @@ fn read_only_mode_leaves_ping_and_subscribe_alone() {
     let take_token = |_| panic!("only an action takes a token");
     let subscribe = request("state.subscribe", Some(json!({"topics": ["desktop"]})));
     assert_eq!(
-        check(&scopes, true, take_token, &subscribe),
-        Ok(Decision::SubscribeDesktop)
+        check(&scopes, mode(true), take_token, &subscribe),
+        Ok(Decision::Subscribe(vec![Topic::Desktop]))
     );
     assert_eq!(
-        check(&scopes, true, take_token, &request("ping", None)),
+        check(&scopes, mode(true), take_token, &request("ping", None)),
         Ok(Decision::Pong)
     );
 }
@@ -129,7 +140,7 @@ fn a_missing_scope_is_reported_before_read_only_and_takes_no_token() {
     let scopes = BTreeSet::from([Scope::StateRead]);
     for (request, _) in action_requests() {
         let take_token = |_| panic!("the scope is checked before the rate limit");
-        let error = check(&scopes, true, take_token, &request).expect_err("forbidden");
+        let error = check(&scopes, mode(true), take_token, &request).expect_err("forbidden");
         assert_eq!(error.code, ErrorCode::Forbidden, "{request:?}");
         assert_eq!(
             Value::Object(error.detail.expect("detail")),
@@ -142,7 +153,8 @@ fn a_missing_scope_is_reported_before_read_only_and_takes_no_token() {
 fn an_empty_bucket_is_reported_with_the_retry_delay_before_bad_arguments() {
     let scopes = BTreeSet::from([Scope::Control]);
     let no_arguments = request("window.focus", Some(json!("not an object")));
-    let error = check(&scopes, false, |_| Err(RETRY_AFTER), &no_arguments).expect_err("limited");
+    let error =
+        check(&scopes, mode(false), |_| Err(RETRY_AFTER), &no_arguments).expect_err("limited");
     assert_eq!(error.code, ErrorCode::RateLimited);
     assert_eq!(
         Value::Object(error.detail.expect("detail")),
@@ -155,7 +167,7 @@ fn the_retry_delay_is_never_reported_as_zero() {
     let scopes = BTreeSet::from([Scope::Control]);
     let (focus, _) = &action_requests()[2];
     let almost_now = |_| Err(Duration::from_micros(1));
-    let error = check(&scopes, false, almost_now, focus).expect_err("limited");
+    let error = check(&scopes, mode(false), almost_now, focus).expect_err("limited");
     assert_eq!(error.detail.expect("detail")["retry_after_ms"], 1);
 }
 
@@ -178,7 +190,12 @@ fn an_action_with_bad_arguments_still_takes_its_token() {
             taken.set(taken.get() + 1);
             Ok(())
         };
-        let outcome = check(&scopes, false, take_token, &request(op, Some(args.clone())));
+        let outcome = check(
+            &scopes,
+            mode(false),
+            take_token,
+            &request(op, Some(args.clone())),
+        );
         let error = outcome.expect_err("bad arguments");
         assert_eq!(error.code, ErrorCode::BadRequest, "{op} {args}");
         assert_eq!(taken.get(), 1, "{op} {args}");
@@ -191,26 +208,35 @@ fn the_offered_operations_follow_the_scopes_and_the_mode() {
     let without_control = BTreeSet::from([Scope::StateRead, Scope::StateTitles]);
     let read_side = ["ping", "state.subscribe", "icon.get"];
     let actions = ["workspace.focus", "window.focus", "window.fullscreen"];
+    let control_m2a = [
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+    ];
 
     let all = ["ping", "state.subscribe"]
         .into_iter()
         .chain(actions)
-        .chain(["icon.get"]);
-    assert_eq!(offered_ops(&every_scope, false), Vec::from_iter(all));
-    assert_eq!(offered_ops(&every_scope, true), read_side);
-    assert_eq!(offered_ops(&without_control, false), read_side);
+        .chain(["icon.get"])
+        .chain(control_m2a);
+    assert_eq!(offered_ops(&every_scope, false, LOCK), Vec::from_iter(all));
+    assert_eq!(offered_ops(&every_scope, true, LOCK), read_side);
+    assert_eq!(offered_ops(&without_control, false, LOCK), read_side);
     assert_eq!(
-        offered_ops(&BTreeSet::from([Scope::Control]), false),
-        [&["ping"][..], &actions].concat()
+        offered_ops(&BTreeSet::from([Scope::Control]), false, LOCK),
+        [&["ping"][..], &actions, &control_m2a].concat()
     );
 }
 
 #[test]
 fn a_device_without_scopes_is_offered_ping_and_no_topic() {
-    assert_eq!(offered_ops(&BTreeSet::new(), false), ["ping"]);
+    assert_eq!(offered_ops(&BTreeSet::new(), false, LOCK), ["ping"]);
     assert_eq!(offered_topics(&BTreeSet::new()), Vec::<String>::new());
     let with_read = BTreeSet::from([Scope::StateRead]);
-    assert_eq!(offered_topics(&with_read), ["desktop"]);
+    assert_eq!(offered_topics(&with_read), ["desktop", "session"]);
 }
 
 #[test]
@@ -299,17 +325,17 @@ fn not_found_names_the_kind_of_target_and_its_id() {
     }
 }
 
-fn vector_file(name: &str) -> Value {
+pub(super) fn vector_file(name: &str) -> Value {
     let text = fs::read_to_string(format!("{VECTORS}/{name}")).expect("vector file");
     serde_json::from_str(&text).expect("vector JSON")
 }
 
-fn payload_of(frame: &Value) -> JsonObject {
+pub(super) fn payload_of(frame: &Value) -> JsonObject {
     serde_json::from_str(frame["payload"].as_str().expect("payload")).expect("a JSON object")
 }
 
 /// The `desktop` state that `state_ref` of `requests.json` names.
-fn referenced_desktop(state_ref: &str) -> Desktop {
+pub(super) fn referenced_desktop(state_ref: &str) -> Desktop {
     let (transcript, frame, path) = match state_ref {
         "t3-rev7" => ("t3-session", 1, "/result/states/0/data"),
         "offline" => ("t6-sway-offline", 0, "/data/data"),
@@ -354,7 +380,7 @@ fn replay(vector: &Value) -> Value {
         Rate::ACTIONS.take(&mut full_again_at, now)
     };
 
-    let refusal = match check(&scopes, is_read_only, take_token, &request) {
+    let refusal = match check(&scopes, mode(is_read_only), take_token, &request) {
         Ok(Decision::Act(action)) => match actions::command_for(action, &desktop) {
             Ok(_) => return json!("ok"),
             Err(error) => action_refusal(action, error),
@@ -379,6 +405,12 @@ pub(super) fn assert_detail_matches(name: &str, expected: &JsonObject, answered:
     }
 }
 
+/// Cases of the version 1 file whose precondition no longer holds for this server, with
+/// its answer. Spec 15.14 case 3 names topic `media`, unknown in version 1; this server
+/// offers it (17.10), so a device without scope `media` gets what `ext/media.json` case 31
+/// says. The file stays byte-identical; the conflict is reported to INT.
+const V2_ANSWERS: [(&str, &str); 1] = [("03-unknown-topic", "forbidden")];
+
 #[test]
 fn the_request_vectors_are_answered_as_the_spec_says() {
     let file = vector_file("requests.json");
@@ -391,6 +423,10 @@ fn the_request_vectors_are_answered_as_the_spec_says() {
         let name = vector["name"].as_str().expect("name");
         let expect = &vector["expect"];
         let answered = replay(vector);
+        if let Some((_, code)) = V2_ANSWERS.iter().find(|(case, _)| *case == name) {
+            assert_eq!(answered["error"], *code, "{name}");
+            continue;
+        }
         let Some(expected_error) = expect.get("error") else {
             assert_eq!(&answered, expect, "{name}");
             continue;

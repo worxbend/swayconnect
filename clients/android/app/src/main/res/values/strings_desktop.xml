@@ -60,6 +60,20 @@
     <string name="desktop_fullscreen_spoken">Fullscreen</string>
     <string name="desktop_exit_fullscreen_spoken">Exit fullscreen</string>
     <string name="desktop_action_locked">%1$s, off for this phone</string>
+    <string name="desktop_float">Float</string>
+    <string name="desktop_tile">Tile</string>
+    <string name="desktop_float_spoken">Float window</string>
+    <string name="desktop_tile_spoken">Tile window</string>
+    <string name="desktop_move">Move</string>
+    <string name="desktop_move_spoken">Move to workspace</string>
+    <string name="desktop_scratchpad">Scratchpad</string>
+    <string name="desktop_scratchpad_spoken">Send to scratchpad</string>
+    <string name="desktop_close">Close</string>
+    <string name="desktop_close_window_hold">Close window… (hold)</string>
+    <string name="desktop_close_spoken">Close window, hold to close</string>
+    <string name="desktop_close_confirm_title">Close this window?</string>
+    <string name="desktop_close_confirm_text">%1$s may ask to save first. Unsaved work can be lost.</string>
+    <string name="desktop_close_confirm">Close window</string>
 
     <!-- Sheets (UX 5.8, 6) -->
     <string name="desktop_sheet_tiled">tiled</string>
@@ -69,4 +83,17 @@
     <string name="desktop_sheet_small">Small windows</string>
     <string name="desktop_sheet_group">Windows in this group</string>
     <string name="desktop_sheet_gone">These windows are gone.</string>
+    <string name="desktop_move_title">Move to workspace</string>
+    <string name="desktop_move_here">the window is here</string>
+    <string name="desktop_move_new">+ new</string>
+    <string name="desktop_move_new_spoken">New workspace %1$d</string>
+    <string name="desktop_move_focused_here">Move focused window here</string>
+    <string name="desktop_layout_title">Layout of its container</string>
+    <string name="desktop_layout_split_h">Split ↔</string>
+    <string name="desktop_layout_split_v">Split ↕</string>
+    <string name="desktop_layout_split_h_spoken">Split side by side</string>
+    <string name="desktop_layout_split_v_spoken">Split top and bottom</string>
+    <string name="desktop_layout_tabbed">Tabbed</string>
+    <string name="desktop_layout_stacked">Stacked</string>
+    <string name="desktop_layout_note">Some tools (autotiling) may change this.</string>
 </resources>

@@ -57,15 +57,17 @@ fn lan_address(test: &str) -> Option<IpAddr> {
     address
 }
 
-/// How long the server takes to close `stream` when the client stays silent, on a paused
-/// clock. Panics when the server sends anything.
+/// How long the server takes to close `stream` when the client stays silent. Panics when
+/// the server sends anything.
+///
+/// Real time, not a paused clock: the daemon's audio watcher retries a missing `pactl` on
+/// a 1, 2, 4 ... s backoff, and a paused clock jumps along those timers while the accept
+/// or the close is still in the kernel, so the wait read 7, 15 or 31 s.
 async fn silence_until_close(stream: &mut (impl AsyncRead + Unpin)) -> Duration {
-    tokio::time::pause();
     let silent_since = Instant::now();
     let mut received = [0u8; 64];
     let read = tokio::time::timeout(Duration::from_secs(60), stream.read(&mut received)).await;
     let waited = silent_since.elapsed();
-    tokio::time::resume();
     match read.expect("the server closes a silent connection") {
         // Without `close_notify` the TLS layer reports the close as an error.
         Ok(0) | Err(_) => waited,

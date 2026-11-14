@@ -2,7 +2,8 @@
 //! (`docs/DESIGN.md` 9.2, 9.3).
 //!
 //! Every child has a cleared environment and temp XDG directories. The daemon listens on
-//! `127.0.0.1:0` and its `sway.socket` is the fake sway.
+//! `127.0.0.1:0`, its `sway.socket` is the fake sway, and every program key of its config
+//! names a `fake-proc` program (`docs/DESIGN.md` 11.9), so no test starts a real one.
 
 #![allow(
     dead_code,
@@ -17,15 +18,25 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
-use swayconnect_testkit::{FakeSway, TestDirs};
+use swayconnect_testkit::{FakeProcs, FakeSway, ProgramSection, TestConfig, TestDirs};
 
 pub const CLIENT: &str = env!("CARGO_BIN_EXE_swayconnect");
 pub const DAEMON_NAME: &str = "swayconnectd";
 pub const PATIENCE: Duration = Duration::from_secs(20);
+const RETRY_DELAY: Duration = Duration::from_millis(100);
 pub const EXIT_SERVER_ERROR: i32 = 1;
 pub const EXIT_USAGE_OR_PROFILE: i32 = 2;
 pub const EXIT_CONNECTION: i32 = 3;
 pub const EXIT_REJECTED: i32 = 4;
+/// The program sections this daemon knows, every one since M2b: its audio service starts
+/// `pactl` at once, so that must be `fake-proc` too.
+pub const DAEMON_SECTIONS: [ProgramSection; 6] = ProgramSection::ALL;
+/// A process name no process has, so the daemon finds the screen unlocked whatever the
+/// real desktop shows: its lock heuristic reads the real `/proc`.
+const NO_LOCK_PROCESS: &str = "sc-test-nolock";
+/// The same for keyboard grabbers: a real launcher open on the desktop does not refuse
+/// the input of a test.
+const NO_GRABBER_PROCESS: &str = "sc-test-nograb";
 pub const FOCUS_WINDOW_6_REQUEST: &str =
     r#"{"type":"req","id":1,"op":"window.focus","args":{"window_id":6}}"#;
 
@@ -138,6 +149,7 @@ impl Drop for Process {
 pub struct Harness {
     pub daemon: Process,
     pub sway: FakeSway,
+    pub programs: FakeProcs,
     pub daemon_dirs: TestDirs,
     pub client_dirs: TestDirs,
 }
@@ -158,10 +170,18 @@ impl Harness {
             .map(PathBuf::from)
             .collect();
         let sway = FakeSway::start(&daemon_dirs.runtime_dir(), &forbidden);
-        let config = format!(
+        let programs = FakeProcs::install(&daemon_dirs.root().join("bin"));
+        let preamble = format!(
             "listen = [\"127.0.0.1:0\"]\nserver_name = \"desk\"\n{extra_config}[sway]\nsocket = \"{}\"\n",
             sway.socket_path().display()
         );
+        let lock_processes = format!("lock_processes = [\"{NO_LOCK_PROCESS}\"]");
+        let grabbers = format!("keyboard_grabbers = [\"{NO_GRABBER_PROCESS}\"]");
+        let config = TestConfig::with_sections(&programs, &DAEMON_SECTIONS)
+            .preamble(&preamble)
+            .line(ProgramSection::Session, &lock_processes)
+            .line(ProgramSection::Session, &grabbers)
+            .build();
         fs::write(daemon_dirs.config_file(), config).expect("config file");
         let mut run = daemon_dirs.command(daemon_binary());
         run.arg("run");
@@ -171,6 +191,7 @@ impl Harness {
         Harness {
             daemon,
             sway,
+            programs,
             daemon_dirs,
             client_dirs: TestDirs::new(),
         }
@@ -190,7 +211,13 @@ impl Harness {
 
     /// Runs `swayconnect` to its end with nothing on stdin.
     pub fn client(&self, arguments: &[&str]) -> Output {
+        self.client_with_stdin(arguments, "")
+    }
+
+    /// Runs `swayconnect` to its end with `stdin` on its standard input.
+    pub fn client_with_stdin(&self, arguments: &[&str], stdin: &str) -> Output {
         assert_cmd::Command::from_std(self.client_command(arguments))
+            .write_stdin(stdin)
             .timeout(PATIENCE)
             .output()
             .expect("client runs")
@@ -205,6 +232,20 @@ impl Harness {
             String::from_utf8_lossy(&output.stderr)
         );
         String::from_utf8(output.stdout).expect("UTF-8 output")
+    }
+
+    /// The calls of `program`, once there are `count` of them: a fake program may log
+    /// its call after the daemon answered.
+    pub fn calls_once_there_are(&self, program: &str, count: usize) -> Vec<Vec<String>> {
+        let deadline = Instant::now() + PATIENCE;
+        loop {
+            let calls = self.programs.calls(program);
+            if calls.len() >= count {
+                return calls;
+            }
+            assert!(Instant::now() < deadline, "{program}: {calls:?}");
+            std::thread::sleep(RETRY_DELAY);
+        }
     }
 
     pub fn profile_file(&self) -> PathBuf {

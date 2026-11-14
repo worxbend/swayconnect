@@ -1179,7 +1179,7 @@ Milestones (informative): **M1** = 17.3, 17.4, 17.5 and `bye` `scopes_changed` (
 
 ### 17.2 New scopes
 
-All new scopes are off unless the owner grants them by name at the desktop (`swayconnectd pair --scopes`, or `swayconnectd devices grant`). No preset and no default pairing holds any of them. A client cannot ask for a scope (7.1).
+Scopes are granted only at the desktop. A client cannot ask for a scope (7.1). The reference server's `swayconnectd pair` gives by default `state.read`, `state.titles`, `control`, `audio`, `media`, `idle.inhibit`, `launch`, `input.keys`, `input.text` (`docs/DESIGN.md` 11.8). `destructive`, `audio.capture` and `launch.risky` are never in that default; the owner grants them by name (`swayconnectd pair --scopes`, or `swayconnectd devices grant`). A client MUST NOT assume any scope from the pairing: it reads the granted set from `welcome.scopes`.
 
 | Scope | Grants | Risk tier | Milestone |
 |---|---|---|---|
@@ -1400,7 +1400,7 @@ Rules:
 6. It also ends on revoke of the holder, on read-only mode (SIGUSR1) and on daemon stop. It does not end when the client disconnects.
 7. Every `true` that starts keep-awake shows a desktop notice with the holder's short device id.
 
-Errors: `bad_request`, `forbidden`, `read_only`, `rate_limited`, `limit_reached` (`detail.retry_after_ms`), `backend_unavailable`, `spawn_failed`.
+Errors: `bad_request`, `forbidden`, `read_only`, `rate_limited`, `limit_reached` (`detail.retry_after_ms`), `backend_unavailable`, `spawn_failed`. `backend_unavailable` also when the inhibitor started but ended at once (logind, polkit or the bus refused it); a replace then keeps the old inhibitor and its expiry. After the panic switch a `true` that passed step 6 before it is refused with `read_only`.
 
 #### Topic `session`
 
@@ -1524,7 +1524,7 @@ Errors: `bad_request`, `not_found`, `unsupported_target` (the player does not al
 | `keywords` | string[] | yes | at most 16, each at most 64 scalar values, together at most 512 bytes of UTF-8 |
 | `icon` | string or null | yes | icon hash |
 | `terminal` | bool | yes | runs in a terminal |
-| `risky` | bool | yes | the owner marked it, or it is a terminal. Launching it needs `launch.risky`. |
+| `risky` | bool | yes | the owner marked it, or it is a terminal (`Terminal=true`, or `TerminalEmulator` in `Categories`). Launching it needs `launch.risky`. |
 
 The topic never carries the Exec line or a file path.
 

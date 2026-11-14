@@ -509,3 +509,5 @@ async fn a_bad_scope_change_gets_an_error_and_changes_nothing() {
         ["state.read"]
     );
 }
+
+mod audit_lines;

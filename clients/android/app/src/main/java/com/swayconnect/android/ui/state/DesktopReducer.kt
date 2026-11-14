@@ -33,7 +33,7 @@ fun UiState.withDesktop(next: Desktop, followFocus: Boolean, seenAtMs: Long): Ui
         followFocusChip = chip,
         sheet = sheet?.takeIf { it.fits(shown) },
         pendingTargetId = null,
-    )
+    ).withLaunchSeen()
 }
 
 /** Shows a snapshot from the cache before the first connection (docs/UX.md 5.9: dimmed, taps disabled). */

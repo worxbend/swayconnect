@@ -26,7 +26,7 @@ use crate::pairing::{
     hmac_probe,
 };
 use crate::paths::{Paths, ensure_private_dir, own_uid};
-use crate::throttle::{ConnectionBuckets, ConnectionSlots, LogBudget, RateClass};
+use crate::throttle::{ConnectionBuckets, ConnectionSlots, LogBudget, RateClass, TextBudget};
 
 /// Identity, device store, pairing window and throttle behind one handle. Clones share it.
 #[derive(Clone)]
@@ -47,8 +47,11 @@ struct State {
     devices: DeviceStore,
     pairing: PairingState,
     buckets: ConnectionBuckets,
-    /// `icons` bucket per stored device (`throttle::Rate::take`), made on first use.
-    icon_buckets: HashMap<DeviceId, Instant>,
+    /// The bucket of every class but `actions` per stored device (`throttle::Rate::take`),
+    /// made on first use.
+    class_buckets: HashMap<(DeviceId, RateClass), Instant>,
+    /// The characters of `input.text` per stored device, made on first use.
+    text_budgets: HashMap<DeviceId, TextBudget>,
     slots: ConnectionSlots,
     connection_refusal_log: LogBudget,
     handshake_refusal_log: LogBudget,
@@ -139,7 +142,8 @@ impl Security {
             devices,
             pairing: PairingState::default(),
             buckets: ConnectionBuckets::default(),
-            icon_buckets: HashMap::new(),
+            class_buckets: HashMap::new(),
+            text_budgets: HashMap::new(),
             slots: ConnectionSlots::default(),
             connection_refusal_log: LogBudget::default(),
             handshake_refusal_log: LogBudget::default(),
@@ -308,7 +312,10 @@ impl Security {
         let now = Instant::now();
         let full_again_at = match class {
             RateClass::Actions => &mut entry.actions_full_again_at,
-            RateClass::Icons => state.icon_buckets.entry(device.clone()).or_insert(now),
+            other => state
+                .class_buckets
+                .entry((device.clone(), other))
+                .or_insert(now),
         };
         let taken = class.rate().take(full_again_at, now);
         if class == RateClass::Actions
@@ -322,6 +329,17 @@ impl Security {
             );
         }
         taken
+    }
+
+    /// Spends `chars` of the device's `input.text` characters per minute (spec 17.14). `Err`
+    /// holds the delay after which they would fit.
+    pub fn take_text_budget(&self, device: &DeviceId, chars: usize) -> Result<(), Duration> {
+        let mut state = self.inner.state();
+        if !state.devices.contains(device) {
+            return Err(Duration::from_secs(1));
+        }
+        let budget = state.text_budgets.entry(device.clone()).or_default();
+        budget.take(chars, Instant::now())
     }
 
     /// Opens the pairing window (admin socket only). The new device gets `scopes`.
@@ -345,7 +363,10 @@ impl Security {
     pub fn revoke(&self, device: &DeviceId) -> Result<bool, StoreError> {
         let outcome = {
             let mut state = self.inner.state();
-            state.icon_buckets.remove(device);
+            state
+                .class_buckets
+                .retain(|(holder, _), _| holder != device);
+            state.text_budgets.remove(device);
             state.devices.revoke(device)
         };
         match &outcome {

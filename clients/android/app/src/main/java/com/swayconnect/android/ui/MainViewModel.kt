@@ -12,27 +12,69 @@ import com.swayconnect.android.ui.state.ConnectionStatus
 import com.swayconnect.android.ui.state.DriveController
 import com.swayconnect.android.ui.state.DriveMode
 import com.swayconnect.android.ui.state.Granted
+import com.swayconnect.android.ui.state.LatestValueSender
+import com.swayconnect.android.ui.state.LaunchTarget
 import com.swayconnect.android.ui.state.NOT_A_PAIRING_LINK
 import com.swayconnect.android.ui.state.PagerFacts
 import com.swayconnect.android.ui.state.PairForm
 import com.swayconnect.android.ui.state.PairPhase
+import com.swayconnect.android.ui.state.PendingControl
+import com.swayconnect.android.ui.state.PendingLaunch
 import com.swayconnect.android.ui.state.Refusal
 import com.swayconnect.android.ui.state.Screen
+import com.swayconnect.android.ui.state.ServerTarget
 import com.swayconnect.android.ui.state.ServerSummary
 import com.swayconnect.android.ui.state.Sheet
 import com.swayconnect.android.ui.state.UiState
 import com.swayconnect.android.ui.state.ViewMode
 import com.swayconnect.android.ui.state.followChip
 import com.swayconnect.android.ui.state.isDriving
+import com.swayconnect.android.ui.state.msUntilCountdownTick
+import com.swayconnect.android.ui.state.withApps
+import com.swayconnect.android.ui.state.withAppsStale
+import com.swayconnect.android.ui.state.withArea
+import com.swayconnect.android.ui.state.withAudio
+import com.swayconnect.android.ui.state.withAudioStale
+import com.swayconnect.android.ui.state.withInputRefusal
+import com.swayconnect.android.ui.state.withKeysFollowingSession
+import com.swayconnect.android.ui.state.withKeysRefusalCleared
+import com.swayconnect.android.ui.state.withKeysTarget
+import com.swayconnect.android.ui.state.withLauncherTarget
+import com.swayconnect.android.ui.state.withLaunchStarted
+import com.swayconnect.android.ui.state.withLaunchTimedOut
+import com.swayconnect.android.ui.state.withMedia
+import com.swayconnect.android.ui.state.withMediaStale
+import com.swayconnect.android.ui.state.withModifierToggled
+import com.swayconnect.android.ui.state.withModifiersReleased
+import com.swayconnect.android.ui.state.withNowPlayingHidden
+import com.swayconnect.android.ui.state.withPrivateMode
+import com.swayconnect.android.ui.state.withTargetFromRefusal
+import com.swayconnect.android.ui.state.withTyped
+import com.swayconnect.android.ui.state.withVolumeAnswered
+import com.swayconnect.android.ui.state.withVolumeDragged
+import com.swayconnect.android.ui.state.withVolumeFailed
+import com.swayconnect.android.ui.state.withVolumeReleased
+import com.swayconnect.android.ui.state.withClock
 import com.swayconnect.android.ui.state.withCachedDesktop
 import com.swayconnect.android.ui.state.withDesktop
 import com.swayconnect.android.ui.state.withDesktopStale
 import com.swayconnect.android.ui.state.withLink
+import com.swayconnect.android.ui.state.withSession
+import com.swayconnect.android.ui.state.withSessionStale
 import com.swayconnect.protocol.ByeReaction
 import com.swayconnect.protocol.Desktop
 import com.swayconnect.protocol.Connection
 import com.swayconnect.protocol.ErrorCode
 import com.swayconnect.protocol.HandshakeException
+import com.swayconnect.protocol.Holder
+import com.swayconnect.protocol.InputKey
+import com.swayconnect.protocol.InputRefusal
+import com.swayconnect.protocol.InputTarget
+import com.swayconnect.protocol.InputText
+import com.swayconnect.protocol.KEEP_AWAKE_MIN_DURATION_S
+import com.swayconnect.protocol.KeyModifier
+import com.swayconnect.protocol.MAX_WORKSPACE_NUMBER
+import com.swayconnect.protocol.MediaCommand
 import com.swayconnect.protocol.Op
 import com.swayconnect.protocol.PairingNotConfirmedException
 import com.swayconnect.protocol.PairingUri
@@ -44,10 +86,30 @@ import com.swayconnect.protocol.RequestFailedException
 import com.swayconnect.protocol.Session
 import com.swayconnect.protocol.SessionEnd
 import com.swayconnect.protocol.SwayConnectClient
+import com.swayconnect.protocol.Topic
 import com.swayconnect.protocol.Transport
+import com.swayconnect.protocol.WindowLayout
+import com.swayconnect.protocol.closeWindow
+import com.swayconnect.protocol.controlMedia
 import com.swayconnect.protocol.isDisplayLabel
+import com.swayconnect.protocol.keepAwakeOff
+import com.swayconnect.protocol.keepAwakeOn
+import com.swayconnect.protocol.launchApp
+import com.swayconnect.protocol.lockScreen
+import com.swayconnect.protocol.moveToScratchpad
+import com.swayconnect.protocol.moveWindowToNumber
+import com.swayconnect.protocol.moveWindowToWorkspace
+import com.swayconnect.protocol.openLauncher
 import com.swayconnect.protocol.parsePairingUri
+import com.swayconnect.protocol.pressKey
 import com.swayconnect.protocol.replaceUnsafe
+import com.swayconnect.protocol.setDefaultDevice
+import com.swayconnect.protocol.setFloating
+import com.swayconnect.protocol.setLayout
+import com.swayconnect.protocol.setMuted
+import com.swayconnect.protocol.setVolume
+import com.swayconnect.protocol.showScratchpad
+import com.swayconnect.protocol.typeText
 import java.io.IOException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -58,7 +120,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -127,6 +191,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     private val snapshots = MutableStateFlow<Snapshot?>(null)
 
+    /** The volume sliders' throttle (docs/UX.md 7.2): device id to volume. */
+    private val volumeSender = LatestValueSender<Long, Int>(VOLUME_INTERVAL_MS, ::sendVolume)
+
     private val client =
         SwayConnectClient(
             AnnouncingTransport(container.transport) { setConnection(ConnectionStatus.Authenticating) },
@@ -138,6 +205,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch(container.io) { loadStoredPairing() }
         viewModelScope.launch(container.io) { runConnection() }
         viewModelScope.launch(container.io) { saveSnapshots() }
+        viewModelScope.launch(container.io) { runCountdown() }
+        viewModelScope.launch(container.io) { volumeSender.run() }
         container.iconCache?.let { cache -> viewModelScope.launch(container.io) { cache.run() } }
     }
 
@@ -232,13 +301,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         if (current is Task.Pairing) endPairing(current, problem = null)
     }
 
-    /** "Done" after a confirmed pairing: the desktop follows. */
+    /** "Done" after a confirmed pairing: the Desktop area follows (UX 11 step 4), whatever area was shown before. */
     fun finishPairing() {
         mutableState.update {
             if (it.pair.phase != PairPhase.Confirmed) {
                 it
             } else {
-                it.copy(screen = Screen.Desktop, pair = PairForm(deviceName = it.pair.deviceName))
+                it.copy(screen = Screen.Desktop, pair = PairForm(deviceName = it.pair.deviceName)).withArea(Area.Desktop)
             }
         }
     }
@@ -253,9 +322,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     // ---- Shell ----
 
-    /** A tap on the pill navigation. An open sheet closes. */
+    /** A tap on the pill navigation. An open sheet closes; opening Keys captures the focused window as its target. */
     fun selectArea(area: Area) {
-        mutableState.update { it.copy(area = area, sheet = null) }
+        mutableState.update { it.withArea(area) }
     }
 
     fun openSheet(sheet: Sheet) {
@@ -393,6 +462,291 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         act(windowId) { it.setFullscreen(windowId, false) }
     }
 
+    fun moveWindow(windowId: Long, workspaceId: Long) {
+        act(windowId) { it.moveWindowToWorkspace(windowId, workspaceId) }
+    }
+
+    /** Sway creates the workspace when none has [number]. */
+    fun moveWindowToNumber(windowId: Long, number: Int) {
+        require(number in 0..MAX_WORKSPACE_NUMBER) { "workspace number must be 0 to $MAX_WORKSPACE_NUMBER" }
+        act(windowId) { it.moveWindowToNumber(windowId, number) }
+    }
+
+    fun floatWindow(windowId: Long) {
+        act(windowId) { it.setFloating(windowId, true) }
+    }
+
+    fun tileWindow(windowId: Long) {
+        act(windowId) { it.setFloating(windowId, false) }
+    }
+
+    fun setWindowLayout(windowId: Long, layout: WindowLayout) {
+        act(windowId) { it.setLayout(windowId, layout) }
+    }
+
+    fun sendToScratchpad(windowId: Long) {
+        act(windowId) { it.moveToScratchpad(windowId) }
+    }
+
+    /** "Show" in the Scratchpad sheet. [scratchpadId] is an id of `desktop.scratchpad`, not of `windows`. */
+    fun showScratchpadWindow(scratchpadId: Long) {
+        act(scratchpadId) { it.showScratchpad(scratchpadId) }
+    }
+
+    /** Close asks first (docs/PROTOCOL.md 17.7): this opens the confirm sheet, [confirmClose] sends. */
+    fun askToCloseWindow(windowId: Long) {
+        openSheet(Sheet.ConfirmClose(windowId))
+    }
+
+    /** The yes of the confirm sheet: closes the window that sheet names, and nothing without that sheet. */
+    fun confirmClose() {
+        val confirmed = mutableState.value.sheet as? Sheet.ConfirmClose ?: return
+        closeSheet()
+        act(confirmed.windowId) { it.closeWindow(confirmed.windowId) }
+    }
+
+    // ---- More area ----
+
+    /**
+     * Starts keep-awake or replaces its expiry (docs/UX.md 10.2). [durationS] null takes the server's default;
+     * otherwise it is one of the duration sheet's choices, at least [KEEP_AWAKE_MIN_DURATION_S].
+     */
+    fun keepAwakeOn(durationS: Long? = null) {
+        require(durationS == null || durationS >= KEEP_AWAKE_MIN_DURATION_S) { "keep-awake lasts at least a minute" }
+        act(ServerTarget.KEEP_AWAKE) { it.keepAwakeOn(durationS) }
+    }
+
+    fun keepAwakeOff() {
+        act(ServerTarget.KEEP_AWAKE) { it.keepAwakeOff() }
+    }
+
+    /** The Lock tile and the round lock button. No confirm: locking is the safe direction (docs/UX.md 10.3). */
+    fun lockComputer() {
+        act(ServerTarget.LOCK) { session ->
+            if (session.lockScreen()) mutableState.update { it.copy(notice = ALREADY_LOCKED) }
+        }
+    }
+
+    // ---- Audio area ----
+
+    /**
+     * The finger moved the slider of [deviceId] to [pct]. The slider shows its own value; at most 10 values a second
+     * go out (docs/UX.md 7.2).
+     */
+    fun dragVolume(deviceId: Long, pct: Int) {
+        if (!canCall(Op.AUDIO_SET_VOLUME)) return
+        val draft = mutableState.updateAndGet { it.withVolumeDragged(deviceId, pct) }.audio?.drafts?.get(deviceId) ?: return
+        volumeSender.offer(deviceId, draft.pct)
+    }
+
+    /** `onValueChangeFinished` at [pct]: this value is always sent, and the slider keeps it until the next state. */
+    fun finishVolume(deviceId: Long, pct: Int) {
+        if (!canCall(Op.AUDIO_SET_VOLUME)) return
+        val draft = mutableState.updateAndGet { it.withVolumeReleased(deviceId, pct) }.audio?.drafts?.get(deviceId) ?: return
+        volumeSender.offer(deviceId, draft.pct)
+    }
+
+    /** A phone volume key while Audio is shown: the default output moves by [deltaPct] (docs/UX.md 7.2). */
+    fun stepDefaultVolume(deltaPct: Int) {
+        val audio = mutableState.value.audio ?: return
+        val sink = audio.defaultSink ?: return
+        finishVolume(sink.id, audio.shownVolume(sink) + deltaPct)
+    }
+
+    /** Unmuting a source needs `audio.capture`; the server enforces it and the UI shows the lock. */
+    fun setMuted(deviceId: Long, muted: Boolean) {
+        actOn(PendingControl.Device(deviceId), Op.AUDIO_SET_MUTE) { it.setMuted(deviceId, muted) }
+    }
+
+    fun setDefaultDevice(deviceId: Long) {
+        actOn(PendingControl.Device(deviceId), Op.AUDIO_SET_DEFAULT) { it.setDefaultDevice(deviceId) }
+    }
+
+    fun controlMedia(playerId: Long, command: MediaCommand) {
+        actOn(PendingControl.Player(playerId), command.op) { it.controlMedia(playerId, command) }
+    }
+
+    /** "Hide until next track" on the now-playing capsule (docs/UX.md 4.3). */
+    fun hideNowPlaying() {
+        mutableState.update { it.withNowPlayingHidden() }
+    }
+
+    /** One send of the throttle. It never throws: a refusal shows its line, and a failed final value shows the server's. */
+    private suspend fun sendVolume(deviceId: Long, pct: Int) {
+        val session = liveSession
+        if (session == null) {
+            mutableState.update { it.withVolumeFailed(deviceId, pct) }
+            return
+        }
+        val failure: IOException? =
+            try {
+                session.setVolume(deviceId, pct)
+                null
+            } catch (e: IOException) {
+                e
+            }
+        mutableState.update {
+            when (failure) {
+                null -> it.withVolumeAnswered(deviceId, pct)
+                is RequestFailedException -> actionRefusal(it, failure).withVolumeFailed(deviceId, pct)
+                else -> it.copy(notice = Refusal.NO_ANSWER).withVolumeFailed(deviceId, pct)
+            }
+        }
+    }
+
+    // ---- Launch area ----
+
+    /**
+     * Starts the app [entryId] of the `apps` state, on workspace [number] or, when null, on the computer's focused
+     * workspace. After `ok` the app returns to Desktop with the ghost tile (docs/UX.md 8.2). A risky app needs the
+     * user's hold first (17.19 item 18); the UI asks before it calls this.
+     */
+    fun launchApp(entryId: String, number: Int? = null) {
+        require(number == null || number in 0..MAX_WORKSPACE_NUMBER) { "workspace number must be 0 to $MAX_WORKSPACE_NUMBER" }
+        val before = mutableState.value
+        val app = before.apps?.state?.apps?.firstOrNull { it.entryId == entryId } ?: return
+        val target =
+            number?.let(LaunchTarget::Number)
+                ?: before.desktop?.workspaces?.firstOrNull { it.focused }?.let { LaunchTarget.Workspace(it.id) }
+                ?: return
+        val known = before.desktop?.windows.orEmpty().map { it.id }.toSet()
+        actOn(PendingControl.Launch(entryId), Op.APP_LAUNCH) { session ->
+            session.launchApp(entryId, number)
+            val launch = PendingLaunch(entryId, app.name, app.icon, target, known, monotonicMs())
+            mutableState.update { it.withLaunchStarted(launch) }
+            viewModelScope.launch(container.io) {
+                delay(PendingLaunch.TIMEOUT_MS)
+                mutableState.update { it.withLaunchTimedOut(launch, "${replaceUnsafe(app.name)} did not open a window yet.") }
+            }
+        }
+    }
+
+    /**
+     * The round ⌕ button: `launcher.open`. When this device holds the launcher and may type, Keys opens with the
+     * launcher as its target; otherwise one line says it is open (docs/UX.md 8.2).
+     */
+    fun openComputerLauncher() {
+        actOn(PendingControl.Launcher, Op.LAUNCHER_OPEN) { session ->
+            val alreadyOpen = session.openLauncher()
+            mutableState.update {
+                val holder = !alreadyOpen || it.session?.state?.launcher?.holder == Holder.THIS_DEVICE
+                if (holder && canCall(Op.INPUT_TEXT, it)) it.withLauncherTarget() else it.copy(notice = LAUNCHER_IS_OPEN)
+            }
+        }
+    }
+
+    // ---- Keys area ----
+
+    /** Desktop's "Type" on [windowId]: Keys opens with that window as its target. */
+    fun typeInto(windowId: Long) {
+        mutableState.update { it.withArea(Area.Keys, windowId) }
+    }
+
+    /** The target picker; [InputTarget.Launcher] only while `launcherOffered`. */
+    fun selectKeysTarget(target: InputTarget) {
+        mutableState.update { it.withKeysTarget(target) }
+    }
+
+    fun setPrivateMode(enabled: Boolean) {
+        mutableState.update { it.withPrivateMode(enabled) }
+    }
+
+    fun toggleModifier(modifier: KeyModifier) {
+        mutableState.update { it.withModifierToggled(modifier) }
+    }
+
+    /**
+     * Send (docs/UX.md 9.2). [parts] are the composer's text cut by `TextSplit`: each one passes [InputText.isValid].
+     * They go in order and stop at the first error; `keys.typed` then says how much arrived. With [thenReturn] a
+     * `Return` follows only when every part arrived.
+     */
+    fun sendText(parts: List<String>, thenReturn: Boolean) {
+        require(parts.isNotEmpty() && parts.all(InputText::isValid)) { "every part must pass InputText.isValid" }
+        val target = mutableState.value.keys?.target ?: return
+        if (thenReturn && !canCall(Op.INPUT_KEY)) return
+        actOn(PendingControl.Typing, Op.INPUT_TEXT) { session ->
+            if (typeParts(session, target, parts) && thenReturn) pressOrRefuse(session, target, InputKey.RETURN, emptySet())
+        }
+    }
+
+    /**
+     * A special key or shortcut: [key] with [modifiers] and the armed sticky modifiers, which are released by it.
+     * Ctrl+Alt with a function key switches the computer's terminal: it is not sent.
+     */
+    fun pressKey(key: InputKey, modifiers: Set<KeyModifier> = emptySet()) {
+        val before = mutableState.value
+        val keys = before.keys ?: return
+        val target = keys.target ?: return
+        if (before.pendingControl == PendingControl.Typing || !canCall(Op.INPUT_KEY)) return
+        val held = keys.sticky + modifiers
+        mutableState.update { it.withModifiersReleased() }
+        if (key.isFunctionKey && KeyModifier.CTRL in held && KeyModifier.ALT in held) {
+            mutableState.update { it.copy(notice = TERMINAL_SWITCH_REFUSED) }
+            return
+        }
+        actOn(PendingControl.Typing, Op.INPUT_KEY) { session -> pressOrRefuse(session, target, key, held) }
+    }
+
+    /** "Type there" after `focus_changed`. */
+    fun typeThere() {
+        mutableState.update { it.withTargetFromRefusal() }
+    }
+
+    /** "Back to Alacritty" after `focus_changed`: focuses the target window again, then typing may go on. */
+    fun focusKeysTarget() {
+        val target = mutableState.value.keys?.target as? InputTarget.Window ?: return
+        actOn(PendingControl.Typing, Op.WINDOW_FOCUS) { session ->
+            session.focusWindow(target.windowId)
+            mutableState.update { it.withKeysRefusalCleared() }
+        }
+    }
+
+    fun dismissKeysRefusal() {
+        mutableState.update { it.withKeysRefusalCleared() }
+    }
+
+    /** Types [parts] in order and records how much arrived. False when a refusal of 17.13 stopped it. */
+    private suspend fun typeParts(session: Session, target: InputTarget, parts: List<String>): Boolean {
+        val totalChars = parts.sumOf { it.codePointCount(0, it.length).toLong() }
+        var deliveredChars = 0L
+        var refusal: InputRefusal? = null
+        try {
+            for (part in parts) deliveredChars += typePacedPart(session, target, part)
+        } catch (e: RequestFailedException) {
+            // Another code goes to the refusal line of act; a broken detail reads as no answer. Both after the record.
+            val stopped = InputRefusal.of(e) ?: throw e
+            refusal = stopped
+            deliveredChars += stopped.deliveredChars
+        } finally {
+            val stoppedBy = refusal
+            mutableState.update { it.withTyped(deliveredChars, totalChars, stoppedBy) }
+        }
+        return refusal == null
+    }
+
+    /**
+     * One part. After `rate_limited` it waits `detail.retry_after_ms` once and sends the part again, under the same
+     * Typing spinner: the refused part was not delivered, so nothing that ran is sent twice (PROTOCOL 11). A long
+     * paste thus outlasts the burst of the `input_text` class (17.14) instead of failing after about 4 KB.
+     */
+    private suspend fun typePacedPart(session: Session, target: InputTarget, part: String): Long =
+        try {
+            session.typeText(target, part)
+        } catch (e: RequestFailedException) {
+            if (e.code != ErrorCode.RATE_LIMITED) throw e
+            delay((e.detail.longAt("retry_after_ms") ?: TYPING_RETRY_DEFAULT_MS).coerceIn(0L, TYPING_RETRY_MAX_MS))
+            session.typeText(target, part)
+        }
+
+    private suspend fun pressOrRefuse(session: Session, target: InputTarget, key: InputKey, modifiers: Set<KeyModifier>) {
+        try {
+            session.pressKey(target, key, modifiers)
+        } catch (e: RequestFailedException) {
+            val refusal = InputRefusal.of(e) ?: throw e
+            mutableState.update { it.withInputRefusal(refusal) }
+        }
+    }
+
     /** Ends the wait between two connection attempts: the backoff grows to 30 s. */
     fun retryNow() {
         val waiting = task.value
@@ -500,6 +854,11 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 it.copy(
                     pair = PairForm(deviceName = it.pair.deviceName, phase = PairPhase.Confirmed),
                     granted = null,
+                    session = null,
+                    audio = null,
+                    media = null,
+                    apps = null,
+                    keys = null,
                     connectionProblem = null,
                 )
             }
@@ -606,7 +965,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         stored = null
         clearStoredPairing()
         mutableState.update {
-            it.copy(unpaired = true, lostServerName = it.server?.name, connectionProblem = null, server = null)
+            it.copy(
+                unpaired = true,
+                lostServerName = it.server?.name,
+                connectionProblem = null,
+                server = null,
+                session = null,
+                audio = null,
+                media = null,
+                apps = null,
+                keys = null,
+            )
         }
         task.compareAndSet(request, Task.Idle)
     }
@@ -645,7 +1014,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         } finally {
             liveSession = null
             driveJob?.cancel()
-            mutableState.update { it.withDesktopStale() }
+            mutableState.update {
+                it.withDesktopStale().withSessionStale().withAudioStale().withMediaStale().withAppsStale().copy(pendingControl = null)
+            }
         }
 
     /** Runs next to the reader of a session, after `welcome`. */
@@ -671,15 +1042,52 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    /**
+     * Subscribes to `desktop`, and to `session`, `audio`, `media` and `apps` when the server offers them
+     * (docs/PROTOCOL.md 17.1 rule 2), in one request.
+     */
     private suspend fun followDesktop(session: Session) {
-        val welcome = session.welcome
+        val offered = OPTIONAL_TOPICS.filter { it in session.welcome.topics }
         try {
-            session.subscribeDesktop()
+            session.subscribe(listOf(Topic.DESKTOP) + offered)
         } catch (e: RequestFailedException) {
             // The session stays open; this device simply may not read the state.
             mutableState.update { it.copy(notice = "The computer does not let this device read the desktop.") }
             return
         }
+        coroutineScope {
+            if (Topic.SESSION in offered) {
+                launch { follow(session.sessionState) { state, next -> state.withSession(next, monotonicMs()).withKeysFollowingSession() } }
+            }
+            if (Topic.AUDIO in offered) launch { follow(session.audio, UiState::withAudio) }
+            if (Topic.MEDIA in offered) launch { follow(session.media, UiState::withMedia) }
+            if (Topic.APPS in offered) launch { follow(session.apps, UiState::withApps) }
+            followDesktopStates(session)
+        }
+    }
+
+    private suspend fun <T : Any> follow(topic: StateFlow<T?>, apply: (UiState, T) -> UiState) {
+        topic.collect { next -> if (next != null) mutableState.update { apply(it, next) } }
+    }
+
+    /**
+     * Moves [UiState.clockMs] each time the shown countdown changes: per minute, per second in the last minute
+     * (docs/UX.md 10.2). It sleeps while nothing counts down and starts again with each new `session` state.
+     */
+    private suspend fun runCountdown() {
+        mutableState
+            .map { it.session?.let { view -> view.keepAwakeEndsAtMs to view.cooldownEndsAtMs } }
+            .distinctUntilChanged()
+            .collectLatest {
+                while (true) {
+                    val waitMs = mutableState.updateAndGet { it.withClock(monotonicMs()) }.msUntilCountdownTick() ?: break
+                    delay(waitMs)
+                }
+            }
+    }
+
+    private suspend fun followDesktopStates(session: Session) {
+        val welcome = session.welcome
         val fp = stored?.profile?.fp
         session.desktop.collect { desktop ->
             if (desktop == null) return@collect
@@ -710,19 +1118,54 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    /** Where the spinner of an action lives: the sway id space, or [UiState.pendingControl]. */
+    private sealed interface Spinner {
+        fun isOn(state: UiState): Boolean
+
+        fun on(state: UiState): UiState
+
+        /** Ends only this spinner: a later action may wait by now. */
+        fun off(state: UiState): UiState
+
+        class Target(private val id: Long) : Spinner {
+            override fun isOn(state: UiState) = state.pendingTargetId == id
+
+            override fun on(state: UiState) = state.copy(pendingTargetId = id)
+
+            override fun off(state: UiState) = if (isOn(state)) state.copy(pendingTargetId = null) else state
+        }
+
+        class Control(private val control: PendingControl) : Spinner {
+            override fun isOn(state: UiState) = state.pendingControl == control
+
+            override fun on(state: UiState) = state.copy(pendingControl = control)
+
+            override fun off(state: UiState) = if (isOn(state)) state.copy(pendingControl = null) else state
+        }
+    }
+
+    private fun act(
+        targetId: Long,
+        onRefused: (UiState, RequestFailedException) -> UiState = ::actionRefusal,
+        send: suspend (Session) -> Unit,
+    ) = act(Spinner.Target(targetId), onRefused, send)
+
+    /** An action of the M2b areas: sent only when `welcome.ops` lists [op] (docs/PROTOCOL.md 17.1 rule 2). */
+    private fun actOn(control: PendingControl, op: String, send: suspend (Session) -> Unit) {
+        if (canCall(op)) act(Spinner.Control(control), ::actionRefusal, send)
+    }
+
+    private fun canCall(op: String, state: UiState = mutableState.value): Boolean = state.granted?.ops?.contains(op) == true
+
     /**
      * Sends one action. The target shows a spinner until the answer or the next state arrives,
      * whichever is first. An action is never sent again on its own (docs/PROTOCOL.md section 11),
      * and a tap on a target that still waits sends nothing.
      */
-    private fun act(
-        targetId: Long,
-        onRefused: (UiState, RequestFailedException) -> UiState = ::actionRefusal,
-        send: suspend (Session) -> Unit,
-    ) {
+    private fun act(spinner: Spinner, onRefused: (UiState, RequestFailedException) -> UiState, send: suspend (Session) -> Unit) {
         val session = liveSession ?: return
-        if (mutableState.value.pendingTargetId == targetId) return
-        mutableState.update { it.copy(pendingTargetId = targetId, notice = null) }
+        if (spinner.isOn(mutableState.value)) return
+        mutableState.update { spinner.on(it).copy(notice = null) }
         viewModelScope.launch(container.io) {
             // RequestFailedException is an IOException: the server answered with a refusal.
             val failure: IOException? =
@@ -734,7 +1177,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 }
             mutableState.update {
                 // A later action may wait by now: this answer ends only its own spinner and wipes no other notice.
-                val answered = it.copy(pendingTargetId = it.pendingTargetId.takeIf { pending -> pending != targetId })
+                val answered = spinner.off(it)
                 when (failure) {
                     null -> answered
                     is RequestFailedException -> onRefused(answered, failure)
@@ -776,6 +1219,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         const val SNAPSHOT_DELAY_MS = 2_000L
         const val SCOPE_TITLES = "state.titles"
         const val UNSUPPORTED_TARGET = "unsupported_target"
+        const val ALREADY_LOCKED = "Already locked."
+        const val LAUNCHER_IS_OPEN = "Fuzzel is open on the computer."
+        const val TERMINAL_SWITCH_REFUSED = "Ctrl+Alt with a function key would switch the computer's terminal."
+        const val VOLUME_INTERVAL_MS = 100L
+
+        /** The `input_text` refill (17.14), when a `rate_limited` answer names no wait. */
+        const val TYPING_RETRY_DEFAULT_MS = 1_000L
+
+        /** The longest wait a server hint may ask for: the per-minute character budget. */
+        const val TYPING_RETRY_MAX_MS = 60_000L
+        val OPTIONAL_TOPICS = listOf(Topic.SESSION, Topic.AUDIO, Topic.MEDIA, Topic.APPS)
 
         fun monotonicMs(): Long = System.nanoTime() / 1_000_000
     }

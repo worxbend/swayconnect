@@ -1,0 +1,5835 @@
+{
+  "requests": [
+    {
+      "name": "001-focus-changed-spec-example",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-01",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": [
+          29,
+          24
+        ],
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":13,\"op\":\"input.text\",\"args\":{\"window_id\":29,\"text\":\"git status --short\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 16,
+          "focused_window_id": 24
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "git status --sho"
+      ]
+    },
+    {
+      "name": "002-ascii",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":2,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"hello\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 5
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "hello"
+      ]
+    },
+    {
+      "name": "003-zwj-emoji-sequence-allowed",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":3,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"👩\\u200d💻 ok\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 6
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "👩\u200d💻 ok"
+      ]
+    },
+    {
+      "name": "004-zero-width-non-joiner-allowed",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":4,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"می\\u200cخواهم\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 8
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "می\u200cخواهم"
+      ]
+    },
+    {
+      "name": "005-cyrillic",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":5,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"Привіт, світ\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 12
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "Привіт, світ"
+      ]
+    },
+    {
+      "name": "006-latin-1",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":6,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"Grüße, café\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 11
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "Grüße, café"
+      ]
+    },
+    {
+      "name": "007-single-code-point-emoji",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":7,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"😀\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 1
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "😀"
+      ]
+    },
+    {
+      "name": "008-keycap-and-skin-tone-sequences",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":8,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"1️⃣ 👍🏽\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 6
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "1️⃣ 👍🏽"
+      ]
+    },
+    {
+      "name": "009-shell-text-is-only-text",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":9,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"rm -rf ~; $(id) `id` | && > <\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 29
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "rm -rf ~; $(id) ",
+        "`id` | && > <"
+      ]
+    },
+    {
+      "name": "010-1024-ascii-bytes",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":10,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 1024
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa"
+      ]
+    },
+    {
+      "name": "011-1024-bytes-of-two-byte-characters",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":11,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"жжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 512
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж",
+        "жжжжжжжжжжжжжжжж"
+      ]
+    },
+    {
+      "name": "012-1024-bytes-of-four-byte-characters",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":12,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 256
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+        "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      ]
+    },
+    {
+      "name": "013-eighteen-characters-two-parts",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":13,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"git status --short\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 18
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "git status --sho",
+        "rt"
+      ]
+    },
+    {
+      "name": "020-1025-ascii-bytes",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":20,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "021-1025-bytes-mixed",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":21,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"жжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжa\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "022-empty",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":22,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "023-newline",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":23,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"ls\\n\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "024-carriage-return",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":24,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"ls\\r\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "025-tab",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":25,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\tb\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "026-escape-sequence",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":26,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"\\u001b[31mred\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "027-nul",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":27,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u0000b\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "028-delete-character",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":28,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u007f\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "029-c1-csi",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":29,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u009b31m\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "030-right-to-left-override",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":30,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"abc\\u202edef\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "031-tag-characters",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":31,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"🏴\\udb40\\udc67\\udb40\\udc62\\udb40\\udc65\\udb40\\udc6e\\udb40\\udc67\\udb40\\udc7f\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "032-zero-width-space",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":32,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u200bb\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "033-left-to-right-mark",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":33,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u200eb\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "034-right-to-left-mark",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":34,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u200fb\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "035-byte-order-mark",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":35,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"\\ufeffabc\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "036-soft-hyphen",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":36,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"co\\u00adop\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "037-line-separator",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":37,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u2028b\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "038-isolate",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":38,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"\\u2066abc\\u2069\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "039-arabic-letter-mark",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":39,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\u061cb\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "040-interlinear-annotation",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":40,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\ufff9b\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "041-one-bad-character-refuses-all",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":41,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\n\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "042-text-a-number",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":42,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":5}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "043-text-null",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":43,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "044-text-missing",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":44,\"op\":\"input.text\",\"args\":{\"window_id\":42}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "045-text-an-array",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":45,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":[\"a\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "050-both-targets",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":50,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"launcher\":true,\"text\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "051-no-target",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":51,\"op\":\"input.text\",\"args\":{\"text\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "052-launcher-false",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":52,\"op\":\"input.text\",\"args\":{\"launcher\":false,\"text\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "053-launcher-string",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":53,\"op\":\"input.text\",\"args\":{\"launcher\":\"true\",\"text\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "054-launcher-null",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":54,\"op\":\"input.text\",\"args\":{\"launcher\":null,\"text\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "055-window-null",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":55,\"op\":\"input.text\",\"args\":{\"window_id\":null,\"text\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "056-window-string",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":56,\"op\":\"input.text\",\"args\":{\"window_id\":\"42\",\"text\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "057-args-absent",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":57,\"op\":\"input.text\"}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "058-args-not-an-object",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":58,\"op\":\"input.text\",\"args\":\"hello\"}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "059-unknown-member-ignored",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":59,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"hi\",\"enter\":true}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 2
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "hi"
+      ]
+    },
+    {
+      "name": "060-unknown-window",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":60,\"op\":\"input.text\",\"args\":{\"window_id\":999,\"text\":\"a\"}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "061-scratchpad-window",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":61,\"op\":\"input.text\",\"args\":{\"window_id\":50,\"text\":\"a\"}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "062-workspace-id",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":62,\"op\":\"input.text\",\"args\":{\"window_id\":30,\"text\":\"a\"}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "063-window-not-focused",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":63,\"op\":\"input.text\",\"args\":{\"window_id\":41,\"text\":\"a\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 0,
+          "focused_window_id": 42
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "064-no-focused-window",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": null,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":64,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 0,
+          "focused_window_id": null
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "065-locked",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": true,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":65,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "locked",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "066-lock-state-unknown",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": null,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":66,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "locked",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "067-keyboard-grabbed",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "other",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":67,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "keyboard_grabbed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "068-locked-before-grabbed-and-focus",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": true,
+        "grabber": "other",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":68,\"op\":\"input.text\",\"args\":{\"window_id\":41,\"text\":\"a\"}}",
+      "expect": {
+        "error": "locked",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "069-grabbed-before-focus",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "other",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":69,\"op\":\"input.text\",\"args\":{\"window_id\":41,\"text\":\"a\"}}",
+      "expect": {
+        "error": "keyboard_grabbed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "070-launcher-is-a-grabber-for-a-window-target",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "launcher",
+        "focus": 42,
+        "launcher": {
+          "open": true,
+          "holder": "this_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":70,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "keyboard_grabbed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "071-locked-during-the-third-part",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": [
+          false,
+          false,
+          true
+        ],
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":71,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}",
+      "expect": {
+        "error": "locked",
+        "detail": {
+          "delivered_chars": 32
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "aaaaaaaaaaaaaaaa",
+        "aaaaaaaaaaaaaaaa"
+      ]
+    },
+    {
+      "name": "072-grabbed-during-the-second-part",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": [
+          "none",
+          "other"
+        ],
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":72,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"bbbbbbbbbbbbbbbbbbbb\"}}",
+      "expect": {
+        "error": "keyboard_grabbed",
+        "detail": {
+          "delivered_chars": 16
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "bbbbbbbbbbbbbbbb"
+      ]
+    },
+    {
+      "name": "073-focus-lost-during-the-second-part",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": [
+          42,
+          null
+        ],
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":73,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"bbbbbbbbbbbbbbbbbbbb\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 16,
+          "focused_window_id": null
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "bbbbbbbbbbbbbbbb"
+      ]
+    },
+    {
+      "name": "074-parts-count-scalar-values",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": [
+          42,
+          41
+        ],
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":74,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"👩\\u200d💻👩\\u200d💻👩\\u200d💻👩\\u200d💻👩\\u200d💻👩\\u200d💻\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 16,
+          "focused_window_id": 41
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "👩\u200d💻👩\u200d💻👩\u200d💻👩\u200d💻👩\u200d💻👩"
+      ]
+    },
+    {
+      "name": "080-launcher-target",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "launcher",
+        "focus": 42,
+        "launcher": {
+          "open": true,
+          "holder": "this_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":80,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"firefox\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 7
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "firefox"
+      ]
+    },
+    {
+      "name": "081-launcher-not-open",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":81,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"a\"}}",
+      "expect": {
+        "error": "launcher_closed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "082-launcher-of-another-device",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "launcher",
+        "focus": 42,
+        "launcher": {
+          "open": true,
+          "holder": "other_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":82,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"a\"}}",
+      "expect": {
+        "error": "launcher_closed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "083-launcher-plus-another-grabber",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "other",
+        "focus": 42,
+        "launcher": {
+          "open": true,
+          "holder": "this_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":83,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"a\"}}",
+      "expect": {
+        "error": "keyboard_grabbed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "084-launcher-focus-moved",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "launcher",
+        "focus": 41,
+        "launcher": {
+          "open": true,
+          "holder": "this_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":84,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"a\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 0,
+          "focused_window_id": 41
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "085-launcher-locked-before-closed",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": true,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":85,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"a\"}}",
+      "expect": {
+        "error": "locked",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "086-launcher-closed-before-grabbed",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "other",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":86,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"a\"}}",
+      "expect": {
+        "error": "launcher_closed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "087-launcher-closed-during-the-second-part",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": [
+          "launcher",
+          "none"
+        ],
+        "focus": 42,
+        "launcher": {
+          "open": [
+            true,
+            false
+          ],
+          "holder": "this_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":87,\"op\":\"input.text\",\"args\":{\"launcher\":true,\"text\":\"bbbbbbbbbbbbbbbbbbbb\"}}",
+      "expect": {
+        "error": "launcher_closed",
+        "detail": {
+          "delivered_chars": 16
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "bbbbbbbbbbbbbbbb"
+      ]
+    },
+    {
+      "name": "090-without-input-text",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":90,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "input.text"
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "091-read-only",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":91,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "092-read-only-before-locked",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": true,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":92,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "093-scope-before-read-only",
+      "scopes": [
+        "state.read"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":93,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "input.text"
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "094-rate-limited",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 0
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":94,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 1000
+          }
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "095-rate-limit-before-args",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 0
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":95,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\n\"}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 1000
+          }
+        }
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "096-uses-the-input-text-bucket",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 0,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":96,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\"}}",
+      "expect": {
+        "result": {
+          "delivered_chars": 1
+        }
+      },
+      "sway": [],
+      "delivered": [
+        "a"
+      ]
+    },
+    {
+      "name": "097-args-before-target",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":97,\"op\":\"input.text\",\"args\":{\"window_id\":999,\"text\":\"a\\n\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "098-target-before-lock",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": true,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":98,\"op\":\"input.text\",\"args\":{\"window_id\":999,\"text\":\"a\"}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "099-args-before-lock",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": true,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":99,\"op\":\"input.text\",\"args\":{\"window_id\":42,\"text\":\"a\\n\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": []
+    },
+    {
+      "name": "100-locked-spec-example",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-01",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": true,
+        "grabber": "none",
+        "focus": 29,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":14,\"op\":\"input.key\",\"args\":{\"window_id\":29,\"key\":\"Return\"}}",
+      "expect": {
+        "error": "locked",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "101-launcher-closed-spec-example",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-01",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 29,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":15,\"op\":\"input.key\",\"args\":{\"launcher\":true,\"key\":\"Return\"}}",
+      "expect": {
+        "error": "launcher_closed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "102-key-Escape",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":102,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Escape\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "103-key-Tab",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":103,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Tab\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "104-key-Return",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":104,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Return\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "105-key-BackSpace",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":105,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "106-key-Delete",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":106,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Delete\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "107-key-Insert",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":107,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Insert\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "108-key-Left",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":108,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Left\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "109-key-Right",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":109,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Right\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "110-key-Up",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":110,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Up\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "111-key-Down",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":111,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Down\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "112-key-Home",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":112,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Home\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "113-key-End",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":113,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"End\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "114-key-Page_Up",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":114,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Page_Up\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "115-key-Page_Down",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":115,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Page_Down\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "116-key-space",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":116,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"space\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "117-key-F1",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":117,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F1\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "118-key-F2",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":118,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F2\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "119-key-F3",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":119,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F3\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "120-key-F4",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":120,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F4\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "121-key-F5",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":121,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F5\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "122-key-F6",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":122,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F6\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "123-key-F7",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":123,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F7\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "124-key-F8",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":124,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F8\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "125-key-F9",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":125,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F9\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "126-key-F10",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":126,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F10\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "127-key-F11",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":127,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F11\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "128-key-F12",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":128,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F12\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "129-key-a",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":129,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "130-key-m",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":130,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"m\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "131-key-z",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":131,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"z\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "132-key-0",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":132,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"0\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "133-key-5",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":133,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"5\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "134-key-9",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":134,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"9\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "140-ctrl-c",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":140,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":[\"ctrl\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "141-ctrl-shift-t",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":141,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"t\",\"modifiers\":[\"ctrl\",\"shift\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "142-super-return",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":142,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Return\",\"modifiers\":[\"super\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "143-alt-tab",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":143,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Tab\",\"modifiers\":[\"alt\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "144-ctrl-alt-delete",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":144,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Delete\",\"modifiers\":[\"ctrl\",\"alt\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "145-ctrl-f2",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":145,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F2\",\"modifiers\":[\"ctrl\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "146-alt-f2",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":146,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F2\",\"modifiers\":[\"alt\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "147-ctrl-alt-digit",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":147,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"2\",\"modifiers\":[\"ctrl\",\"alt\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "148-every-modifier",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":148,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\",\"modifiers\":[\"ctrl\",\"alt\",\"shift\",\"super\"]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "149-no-modifiers",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":149,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\",\"modifiers\":[]}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "150-ctrl-alt-f2",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":150,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F2\",\"modifiers\":[\"ctrl\",\"alt\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "151-alt-ctrl-f1",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":151,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F1\",\"modifiers\":[\"alt\",\"ctrl\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "152-ctrl-alt-shift-f12",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":152,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F12\",\"modifiers\":[\"ctrl\",\"alt\",\"shift\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "153-ctrl-alt-super-f7",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":153,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F7\",\"modifiers\":[\"super\",\"ctrl\",\"alt\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "154-duplicate-modifier",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":154,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":[\"ctrl\",\"ctrl\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "155-unknown-modifier",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":155,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":[\"meta\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "156-modifier-wrong-case",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":156,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":[\"Ctrl\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "157-modifier-long-name",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":157,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":[\"control\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "158-modifiers-null",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":158,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "159-modifiers-a-string",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":159,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":\"ctrl\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "160-modifier-a-number",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":160,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"c\",\"modifiers\":[1]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "161-key-uppercase-letter",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":161,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"A\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "162-key-lowercase-return",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":162,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"return\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "163-key-enter",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":163,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Enter\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "164-key-f13",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":164,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F13\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "165-key-f0",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":165,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F0\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "166-key-f01",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":166,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F01\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "167-key-vt-switch",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":167,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"XF86Switch_VT_1\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "168-key-terminate-server",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":168,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Terminate_Server\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "169-key-ungrab",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":169,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"XF86Ungrab\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "170-key-modifier-as-key",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":170,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"ctrl\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "171-key-super-as-key",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":171,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Super_L\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "172-key-empty",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":172,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "173-key-two-letters",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":173,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"ab\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "174-key-latin-1-letter",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":174,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"é\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "175-key-space-character",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":175,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\" \"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "176-key-trailing-space",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":176,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Escape \"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "177-key-keypad-enter",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":177,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"KP_Enter\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "178-key-keysym-number",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":178,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"0xff0d\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "180-key-null",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":180,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "181-key-a-number",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":181,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":13}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "182-key-missing",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":182,\"op\":\"input.key\",\"args\":{\"window_id\":42}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "185-repeat-1",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":185,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\",\"repeat\":1}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "186-repeat-32",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":186,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\",\"repeat\":32}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 32
+    },
+    {
+      "name": "187-repeat-0",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":187,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\",\"repeat\":0}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "188-repeat-33",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":188,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\",\"repeat\":33}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "189-repeat-string",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":189,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\",\"repeat\":\"2\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "190-repeat-null",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":190,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\",\"repeat\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "191-repeat-with-fraction",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":191,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"BackSpace\",\"repeat\":2.5}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "195-both-targets",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":195,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"launcher\":true,\"key\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "196-no-target",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":196,\"op\":\"input.key\",\"args\":{\"key\":\"a\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "197-unknown-window",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":197,\"op\":\"input.key\",\"args\":{\"window_id\":999,\"key\":\"a\"}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "198-window-not-focused",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":198,\"op\":\"input.key\",\"args\":{\"window_id\":41,\"key\":\"Return\"}}",
+      "expect": {
+        "error": "focus_changed",
+        "detail": {
+          "delivered_chars": 0,
+          "focused_window_id": 42
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "199-lock-state-unknown",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": null,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":199,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Return\"}}",
+      "expect": {
+        "error": "locked",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "200-keyboard-grabbed",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "other",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":200,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"Return\"}}",
+      "expect": {
+        "error": "keyboard_grabbed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "201-escape-to-own-launcher",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "launcher",
+        "focus": 42,
+        "launcher": {
+          "open": true,
+          "holder": "this_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":201,\"op\":\"input.key\",\"args\":{\"launcher\":true,\"key\":\"Escape\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "202-return-to-launcher-of-another-device",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "launcher",
+        "focus": 42,
+        "launcher": {
+          "open": true,
+          "holder": "other_device",
+          "focus_window_id": 42
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":202,\"op\":\"input.key\",\"args\":{\"launcher\":true,\"key\":\"Return\"}}",
+      "expect": {
+        "error": "launcher_closed",
+        "detail": {
+          "delivered_chars": 0
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "205-without-input-keys",
+      "scopes": [
+        "state.read",
+        "input.text"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":205,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\"}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "input.keys"
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "206-read-only",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":206,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\"}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "207-rate-limited",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 0,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":207,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\"}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 100
+          }
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "208-rate-limit-before-args",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 0,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":208,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"F2\",\"modifiers\":[\"ctrl\",\"alt\"]}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 100
+          }
+        }
+      },
+      "sway": [],
+      "delivered": 0
+    },
+    {
+      "name": "209-uses-the-input-bucket",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 0
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":209,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\"}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    },
+    {
+      "name": "210-unknown-member-ignored",
+      "scopes": [
+        "state.read",
+        "input.keys"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "buckets": {
+        "input": 20,
+        "input_text": 4
+      },
+      "guard": {
+        "locked": false,
+        "grabber": "none",
+        "focus": 42,
+        "launcher": {
+          "open": false,
+          "holder": null,
+          "focus_window_id": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":210,\"op\":\"input.key\",\"args\":{\"window_id\":42,\"key\":\"a\",\"hold_ms\":5000}}",
+      "expect": {
+        "result": {}
+      },
+      "sway": [],
+      "delivered": 1
+    }
+  ],
+  "results": [
+    {
+      "name": "01-text-delivered",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":13,\"ok\":true,\"result\":{\"delivered_chars\":18}}",
+      "expect": "ok"
+    },
+    {
+      "name": "02-text-unknown-member",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":2,\"ok\":true,\"result\":{\"delivered_chars\":1,\"parts\":1}}",
+      "expect": "ok"
+    },
+    {
+      "name": "03-text-delivered-missing",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":3,\"ok\":true,\"result\":{}}",
+      "expect": "bad"
+    },
+    {
+      "name": "04-text-delivered-string",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":4,\"ok\":true,\"result\":{\"delivered_chars\":\"18\"}}",
+      "expect": "bad"
+    },
+    {
+      "name": "05-text-delivered-negative",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":5,\"ok\":true,\"result\":{\"delivered_chars\":-1}}",
+      "expect": "bad"
+    },
+    {
+      "name": "06-text-delivered-null",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":6,\"ok\":true,\"result\":{\"delivered_chars\":null}}",
+      "expect": "bad"
+    },
+    {
+      "name": "07-key-empty-result",
+      "op": "input.key",
+      "payload": "{\"type\":\"res\",\"id\":7,\"ok\":true,\"result\":{}}",
+      "expect": "ok"
+    },
+    {
+      "name": "08-key-unknown-member",
+      "op": "input.key",
+      "payload": "{\"type\":\"res\",\"id\":8,\"ok\":true,\"result\":{\"presses\":1}}",
+      "expect": "ok"
+    }
+  ],
+  "errors": [
+    {
+      "name": "01-focus-changed-spec-example",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":13,\"ok\":false,\"error\":{\"code\":\"focus_changed\",\"message\":\"focus moved\",\"detail\":{\"delivered_chars\":16,\"focused_window_id\":24}}}",
+      "expect": {
+        "code": "focus_changed",
+        "delivered_chars": 16,
+        "focused_window_id": 24
+      }
+    },
+    {
+      "name": "02-locked-spec-example",
+      "op": "input.key",
+      "payload": "{\"type\":\"res\",\"id\":14,\"ok\":false,\"error\":{\"code\":\"locked\",\"message\":\"screen is locked\",\"detail\":{\"delivered_chars\":0}}}",
+      "expect": {
+        "code": "locked",
+        "delivered_chars": 0
+      }
+    },
+    {
+      "name": "03-launcher-closed-spec-example",
+      "op": "input.key",
+      "payload": "{\"type\":\"res\",\"id\":15,\"ok\":false,\"error\":{\"code\":\"launcher_closed\",\"message\":\"launcher is not running\",\"detail\":{\"delivered_chars\":0}}}",
+      "expect": {
+        "code": "launcher_closed",
+        "delivered_chars": 0
+      }
+    },
+    {
+      "name": "04-keyboard-grabbed",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":16,\"ok\":false,\"error\":{\"code\":\"keyboard_grabbed\",\"message\":\"another surface has the keyboard\",\"detail\":{\"delivered_chars\":32}}}",
+      "expect": {
+        "code": "keyboard_grabbed",
+        "delivered_chars": 32
+      }
+    },
+    {
+      "name": "05-focus-changed-to-nothing",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":17,\"ok\":false,\"error\":{\"code\":\"focus_changed\",\"message\":\"focus moved\",\"detail\":{\"delivered_chars\":0,\"focused_window_id\":null}}}",
+      "expect": {
+        "code": "focus_changed",
+        "delivered_chars": 0,
+        "focused_window_id": null
+      }
+    },
+    {
+      "name": "06-unknown-detail-member",
+      "op": "input.text",
+      "payload": "{\"type\":\"res\",\"id\":18,\"ok\":false,\"error\":{\"code\":\"locked\",\"message\":\"screen is locked\",\"detail\":{\"delivered_chars\":4,\"since_ms\":10}}}",
+      "expect": {
+        "code": "locked",
+        "delivered_chars": 4
+      }
+    }
+  ]
+}

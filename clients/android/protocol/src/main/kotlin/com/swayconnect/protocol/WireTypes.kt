@@ -13,8 +13,9 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.booleanOrNull
 
-private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
+internal const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
 private val INTEGER_LITERAL = Regex("-?(0|[1-9][0-9]*)")
 
 /** Throws the exception [Wire.decode] turns into [MalformedMessageException]. */
@@ -49,6 +50,19 @@ object WireInt : StrictIntegerSerializer("com.swayconnect.protocol.WireInt", 0..
 
 /** Type `sint`: -(2^53 - 1) to 2^53 - 1. */
 object WireSint : StrictIntegerSerializer("com.swayconnect.protocol.WireSint", -MAX_SAFE_INTEGER..MAX_SAFE_INTEGER)
+
+/** Type `bool`: the literals `true` and `false`. Decoding from a JSON tree would also take the strings "true" and "false". */
+object WireBool : KSerializer<Boolean> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("com.swayconnect.protocol.WireBool", PrimitiveKind.BOOLEAN)
+
+    override fun deserialize(decoder: Decoder): Boolean {
+        val literal = decoder.decodePrimitive()
+        wireRequire(!literal.isString) { "expected a boolean" }
+        return literal.booleanOrNull ?: throw SerializationException("expected a boolean")
+    }
+
+    override fun serialize(encoder: Encoder, value: Boolean) = encoder.encodeBoolean(value)
+}
 
 /** A closed string enum whose unknown values map to [fallback] (docs/PROTOCOL.md 17.1 rule 3). */
 abstract class FallbackEnumSerializer<T : Enum<T>>(

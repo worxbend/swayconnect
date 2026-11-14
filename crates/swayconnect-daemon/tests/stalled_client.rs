@@ -10,15 +10,19 @@ use std::time::Duration;
 
 use serde_json::json;
 use support::wire::{self, Wire};
+use swayconnect_daemon::audit::{AuditLog, audit_file};
 use swayconnect_daemon::config::Config;
+use swayconnect_daemon::daemon::controls::{self, HostParts};
+use swayconnect_daemon::daemon::services::{self, ServiceHost};
 use swayconnect_daemon::paths::Paths;
+use swayconnect_daemon::proc::{ChildEnv, RealRunner};
 use swayconnect_daemon::security::Security;
 use swayconnect_daemon::session::{Shared, serve};
 use swayconnect_daemon::sway_handle::{Published, SwayHandle};
 use swayconnect_protocol::proof::device_key;
 use swayconnect_protocol::{Desktop, DeviceId, JsonObject, Scope, SwayStatus, Window};
 use swayconnect_sway::SwayTarget;
-use swayconnect_testkit::TestDirs;
+use swayconnect_testkit::{TestDirs, nonexistent_programs};
 use tokio::io::DuplexStream;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
@@ -75,29 +79,49 @@ fn rev_of(frame: &JsonObject) -> Option<u64> {
 }
 
 impl Bench {
-    fn start() -> Bench {
+    async fn start() -> Bench {
         let dirs = TestDirs::new();
         let paths = Paths {
             config_file: dirs.config_file(),
             data_dir: dirs.data_dir(),
             runtime_dir: dirs.runtime_dir(),
         };
-        let config = Config::from_toml("").expect("config");
+        // Every program path is one that does not exist, so no service reaches the desktop.
+        let config = Config::from_toml(&nonexistent_programs()).expect("config");
         let security = Security::open(&config, &paths).expect("security");
         let (desktop, desktop_reader) = watch::channel(published(1));
         let (shutdown, shutdown_reader) = watch::channel(false);
+        // No sway here: a supervisor that is told to stop at once refuses every action.
+        let sway = Arc::new(SwayHandle::spawn(
+            SwayTarget::Explicit(dirs.sway_socket()),
+            watch::channel(true).1,
+        ));
+        // No request here starts a program.
+        let host = HostParts {
+            runner: Arc::new(RealRunner::new(ChildEnv::default())),
+            proc_root: dirs.data_dir().join("proc"),
+        };
+        let uid = rustix::process::getuid().as_raw();
+        let audit = AuditLog::open(&audit_file(&paths), uid).expect("audit log");
+        let controls = controls::start(&config, host, &sway, audit, &shutdown_reader);
+        let service_host = ServiceHost::offline(
+            Arc::new(RealRunner::new(ChildEnv::default())),
+            dirs.data_dir().join("proc"),
+            SwayTarget::Explicit(dirs.sway_socket()),
+        );
+        let services = services::start(&config, service_host, &shutdown_reader)
+            .await
+            .expect("services");
         let shared = Shared {
             security,
             desktop: desktop_reader,
-            // No sway here: a supervisor that is told to stop at once refuses every action.
-            sway: Arc::new(SwayHandle::spawn(
-                SwayTarget::Explicit(dirs.sway_socket()),
-                watch::channel(true).1,
-            )),
+            sway,
             server_name: Arc::from("desk"),
             read_only: Arc::new(AtomicBool::new(false)),
             shutdown: shutdown_reader,
             icons: None,
+            controls,
+            services,
         };
         Bench {
             _dirs: dirs,
@@ -157,7 +181,7 @@ impl Bench {
 
 #[tokio::test(start_paused = true)]
 async fn a_revoke_during_a_stalled_write_closes_the_session_within_the_write_timeout() {
-    let bench = Bench::start();
+    let bench = Bench::start().await;
     let device = bench.paired_device().await;
     let (mut client, session) = bench.subscriber(&device).await;
 
@@ -178,7 +202,7 @@ async fn a_revoke_during_a_stalled_write_closes_the_session_within_the_write_tim
 
 #[tokio::test]
 async fn a_stalled_client_gets_the_newest_snapshot_and_none_in_between() {
-    let bench = Bench::start();
+    let bench = Bench::start().await;
     let device = bench.paired_device().await;
     let (mut client, _session) = bench.subscriber(&device).await;
 

@@ -1,0 +1,53 @@
+[
+ {
+  "index": 20,
+  "name": "alsa_output.pci-0000_01_00.1.hdmi-stereo.monitor",
+  "description": "Monitor by class",
+  "properties": {
+   "device.class": "monitor"
+  },
+  "monitor_source": ""
+ },
+ {
+  "index": 21,
+  "name": "pulse_style.monitor",
+  "description": "Monitor by monitor_of_sink",
+  "monitor_of_sink": "pulse_style"
+ },
+ {
+  "index": 22,
+  "name": "pulse_style_input",
+  "description": "PulseAudio input",
+  "monitor_of_sink": "n/a",
+  "properties": {
+   "device.api": "alsa"
+  },
+  "volume": {
+   "mono": {
+    "value": 39322
+   }
+  },
+  "mute": true
+ },
+ {
+  "index": 23,
+  "name": "alsa_input.usb-Blue_Yeti-00.analog-stereo",
+  "description": "Yeti Stereo Microphone",
+  "monitor_source": "",
+  "properties": {
+   "device.bus": "usb",
+   "device.api": "alsa"
+  },
+  "volume": {
+   "front-left": {
+    "value": 52429
+   }
+  }
+ },
+ {
+  "index": 24,
+  "name": "-mic",
+  "description": "Dropped: leading dash"
+ },
+ "not an object"
+]

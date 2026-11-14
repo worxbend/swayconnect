@@ -1,6 +1,5 @@
 package com.swayconnect.android.ui.shell
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -8,8 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,16 +26,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import com.swayconnect.android.R
+import com.swayconnect.android.ui.common.LockedFeatureContent
 import com.swayconnect.android.ui.common.PillTone
 import com.swayconnect.android.ui.common.StatePill
+import com.swayconnect.android.ui.more.idleInhibitSentence
 import com.swayconnect.android.ui.state.ConnectionStatus
 import com.swayconnect.android.ui.state.Sheet
 import com.swayconnect.android.ui.state.UiState
 import com.swayconnect.android.ui.theme.SwayIcons
+import com.swayconnect.protocol.KeepAwake
 
 /** What the shell's own sheets can ask for. The area sheets (window, workspace, ...) belong to their areas. */
 internal class ShellSheetActions(
@@ -60,7 +59,7 @@ internal fun ShellSheet(state: UiState, actions: ShellSheetActions) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when (sheet) {
-                is Sheet.Locked -> LockedContent(sheet.scope, state.server?.devicePrefix)
+                is Sheet.Locked -> LockedContent(sheet.scope, state.server?.devicePrefix, state.session?.state?.keepAwake)
                 else -> ComputerContent(state, actions)
             }
         }
@@ -68,30 +67,13 @@ internal fun ShellSheet(state: UiState, actions: ShellSheetActions) {
 }
 
 @Composable
-private fun LockedContent(scope: String, devicePrefix: String?) {
-    Text(stringResource(R.string.locked_title), style = MaterialTheme.typography.titleMedium)
-    Text(stringResource(scopeSentence(scope)), style = MaterialTheme.typography.bodyMedium)
-    Text(stringResource(R.string.locked_run), style = MaterialTheme.typography.bodyMedium)
-    SelectionContainer {
-        Text(
-            text = if (devicePrefix != null) {
-                stringResource(R.string.locked_command, devicePrefix, scope)
-            } else {
-                stringResource(R.string.locked_command_unknown_id, scope)
-            },
-            fontFamily = FontFamily.Monospace,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(12.dp))
-                .padding(12.dp),
-        )
-    }
-    if (devicePrefix == null) {
-        Text(stringResource(R.string.locked_device_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    Text(stringResource(R.string.locked_reconnects), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun LockedContent(scope: String, devicePrefix: String?, keepAwake: KeepAwake?) {
+    val sentence = if (scope == IDLE_INHIBIT) idleInhibitSentence(keepAwake) else stringResource(scopeSentence(scope))
+    LockedFeatureContent(scope, devicePrefix, sentence)
 }
+
+/** Its sentence names the server's keep-awake limits from topic `session` (UX 10.5). */
+private const val IDLE_INHIBIT = "idle.inhibit"
 
 /** One honest sentence per scope (UX 10.5). */
 private fun scopeSentence(scope: String): Int =
@@ -100,7 +82,7 @@ private fun scopeSentence(scope: String): Int =
         "audio" -> R.string.scope_audio
         "audio.capture" -> R.string.scope_audio_capture
         "media" -> R.string.scope_media
-        "idle.inhibit" -> R.string.scope_idle_inhibit
+        IDLE_INHIBIT -> R.string.scope_idle_inhibit
         "launch" -> R.string.scope_launch
         "launch.risky" -> R.string.scope_launch_risky
         "input.text", "input.keys" -> R.string.scope_input

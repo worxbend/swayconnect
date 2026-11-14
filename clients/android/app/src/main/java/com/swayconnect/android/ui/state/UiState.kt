@@ -108,7 +108,50 @@ data class UiState(
     val followFocusChip: Long? = null,
     /** "Larger text · Show list" was used or closed; in memory until a settings store exists (UX 15). */
     val listHintDismissed: Boolean = false,
+    /** Topic `session` (keep awake, lock state); null while the server offers it not or sent none yet. */
+    val session: SessionView? = null,
+    /** Monotonic time of the newest countdown tick; [keepAwake] counts the [session] deadlines against it. */
+    val clockMs: Long = 0,
+    /** Topic `audio`; null while the server offers it not or sent none yet. */
+    val audio: AudioView? = null,
+    /** Topic `media`; null while the server offers it not or sent none yet. */
+    val media: MediaView? = null,
+    /** Topic `apps`; null while the server offers it not or sent none yet. */
+    val apps: AppsView? = null,
+    /** The Keys area's target and modifiers; null while another area is shown (docs/UX.md 9.2). */
+    val keys: KeysView? = null,
+    /** The device, player, launch or typing whose action waits for its answer. Its ids never mix with [pendingTargetId]. */
+    val pendingControl: PendingControl? = null,
+    /** The ghost tile of an app that was started and has no window yet (docs/UX.md 8.2). */
+    val pendingLaunch: PendingLaunch? = null,
 )
+
+/**
+ * The spinner keys of the M2b areas. Device and player ids come from other topics than sway ids, so they could equal a
+ * window id: they live here and not in [UiState.pendingTargetId].
+ */
+sealed interface PendingControl {
+    data class Device(val id: Long) : PendingControl
+
+    data class Player(val id: Long) : PendingControl
+
+    /** `app.launch` of [entryId]. */
+    data class Launch(val entryId: String) : PendingControl
+
+    /** `launcher.open`. */
+    data object Launcher : PendingControl
+
+    /** `input.text`, `input.key`, and the `window.focus` of "Back to …" in the Keys area. */
+    data object Typing : PendingControl
+}
+
+/**
+ * Ids for [UiState.pendingTargetId] of the actions that have no window or workspace. Sway ids are never negative.
+ */
+object ServerTarget {
+    const val KEEP_AWAKE = -1L
+    const val LOCK = -2L
+}
 
 /** The pages of the pager, one per workspace, in sway's order. */
 val UiState.pages: List<Workspace>

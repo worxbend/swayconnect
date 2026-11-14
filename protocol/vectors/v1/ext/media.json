@@ -1,0 +1,2351 @@
+{
+  "server_states": {
+    "main": {
+      "state": {
+        "players": [
+          {
+            "id": 1,
+            "name": "Mozilla Firefox",
+            "app_id": "firefox",
+            "icon": "v8eAHOoT_2NcDbP_frSduA",
+            "status": "playing",
+            "title": "Lo-fi beats to code to",
+            "artist": "Lofi Girl",
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "id": 2,
+            "name": "Spotify",
+            "app_id": "spotify",
+            "icon": null,
+            "status": "paused",
+            "title": "Clair de Lune",
+            "artist": "Claude Debussy",
+            "album": "Suite bergamasque",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": false,
+            "can_previous": false
+          },
+          {
+            "id": 3,
+            "name": "mpv",
+            "app_id": "mpv",
+            "icon": null,
+            "status": "stopped",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": false,
+            "can_pause": false,
+            "can_next": false,
+            "can_previous": false
+          }
+        ],
+        "active_player_id": 1,
+        "truncated": false
+      },
+      "buses": {
+        "1": "org.mpris.MediaPlayer2.firefox.instance_1_42",
+        "2": "org.mpris.MediaPlayer2.spotify",
+        "3": "org.mpris.MediaPlayer2.mpv"
+      }
+    },
+    "empty": {
+      "state": {
+        "players": [],
+        "active_player_id": null,
+        "truncated": false
+      },
+      "buses": {}
+    }
+  },
+  "states": [
+    {
+      "name": "01-three-players",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":6,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "02-no-players",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[],\"active_player_id\":null,\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "03-titles-withheld",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "04-album-cleaned-by-the-server",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Live��[31m\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "05-sixteen-players-truncated",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Player 1\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":2,\"name\":\"Player 2\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"Player 3\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":4,\"name\":\"Player 4\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":5,\"name\":\"Player 5\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":6,\"name\":\"Player 6\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":7,\"name\":\"Player 7\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":8,\"name\":\"Player 8\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":9,\"name\":\"Player 9\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":10,\"name\":\"Player 10\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":11,\"name\":\"Player 11\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":12,\"name\":\"Player 12\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":13,\"name\":\"Player 13\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":14,\"name\":\"Player 14\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":15,\"name\":\"Player 15\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":16,\"name\":\"Player 16\",\"app_id\":null,\"icon\":null,\"status\":\"paused\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":16,\"truncated\":true}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "06-no-active-player",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":null,\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "10-unknown-status-is-stopped",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"buffering\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": {
+        "normalized": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"stopped\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}"
+      }
+    },
+    {
+      "name": "11-unknown-members-ignored",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true,\"position_us\":1234,\"art_url\":\"file:///tmp/cover.png\"},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false,\"shuffle\":false}}}",
+      "expect": {
+        "normalized": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}"
+      }
+    },
+    {
+      "name": "20-players-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "21-players-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":null,\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "22-active-player-string",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":\"1\",\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "23-active-player-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "24-truncated-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "25-player-id-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "26-player-id-negative",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":-2,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "27-name-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":null,\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "28-app-id-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "29-icon-a-number",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":7,\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "30-status-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":null,\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "31-title-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "32-album-a-number",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":1,\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "33-can-play-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "34-can-next-string",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":\"yes\",\"can_previous\":true},{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "35-player-id-with-fraction",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[{\"id\":1,\"name\":\"Mozilla Firefox\",\"app_id\":\"firefox\",\"icon\":\"v8eAHOoT_2NcDbP_frSduA\",\"status\":\"playing\",\"title\":\"Lo-fi beats to code to\",\"artist\":\"Lofi Girl\",\"album\":null,\"can_play\":true,\"can_pause\":true,\"can_next\":true,\"can_previous\":true},{\"id\":2.0,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "36-player-not-an-object",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"media\",\"rev\":1,\"data\":{\"players\":[\"Firefox\",{\"id\":2,\"name\":\"Spotify\",\"app_id\":\"spotify\",\"icon\":null,\"status\":\"paused\",\"title\":\"Clair de Lune\",\"artist\":\"Claude Debussy\",\"album\":\"Suite bergamasque\",\"can_play\":true,\"can_pause\":true,\"can_next\":false,\"can_previous\":false},{\"id\":3,\"name\":\"mpv\",\"app_id\":\"mpv\",\"icon\":null,\"status\":\"stopped\",\"title\":null,\"artist\":null,\"album\":null,\"can_play\":false,\"can_pause\":false,\"can_next\":false,\"can_previous\":false}],\"active_player_id\":1,\"truncated\":false}}}",
+      "expect": "bad"
+    }
+  ],
+  "server": [
+    {
+      "name": "01-album-with-rlo-and-esc",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.spotify",
+          "identity": "Spotify",
+          "desktop_entry": "spotify",
+          "status": "Playing",
+          "title": "Track",
+          "artist": "Artist",
+          "album": "Live\u202e\u001b[31m",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 1
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Spotify",
+            "app_id": "spotify",
+            "status": "playing",
+            "title": "Track",
+            "artist": "Artist",
+            "album": "Live��[31m",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "02-every-string-member-cleaned",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "identity": "Fire\u200bfox\u009b",
+          "desktop_entry": "firefox\u0007",
+          "status": "Paused",
+          "title": "Song \udb40\udc41\udb40\udc42 title",
+          "artist": "\u2066Artist\u2069",
+          "album": "A\u00adB\ufeff",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 3
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Fire�fox�",
+            "app_id": "firefox�",
+            "status": "paused",
+            "title": "Song �� title",
+            "artist": "�Artist�",
+            "album": "A�B�",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "03-zero-width-joiner-in-a-title-is-replaced",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.mpv",
+          "identity": "mpv",
+          "desktop_entry": "mpv",
+          "status": "Playing",
+          "title": "👩\u200d💻 live coding",
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 1
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "mpv",
+            "app_id": "mpv",
+            "status": "playing",
+            "title": "👩�💻 live coding",
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "04-replace-then-cut-to-scalar-values",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.spotify",
+          "identity": "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+          "desktop_entry": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "status": "Paused",
+          "title": "\u001baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "artist": "жжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж",
+          "album": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 1
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+            "app_id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "status": "paused",
+            "title": "�aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "artist": "жжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж",
+            "album": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "05-titles-withheld-without-state-titles",
+      "scopes": [
+        "state.read",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "identity": "Mozilla Firefox",
+          "desktop_entry": "firefox",
+          "status": "Playing",
+          "title": "Video",
+          "artist": "Channel",
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 5
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.spotify",
+          "identity": "Spotify",
+          "desktop_entry": "spotify",
+          "status": "Paused",
+          "title": "Song",
+          "artist": "Band",
+          "album": "Record",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": false,
+          "can_go_previous": false,
+          "last_playing": 2
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Mozilla Firefox",
+            "app_id": "firefox",
+            "status": "playing",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Spotify",
+            "app_id": "spotify",
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": false,
+            "can_previous": false
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "06-playerctld-skipped",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.playerctld",
+          "identity": "playerctld",
+          "desktop_entry": null,
+          "status": "Playing",
+          "title": "Video",
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 9
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "identity": "Mozilla Firefox",
+          "desktop_entry": "firefox",
+          "status": "Playing",
+          "title": "Video",
+          "artist": "Channel",
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 5
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.spotify",
+          "identity": "Spotify",
+          "desktop_entry": "spotify",
+          "status": "Paused",
+          "title": "Song",
+          "artist": "Band",
+          "album": "Record",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": false,
+          "can_go_previous": false,
+          "last_playing": 2
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Mozilla Firefox",
+            "app_id": "firefox",
+            "status": "playing",
+            "title": "Video",
+            "artist": "Channel",
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Spotify",
+            "app_id": "spotify",
+            "status": "paused",
+            "title": "Song",
+            "artist": "Band",
+            "album": "Record",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": false,
+            "can_previous": false
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "07-active-is-the-last-that-played",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "identity": "Mozilla Firefox",
+          "desktop_entry": "firefox",
+          "status": "Playing",
+          "title": "Video",
+          "artist": "Channel",
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 5
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.spotify",
+          "identity": "Spotify",
+          "desktop_entry": "spotify",
+          "status": "Paused",
+          "title": "Song",
+          "artist": "Band",
+          "album": "Record",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": false,
+          "can_go_previous": false,
+          "last_playing": 2
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.spotify",
+          "identity": "Spotify",
+          "desktop_entry": "spotify",
+          "status": "Playing",
+          "title": "Track",
+          "artist": "Artist",
+          "album": "Live\u202e\u001b[31m",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 1
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Mozilla Firefox",
+            "app_id": "firefox",
+            "status": "playing",
+            "title": "Video",
+            "artist": "Channel",
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Spotify",
+            "app_id": "spotify",
+            "status": "paused",
+            "title": "Song",
+            "artist": "Band",
+            "album": "Record",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": false,
+            "can_previous": false
+          },
+          {
+            "name": "Spotify",
+            "app_id": "spotify",
+            "status": "playing",
+            "title": "Track",
+            "artist": "Artist",
+            "album": "Live��[31m",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "08-active-follows-last-playing-not-status",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "identity": "Mozilla Firefox",
+          "desktop_entry": "firefox",
+          "status": "Playing",
+          "title": "Video",
+          "artist": "Channel",
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 5
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.spotify",
+          "identity": "Spotify",
+          "desktop_entry": "spotify",
+          "status": "Paused",
+          "title": "Song",
+          "artist": "Band",
+          "album": "Record",
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": false,
+          "can_go_previous": false,
+          "last_playing": 7
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Mozilla Firefox",
+            "app_id": "firefox",
+            "status": "playing",
+            "title": "Video",
+            "artist": "Channel",
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Spotify",
+            "app_id": "spotify",
+            "status": "paused",
+            "title": "Song",
+            "artist": "Band",
+            "album": "Record",
+            "can_play": true,
+            "can_pause": true,
+            "can_next": false,
+            "can_previous": false
+          }
+        ],
+        "active": 1,
+        "truncated": false
+      }
+    },
+    {
+      "name": "09-status-mapping",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.p1",
+          "identity": "P1",
+          "desktop_entry": null,
+          "status": "Playing",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 1
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.p2",
+          "identity": "P2",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 2
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.p3",
+          "identity": "P3",
+          "desktop_entry": null,
+          "status": "Stopped",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 3
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "P1",
+            "app_id": null,
+            "status": "playing",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "P2",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "P3",
+            "app_id": null,
+            "status": "stopped",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 2,
+        "truncated": false
+      }
+    },
+    {
+      "name": "10-cap-16-keeps-the-active-player",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.playerctld",
+          "identity": "playerctld",
+          "desktop_entry": null,
+          "status": "Playing",
+          "title": "Video",
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 9
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player01",
+          "identity": "Player 01",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player02",
+          "identity": "Player 02",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player03",
+          "identity": "Player 03",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player04",
+          "identity": "Player 04",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player05",
+          "identity": "Player 05",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player06",
+          "identity": "Player 06",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player07",
+          "identity": "Player 07",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player08",
+          "identity": "Player 08",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player09",
+          "identity": "Player 09",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player10",
+          "identity": "Player 10",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player11",
+          "identity": "Player 11",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player12",
+          "identity": "Player 12",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player13",
+          "identity": "Player 13",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player14",
+          "identity": "Player 14",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player15",
+          "identity": "Player 15",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player16",
+          "identity": "Player 16",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player17",
+          "identity": "Player 17",
+          "desktop_entry": null,
+          "status": "Playing",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 4
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Player 01",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 02",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 03",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 04",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 05",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 06",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 07",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 08",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 09",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 10",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 11",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 12",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 13",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 14",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 15",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 17",
+            "app_id": null,
+            "status": "playing",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 15,
+        "truncated": true
+      }
+    },
+    {
+      "name": "11-sixteen-players-are-not-cut",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "players": [
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player01",
+          "identity": "Player 01",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": 1
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player02",
+          "identity": "Player 02",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player03",
+          "identity": "Player 03",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player04",
+          "identity": "Player 04",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player05",
+          "identity": "Player 05",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player06",
+          "identity": "Player 06",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player07",
+          "identity": "Player 07",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player08",
+          "identity": "Player 08",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player09",
+          "identity": "Player 09",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player10",
+          "identity": "Player 10",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player11",
+          "identity": "Player 11",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player12",
+          "identity": "Player 12",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player13",
+          "identity": "Player 13",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player14",
+          "identity": "Player 14",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player15",
+          "identity": "Player 15",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        },
+        {
+          "bus_name": "org.mpris.MediaPlayer2.player16",
+          "identity": "Player 16",
+          "desktop_entry": null,
+          "status": "Paused",
+          "title": null,
+          "artist": null,
+          "album": null,
+          "can_play": true,
+          "can_pause": true,
+          "can_go_next": true,
+          "can_go_previous": true,
+          "last_playing": null
+        }
+      ],
+      "expect": {
+        "players": [
+          {
+            "name": "Player 01",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 02",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 03",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 04",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 05",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 06",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 07",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 08",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 09",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 10",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 11",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 12",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 13",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 14",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 15",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          },
+          {
+            "name": "Player 16",
+            "app_id": null,
+            "status": "paused",
+            "title": null,
+            "artist": null,
+            "album": null,
+            "can_play": true,
+            "can_pause": true,
+            "can_next": true,
+            "can_previous": true
+          }
+        ],
+        "active": 0,
+        "truncated": false
+      }
+    }
+  ],
+  "requests": [
+    {
+      "name": "01-play-pause",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":1,\"op\":\"media.play_pause\",\"args\":{\"player_id\":1}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "PlayPause"
+        ]
+      ]
+    },
+    {
+      "name": "02-next",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":2,\"op\":\"media.next\",\"args\":{\"player_id\":1}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "Next"
+        ]
+      ]
+    },
+    {
+      "name": "03-previous",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":3,\"op\":\"media.previous\",\"args\":{\"player_id\":1}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "Previous"
+        ]
+      ]
+    },
+    {
+      "name": "04-play-pause-a-paused-player",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":4,\"op\":\"media.play_pause\",\"args\":{\"player_id\":2}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.spotify",
+          "PlayPause"
+        ]
+      ]
+    },
+    {
+      "name": "05-next-not-allowed",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":5,\"op\":\"media.next\",\"args\":{\"player_id\":2}}",
+      "expect": {
+        "error": "unsupported_target"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "06-previous-not-allowed",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":6,\"op\":\"media.previous\",\"args\":{\"player_id\":2}}",
+      "expect": {
+        "error": "unsupported_target"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "07-play-pause-not-allowed",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":7,\"op\":\"media.play_pause\",\"args\":{\"player_id\":3}}",
+      "expect": {
+        "error": "unsupported_target"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "08-unknown-player",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":8,\"op\":\"media.play_pause\",\"args\":{\"player_id\":99}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "09-no-players",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "empty",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":9,\"op\":\"media.next\",\"args\":{\"player_id\":1}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "10-player-missing",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":10,\"op\":\"media.play_pause\",\"args\":{}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "11-player-string",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":11,\"op\":\"media.play_pause\",\"args\":{\"player_id\":\"1\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "12-player-null",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":12,\"op\":\"media.play_pause\",\"args\":{\"player_id\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "13-player-with-fraction",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":13,\"op\":\"media.play_pause\",\"args\":{\"player_id\":1.0}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "14-player-negative",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":14,\"op\":\"media.play_pause\",\"args\":{\"player_id\":-1}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "15-args-absent",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":15,\"op\":\"media.next\"}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "16-args-not-an-object",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":16,\"op\":\"media.next\",\"args\":[1]}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "17-bus-name-is-not-an-id",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":17,\"op\":\"media.play_pause\",\"args\":{\"player_id\":\"org.mpris.MediaPlayer2.firefox.instance_1_42\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "18-unknown-member-ignored",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":18,\"op\":\"media.next\",\"args\":{\"player_id\":1,\"offset_us\":5000000}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "Next"
+        ]
+      ]
+    },
+    {
+      "name": "19-without-media",
+      "scopes": [
+        "state.read",
+        "state.titles"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":19,\"op\":\"media.play_pause\",\"args\":{\"player_id\":1}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "media"
+        }
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "20-read-only",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":20,\"op\":\"media.play_pause\",\"args\":{\"player_id\":1}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "21-rate-limited",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 0
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":21,\"op\":\"media.next\",\"args\":{\"player_id\":1}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "22-rate-limit-before-args",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 0
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":22,\"op\":\"media.next\",\"args\":{\"player_id\":\"x\"}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "23-player-gone-from-the-bus",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "fails",
+      "payload": "{\"type\":\"req\",\"id\":23,\"op\":\"media.play_pause\",\"args\":{\"player_id\":1}}",
+      "expect": {
+        "error": "backend_unavailable"
+      },
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "PlayPause"
+        ]
+      ]
+    },
+    {
+      "name": "24-player-does-not-answer",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "hangs",
+      "payload": "{\"type\":\"req\",\"id\":24,\"op\":\"media.play_pause\",\"args\":{\"player_id\":1}}",
+      "expect": {
+        "error": "timeout"
+      },
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "PlayPause"
+        ]
+      ]
+    },
+    {
+      "name": "25-not-found-before-unsupported",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":25,\"op\":\"media.next\",\"args\":{\"player_id\":99}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "26-titles-not-needed-for-control",
+      "scopes": [
+        "state.read",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":26,\"op\":\"media.play_pause\",\"args\":{\"player_id\":1}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": [
+        [
+          "org.mpris.MediaPlayer2.firefox.instance_1_42",
+          "PlayPause"
+        ]
+      ]
+    },
+    {
+      "name": "30-subscribe-media",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":30,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"media\"]}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "31-subscribe-media-without-media",
+      "scopes": [
+        "state.read",
+        "state.titles"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":31,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"media\"]}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "media"
+        }
+      },
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "32-subscribe-media-read-only",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "media"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":32,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"media\"]}}",
+      "expect": "ok",
+      "sway": [],
+      "mpris": []
+    },
+    {
+      "name": "33-subscribe-media-needs-state-read",
+      "scopes": [
+        "media"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "media": "main",
+      "buckets": {
+        "actions": 5
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":33,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"media\"]}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "state.read"
+        }
+      },
+      "sway": [],
+      "mpris": []
+    }
+  ],
+  "results": [
+    {
+      "name": "01-play-pause-empty-result",
+      "op": "media.play_pause",
+      "payload": "{\"type\":\"res\",\"id\":1,\"ok\":true,\"result\":{}}",
+      "expect": "ok"
+    },
+    {
+      "name": "02-next-unknown-member",
+      "op": "media.next",
+      "payload": "{\"type\":\"res\",\"id\":2,\"ok\":true,\"result\":{\"queued\":true}}",
+      "expect": "ok"
+    }
+  ]
+}

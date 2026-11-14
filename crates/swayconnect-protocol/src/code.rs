@@ -40,6 +40,20 @@ pub enum ErrorCode {
     SwayError,
     Timeout,
     Internal,
+    /// A server cap applies; `detail.retry_after_ms` (17.15).
+    LimitReached,
+    /// The system service behind the operation is missing or down (17.15).
+    BackendUnavailable,
+    /// The server could not start the program (17.15).
+    SpawnFailed,
+    /// Remote input: the focused window is not the target (17.13, 17.15).
+    FocusChanged,
+    /// Remote input: the screen is locked, or lock state is unknown.
+    Locked,
+    /// Remote input: another surface takes the keyboard.
+    KeyboardGrabbed,
+    /// Remote input: no launcher this device opened is running.
+    LauncherClosed,
     /// A code this version does not know. Decode only; a server never sends it.
     /// The request failed and the client does not retry (spec 13.2 rule 4).
     Unknown,
@@ -58,6 +72,13 @@ wire_names!(ErrorCode {
     SwayError => "sway_error",
     Timeout => "timeout",
     Internal => "internal",
+    LimitReached => "limit_reached",
+    BackendUnavailable => "backend_unavailable",
+    SpawnFailed => "spawn_failed",
+    FocusChanged => "focus_changed",
+    Locked => "locked",
+    KeyboardGrabbed => "keyboard_grabbed",
+    LauncherClosed => "launcher_closed",
     Unknown => "unknown",
 });
 

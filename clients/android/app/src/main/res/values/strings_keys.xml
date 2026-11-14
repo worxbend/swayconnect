@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keys area: target, composer, special keys, shortcuts, refusals (docs/UX.md 9). -->
+<resources>
+    <string name="keys_waiting">Waiting for the computer</string>
+    <string name="keys_none">This computer offers no typing.</string>
+    <string name="keys_text_locked">Typing text is off for this phone. Show how to turn it on</string>
+    <string name="keys_keys_locked">Special keys are off for this phone. Show how to turn it on</string>
+    <string name="keys_read_only">The computer is set to look only.</string>
+
+    <!-- Target card (UX 9.1, 9.2) -->
+    <string name="keys_no_target">Nothing had the focus on the computer, so there is nothing to type into.</string>
+    <string name="keys_target_gone">That window is gone.</string>
+    <string name="keys_target_workspace">ws %1$s</string>
+    <string name="keys_target_workspace_spoken">on workspace %1$s</string>
+    <string name="keys_launcher">Launcher (fuzzel)</string>
+    <string name="keys_terminal">Terminal: Enter runs commands</string>
+    <string name="keys_type_into">Type into %1$s</string>
+
+    <!-- Composer -->
+    <string name="keys_field">Text for the computer</string>
+    <string name="keys_private_field">Private text for the computer</string>
+    <string name="keys_send">Send</string>
+    <string name="keys_sending">typing on the computer</string>
+    <string name="keys_send_return">Send + ⏎</string>
+    <string name="keys_send_return_spoken">Send, then press Enter</string>
+    <string name="keys_send_return_hold_spoken">Send, then press Enter. Hold, because Enter runs commands</string>
+    <string name="keys_confirm_title">Run it on the computer?</string>
+    <string name="keys_confirm_text">In a terminal, Enter runs the text as a command.</string>
+    <string name="keys_confirm_run">Send and press Enter</string>
+    <string name="keys_unsendable">Line breaks, tabs and control characters cannot be typed as text. Remove them, or use the keys below.</string>
+    <string name="keys_private_on">Private mode, on</string>
+    <string name="keys_private_off">Private mode, off</string>
+
+    <!-- Special keys (UX 9.2): visible label, then what TalkBack says -->
+    <string name="key_escape">Esc</string>
+    <string name="key_escape_spoken">Escape</string>
+    <string name="key_tab">Tab</string>
+    <string name="key_ctrl">Ctrl</string>
+    <string name="key_ctrl_spoken">Control</string>
+    <string name="key_alt">Alt</string>
+    <string name="key_super">❖ Super</string>
+    <string name="key_super_spoken">Super, reaches the computer\'s shortcuts</string>
+    <string name="key_left">←</string>
+    <string name="key_left_spoken">Left arrow</string>
+    <string name="key_up">↑</string>
+    <string name="key_up_spoken">Up arrow</string>
+    <string name="key_down">↓</string>
+    <string name="key_down_spoken">Down arrow</string>
+    <string name="key_right">→</string>
+    <string name="key_right_spoken">Right arrow</string>
+    <string name="key_backspace">⌫</string>
+    <string name="key_backspace_spoken">Backspace</string>
+    <string name="key_armed">armed for the next key</string>
+    <string name="key_not_armed">not armed</string>
+
+    <!-- Shortcuts (UX 9.1) -->
+    <string name="shortcut_copy">Copy</string>
+    <string name="shortcut_paste">Paste</string>
+    <string name="shortcut_undo">Undo</string>
+    <string name="shortcut_interrupt">Ctrl+C</string>
+    <string name="shortcut_interrupt_spoken">Control C</string>
+    <string name="shortcut_clear">Ctrl+L</string>
+    <string name="shortcut_clear_spoken">Control L</string>
+
+    <!-- Refusals (UX 9.2) -->
+    <string name="keys_focus_moved">Focus moved to %1$s.</string>
+    <string name="keys_focus_lost">The focus moved away, and no window has it now.</string>
+    <string name="keys_type_there">Type there</string>
+    <string name="keys_back_to">Back to %1$s</string>
+    <plurals name="keys_sent_of">
+        <item quantity="one">Sent %1$d of %2$d character.</item>
+        <item quantity="other">Sent %1$d of %2$d characters.</item>
+    </plurals>
+    <string name="keys_locked">The computer is locked. Typing is off, so nothing reaches the lock screen.</string>
+    <string name="keys_grabbed">A menu or launcher on the computer has the keyboard. Close it or type into the launcher.</string>
+    <string name="keys_launcher_closed">The launcher on the computer is closed.</string>
+    <string name="keys_try_again">Try again</string>
+    <string name="keys_dismiss">OK</string>
+</resources>

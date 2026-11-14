@@ -55,7 +55,7 @@ import com.swayconnect.android.ui.theme.SwayIcons
 internal fun TitleRow(
     title: String,
     status: StatusKind,
-    drivePaused: Boolean,
+    pills: StatusPills,
     gutter: PaddingValues,
     onStatusClick: () -> Unit,
     contextPill: @Composable () -> Unit,
@@ -76,12 +76,20 @@ internal fun TitleRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() },
             )
-            StatusLine(status, drivePaused, onStatusClick)
+            StatusLine(status, pills, onStatusClick)
         }
         contextPill()
         roundButton()
     }
 }
+
+/** The optional pills after the status word (UX 4.1). [onAwakeClick] opens the duration sheet. */
+internal data class StatusPills(
+    val awake: AwakePill?,
+    val typing: Boolean,
+    val drivePaused: Boolean,
+    val onAwakeClick: () -> Unit,
+)
 
 /**
  * Dot + word, then the state pills. Only the dot + word node is a polite live region (UX 15): it changes only
@@ -89,7 +97,7 @@ internal fun TitleRow(
  * 24dp tall; Compose widens the touch area of a clickable that small to the 48dp minimum.
  */
 @Composable
-private fun StatusLine(status: StatusKind, drivePaused: Boolean, onClick: () -> Unit) {
+private fun StatusLine(status: StatusKind, pills: StatusPills, onClick: () -> Unit) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -110,7 +118,17 @@ private fun StatusLine(status: StatusKind, drivePaused: Boolean, onClick: () -> 
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
-        if (drivePaused) StatePill(text = stringResource(R.string.status_drive_paused), tone = PillTone.Neutral)
+        pills.awake?.let { awake ->
+            val text = awake.minutesLeft?.let { stringResource(R.string.status_awake_minutes, it) } ?: stringResource(R.string.status_awake)
+            StatePill(
+                text = text,
+                tone = PillTone.Neutral,
+                icon = SwayIcons.Coffee.filled,
+                modifier = Modifier.clickable(onClickLabel = stringResource(R.string.keep_awake_choose), onClick = pills.onAwakeClick),
+            )
+        }
+        if (pills.typing) StatePill(text = stringResource(R.string.status_typing), tone = PillTone.Neutral, icon = SwayIcons.Keyboard.filled)
+        if (pills.drivePaused) StatePill(text = stringResource(R.string.status_drive_paused), tone = PillTone.Neutral)
     }
 }
 
@@ -121,6 +139,7 @@ private val StatusKind.word: Int
         StatusKind.CheckingKey -> R.string.status_checking_key
         StatusKind.Offline -> R.string.status_offline
         StatusKind.SwayOffline -> R.string.status_sway_offline
+        StatusKind.Locked -> R.string.status_locked
         StatusKind.ScreensOff -> R.string.status_screens_off
         StatusKind.ReadOnly -> R.string.status_read_only
         StatusKind.NotPaired -> R.string.status_not_paired
@@ -149,6 +168,7 @@ private fun StatusDot(status: StatusKind) {
             drawLine(muted, Offset(inset, inset), Offset(far, far), stroke)
             drawLine(muted, Offset(far, inset), Offset(inset, far), stroke)
         }
+        StatusKind.Locked -> Icon(SwayIcons.Lock.filled, contentDescription = null, tint = muted, modifier = modifier)
         StatusKind.ScreensOff -> Icon(SwayIcons.Moon.filled, contentDescription = null, tint = muted, modifier = modifier)
         StatusKind.ReadOnly -> Icon(SwayIcons.Visibility.outline, contentDescription = null, tint = muted, modifier = modifier)
         StatusKind.NotPaired, StatusKind.WrongKey, StatusKind.Refused ->

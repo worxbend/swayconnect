@@ -4,9 +4,12 @@
 //! Server checks that need a session (scope, read-only, rate limit, the icon store) are
 //! replayed by the daemon tests; this file covers decode, encode and the client rules.
 
+mod support;
+
 use std::collections::BTreeSet;
 
 use serde_json::Value;
+use support::{decode_message, entries, load, text};
 use swayconnect_protocol::fingerprint::decode_base64url_bytes;
 use swayconnect_protocol::frame::encode_frame;
 use swayconnect_protocol::limits::MAX_FRAME_S2C_BYTES;
@@ -15,28 +18,6 @@ use swayconnect_protocol::{
     Availability, ByeCode, Desktop, IconGetResult, IconHash, IconRejection, JsonObject, Message,
     Scope, Welcome,
 };
-
-const EXT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../protocol/vectors/v1/ext");
-
-fn load(file: &str) -> Value {
-    let path = format!("{EXT}/{file}");
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("{path}: {error}"));
-    serde_json::from_str(&text).unwrap_or_else(|error| panic!("{path}: {error}"))
-}
-
-fn text<'a>(value: &'a Value, member: &str) -> &'a str {
-    value[member]
-        .as_str()
-        .unwrap_or_else(|| panic!("member `{member}` is not a string in {value}"))
-}
-
-fn entries<'a>(value: &'a Value, what: &str) -> &'a [Value] {
-    let entries = value
-        .as_array()
-        .unwrap_or_else(|| panic!("{what} is not an array"));
-    assert!(!entries.is_empty(), "{what} is empty");
-    entries
-}
 
 /// A list that may be empty.
 fn strings(value: &Value) -> Vec<String> {
@@ -60,12 +41,6 @@ fn hashes(value: &Value) -> Vec<IconHash> {
         .iter()
         .map(|hash| IconHash::parse(hash.as_str().expect("hash string")).expect("vector hash"))
         .collect()
-}
-
-fn decode_message(name: &str, payload: &str) -> (JsonObject, Message) {
-    let object: JsonObject = serde_json::from_str(payload).expect("payload is a JSON object");
-    let message = Message::decode(&object).unwrap_or_else(|error| panic!("{name}: {error}"));
-    (object, message)
 }
 
 /// The `data` of a `desktop` `state.changed` event.
@@ -213,7 +188,8 @@ fn reason(rejection: IconRejection) -> &'static str {
 }
 
 /// Unknown scope names are dropped from the typed `scopes` (13.2 rule 6); this version knows
-/// only the scopes of section 7.1. `known_scopes`, `ops` and `known_ops` keep every name.
+/// the scopes of section 7.1 and 17.2. `known_scopes`, `ops` and `known_ops`
+/// keep every name.
 #[test]
 fn welcome_frames() {
     let file = load("welcome.json");
@@ -251,7 +227,7 @@ fn welcome_frames() {
     }
 }
 
-/// The cases whose operation this version knows. The others name operations of M2a and M2b.
+/// An operation this version does not know is unsupported: a client has no call for it.
 #[test]
 fn welcome_availability() {
     let file = load("welcome.json");
@@ -260,6 +236,7 @@ fn welcome_availability() {
     for vector in entries(&file["availability"], "availability") {
         let name = text(vector, "name");
         let Some(operation) = Operation::from_wire(text(vector, "op")) else {
+            assert_eq!(text(vector, "expect"), "unsupported", "{name}");
             continue;
         };
         let welcome = Welcome {
@@ -285,7 +262,10 @@ fn welcome_availability() {
         assert_eq!(welcome.availability(operation), expected, "{name}");
         replayed += 1;
     }
-    assert!(replayed >= 8, "only {replayed} availability cases replayed");
+    assert!(
+        replayed >= 14,
+        "only {replayed} availability cases replayed"
+    );
 }
 
 fn welcome_of(frame: &Value) -> Welcome {
@@ -296,25 +276,18 @@ fn welcome_of(frame: &Value) -> Welcome {
     welcome
 }
 
-/// `op_table` agrees with this crate for every operation it knows.
+/// `op_table` agrees with this crate: every operation of 7.2 and 17 is known.
 #[test]
 fn op_table_matches_operations() {
     let file = load("welcome.json");
     let table = file["op_table"].as_object().expect("op_table object");
-    let mut known = 0;
     for (op, row) in table {
-        let Some(operation) = Operation::from_wire(op) else {
-            continue;
-        };
+        let operation = Operation::from_wire(op).unwrap_or_else(|| panic!("unknown {op}"));
         let scope = operation.required_scope().map(Scope::as_str);
         assert_eq!(row["scope"].as_str(), scope, "{op}");
         assert_eq!(row["action"].as_bool(), Some(operation.is_action()), "{op}");
-        known += 1;
     }
-    assert_eq!(
-        known, 6,
-        "ping, state.subscribe, icon.get and the three v1 actions"
-    );
+    assert_eq!(table.len(), 24);
 }
 
 #[test]

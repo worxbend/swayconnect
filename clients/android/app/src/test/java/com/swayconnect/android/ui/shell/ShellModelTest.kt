@@ -5,12 +5,17 @@ import com.swayconnect.android.ui.state.ConnectionStatus
 import com.swayconnect.android.ui.state.Granted
 import com.swayconnect.android.ui.state.PairForm
 import com.swayconnect.android.ui.state.UiState
+import com.swayconnect.android.ui.state.withSession
 import com.swayconnect.protocol.Desktop
 import com.swayconnect.protocol.FrameLimits
+import com.swayconnect.protocol.Holder
+import com.swayconnect.protocol.KeepAwake
 import com.swayconnect.protocol.Op
 import com.swayconnect.protocol.Output
 import com.swayconnect.protocol.Rect
+import com.swayconnect.protocol.RemoteInput
 import com.swayconnect.protocol.ServerInfo
+import com.swayconnect.protocol.SessionState
 import com.swayconnect.protocol.SwayStatus
 import com.swayconnect.protocol.Transform
 import com.swayconnect.protocol.Welcome
@@ -86,6 +91,42 @@ class ShellModelTest {
         assertEquals(StatusKind.Ready, statusKind(ready(desktop(outputs = listOf(output(true, false), output(true, true))))))
         assertEquals(StatusKind.Ready, statusKind(ready(desktop(outputs = emptyList()))))
         assertEquals(StatusKind.Ready, statusKind(ready(desktop(outputs = null))))
+    }
+
+    private fun session(locked: Boolean? = false, awakeMs: Long? = null, typing: Boolean = false) =
+        SessionState(
+            KeepAwake(awakeMs != null, awakeMs, awakeMs?.let { Holder.THIS_DEVICE }, 3600, 7200, 14400, null),
+            0,
+            locked,
+            input = RemoteInput(typing, if (typing) Holder.OTHER_DEVICE else null),
+        )
+
+    private val keepAwakeGranted =
+        granted(listOf("state.read", "idle.inhibit"), listOf(Op.PING, Op.KEEP_AWAKE_SET))
+
+    @Test
+    fun `a locked computer says Locked, below sway offline and above screens off`() {
+        val screensOff = desktop(outputs = listOf(output(active = true, power = false)))
+        assertEquals(StatusKind.Locked, statusKind(ready(screensOff).withSession(session(locked = true), 0)))
+        assertEquals(StatusKind.ScreensOff, statusKind(ready(screensOff).withSession(session(locked = null), 0)))
+        val swayOff = ready(desktop(online = false)).withSession(session(locked = true), 0)
+        assertEquals(StatusKind.SwayOffline, statusKind(swayOff))
+    }
+
+    @Test
+    fun `the Awake pill shows while keep-awake is on, with whole minutes left`() {
+        val off = ready(granted = keepAwakeGranted).withSession(session(), 0)
+        assertNull(awakePill(off))
+        val on = ready(granted = keepAwakeGranted).withSession(session(awakeMs = 52 * 60_000L - 1), 0)
+        assertEquals(AwakePill(52), awakePill(on))
+        assertNull("no keep_awake.set offered: no pill", awakePill(ready().withSession(session(awakeMs = 60_000), 0)))
+    }
+
+    @Test
+    fun `the Typing pill shows while a remote keyboard session is armed`() {
+        assertFalse(typingPill(ready().withSession(session(), 0)))
+        assertTrue(typingPill(ready().withSession(session(typing = true), 0)))
+        assertFalse(typingPill(ready()))
     }
 
     @Test

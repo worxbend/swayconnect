@@ -1,6 +1,6 @@
 //! Text rules of `docs/PROTOCOL.md` 2.4 and the closed character sets of 5.2.
 
-use crate::limits::MAX_NAME_BYTES;
+use crate::limits::{MAX_INPUT_TEXT_BYTES, MAX_NAME_BYTES};
 
 /// The fixed list of spec 2.4. It does not follow later Unicode versions.
 pub fn is_control_or_format(character: char) -> bool {
@@ -50,6 +50,20 @@ pub fn escape_for_terminal(text: &str) -> String {
 /// format character.
 pub fn is_display_name(text: &str) -> bool {
     (1..=MAX_NAME_BYTES).contains(&text.len()) && !text.chars().any(is_control_or_format)
+}
+
+/// Rule of `input.text` `text` (17.13): 1 to 1024 bytes, no control or format character
+/// except U+200C and U+200D, which emoji sequences and some scripts need.
+pub fn is_input_text(text: &str) -> bool {
+    (1..=MAX_INPUT_TEXT_BYTES).contains(&text.len())
+        && !text
+            .chars()
+            .any(|character| is_control_or_format(character) && !is_joiner(character))
+}
+
+/// U+200C zero width non-joiner and U+200D zero width joiner.
+fn is_joiner(character: char) -> bool {
+    matches!(character, '\u{200C}' | '\u{200D}')
 }
 
 /// Rule of `platform` and `client`: 1 to `max_bytes` bytes of `A-Z a-z 0-9 . _ / -` and space.
@@ -146,6 +160,28 @@ mod tests {
                 assert!(!is_display_name(&format!("a{}", scalar(code_point))));
             }
         }
+    }
+
+    #[test]
+    fn input_text_allows_only_the_two_joiners() {
+        assert!(is_input_text("\u{1F469}\u{200D}\u{1F4BB}"));
+        assert!(is_input_text("\u{0645}\u{06CC}\u{200C}\u{062E}"));
+        for (first, last) in RANGES {
+            for code_point in first..=last {
+                let text = format!("a{}", scalar(code_point));
+                let is_joiner = code_point == 0x200C || code_point == 0x200D;
+                assert_eq!(is_input_text(&text), is_joiner, "U+{code_point:04X}");
+            }
+        }
+    }
+
+    #[test]
+    fn input_text_counts_bytes() {
+        assert!(is_input_text(&"a".repeat(1024)));
+        assert!(is_input_text(&"\u{1F600}".repeat(256)));
+        assert!(!is_input_text(""));
+        assert!(!is_input_text(&"a".repeat(1025)));
+        assert!(!is_input_text(&format!("{}\u{e9}", "a".repeat(1023))));
     }
 
     #[test]

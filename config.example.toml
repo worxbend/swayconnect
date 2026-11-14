@@ -23,3 +23,56 @@ socket = ""
 aliases = { Emulator = "jetbrains-studio" }
 # Icon theme searched before hicolor. Default: hicolor only.
 theme = "Papirus"
+
+# Every program the daemon starts has an absolute path key (docs/DESIGN.md 11.6, 11.9).
+# Children get argv only (no shell), an allowlisted environment, stdin /dev/null and a timeout.
+
+[session]
+# session.lock runs this argv. Not set (the default): session.lock is not offered.
+# lock = ["/home/you/.config/sway/scripts/lock.sh"]
+# Process names that mean "the screen is locked". Must not be empty. Default: ["swaylock"].
+lock_processes = ["swaylock"]
+# Process names that grab the keyboard; remote input is refused while one runs.
+keyboard_grabbers = ["fuzzel", "wofi", "bemenu", "tofi", "swaylock"]
+
+[keep_awake]
+# keep_awake.set holds a logind idle inhibitor: <inhibit> ... <sleep> <seconds>.
+inhibit = "/usr/bin/systemd-inhibit"
+sleep = "/usr/bin/sleep"
+# Seconds. default_duration_s within 60..=max_duration_s; max_continuous_s >= max_duration_s;
+# cooldown_s >= 60; each at most 604800.
+default_duration_s = 3600
+max_duration_s = 7200
+max_continuous_s = 14400
+cooldown_s = 900
+
+[notify]
+# Desktop notices (fixed text plus the device short id).
+notify_send = "/usr/bin/notify-send"
+
+[audio]
+pactl = "/usr/bin/pactl"
+# Highest volume a client may set, 100 to 150.
+max_volume_pct = 100
+
+[apps]
+# app.launch starts each app in its own scope: systemd-run --user --scope.
+systemd_run = "/usr/bin/systemd-run"
+# Desktop entry ids never listed.
+deny = []
+# Desktop entry ids that need the launch.risky scope. Terminals always do.
+risky = ["gparted", "org.cachyos.KernelManager"]
+# How Terminal=true entries start.
+terminal = ["/usr/bin/alacritty", "-e"]
+
+[launcher]
+# launcher.open runs this argv.
+argv = ["/usr/bin/fuzzel"]
+
+[input]
+# The seat of the virtual keyboard.
+seat = "seat0"
+
+[wayland]
+# Empty: discover (WAYLAND_DISPLAY in XDG_RUNTIME_DIR). Set: use only this path.
+socket = ""

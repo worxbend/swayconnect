@@ -315,3 +315,146 @@ fn the_guard_panics_before_anything_is_bound() {
     assert!(message.contains("is outside"), "{message}");
     assert!(!outside.exists());
 }
+
+/// One command per `docs/DESIGN.md` 11.4 variant added in M2a.
+const M2A_COMMANDS: [&str; 9] = [
+    "[con_id=6] move container to workspace number 2",
+    "[con_id=6] floating enable",
+    "[con_id=6] floating disable",
+    "[con_id=6] layout tabbed",
+    "[con_id=6] move scratchpad",
+    "[con_id=6] scratchpad show",
+    "[con_id=6] kill",
+    "output * power on",
+    "workspace --no-auto-back-and-forth number 2",
+];
+
+#[tokio::test]
+async fn every_m2a_command_is_recorded_and_answered_with_success() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+    let mut stream = connect(&sway).await;
+
+    for command in M2A_COMMANDS {
+        send(&mut stream, 0, command).await;
+        assert_eq!(
+            receive(&mut stream).await,
+            (0, r#"[{"success":true}]"#.to_owned()),
+            "{command}"
+        );
+    }
+
+    assert_eq!(sway.commands(), M2A_COMMANDS);
+}
+
+#[tokio::test]
+async fn a_reply_scripted_for_one_command_leaves_the_others_alone() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+    let refusal = r#"[{"success":false,"error":"No matching node."}]"#;
+    sway.set_command_reply("[con_id=6] kill", refusal);
+    let mut stream = connect(&sway).await;
+
+    send(&mut stream, 0, "[con_id=6] kill").await;
+    assert_eq!(receive(&mut stream).await, (0, refusal.to_owned()));
+    send(&mut stream, 0, "[con_id=7] kill").await;
+    assert_eq!(
+        receive(&mut stream).await,
+        (0, r#"[{"success":true}]"#.to_owned())
+    );
+    send(&mut stream, 0, "[con_id=6] kill").await;
+    assert_eq!(receive(&mut stream).await, (0, refusal.to_owned()));
+
+    assert_eq!(sway.commands().len(), 3);
+}
+
+fn focused_ids(tree: &serde_json::Value, found: &mut Vec<u64>) {
+    if tree["focused"] == true {
+        found.push(tree["id"].as_u64().expect("id"));
+    }
+    for key in ["nodes", "floating_nodes"] {
+        for child in tree[key].as_array().into_iter().flatten() {
+            focused_ids(child, found);
+        }
+    }
+}
+
+async fn focused_in_tree(stream: &mut UnixStream) -> Vec<u64> {
+    send(stream, 4, "").await;
+    let (message_type, payload) = receive(stream).await;
+    assert_eq!(message_type, 4);
+    let mut found = Vec::new();
+    focused_ids(
+        &serde_json::from_str(&payload).expect("tree JSON"),
+        &mut found,
+    );
+    found
+}
+
+#[tokio::test]
+async fn focus_moves_in_the_tree_without_an_event() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+    let mut stream = connect(&sway).await;
+    send(&mut stream, 2, r#"["window","workspace"]"#).await;
+    receive(&mut stream).await;
+    assert_eq!(focused_in_tree(&mut stream).await, [6]);
+
+    sway.focus_without_event(7);
+
+    // The subscribed connection gets only replies: no event frame comes before them.
+    assert_eq!(focused_in_tree(&mut stream).await, [7]);
+    send(&mut stream, 7, "").await;
+    assert_eq!(receive(&mut stream).await, (7, fixtures::version()));
+}
+
+#[tokio::test]
+async fn focus_moves_in_a_scripted_tree_too() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+    sway.set_reply(Request::GetTree, fixtures::layout_tree());
+    let mut stream = connect(&sway).await;
+    let mut before = Vec::new();
+    focused_ids(
+        &serde_json::from_str(&fixtures::layout_tree()).expect("tree JSON"),
+        &mut before,
+    );
+    let other = layout_window_ids()
+        .into_iter()
+        .find(|id| !before.contains(id))
+        .expect("an unfocused window");
+
+    sway.focus_without_event(other);
+
+    assert_eq!(focused_in_tree(&mut stream).await, [other]);
+}
+
+fn layout_window_ids() -> Vec<u64> {
+    fn collect(node: &serde_json::Value, ids: &mut Vec<u64>) {
+        let children: Vec<&serde_json::Value> = ["nodes", "floating_nodes"]
+            .iter()
+            .flat_map(|key| node[*key].as_array().into_iter().flatten())
+            .collect();
+        if node["type"] == "con" && children.is_empty() {
+            ids.push(node["id"].as_u64().expect("id"));
+        }
+        for child in children {
+            collect(child, ids);
+        }
+    }
+    let mut ids = Vec::new();
+    collect(
+        &serde_json::from_str(&fixtures::layout_tree()).expect("tree JSON"),
+        &mut ids,
+    );
+    ids
+}
+
+#[tokio::test]
+#[should_panic(expected = "no node 99")]
+async fn focus_on_a_missing_node_panics() {
+    let dirs = TestDirs::new();
+    let sway = FakeSway::start(&dirs.runtime_dir(), &[]);
+
+    sway.focus_without_event(99);
+}

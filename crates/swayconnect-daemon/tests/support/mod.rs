@@ -25,7 +25,7 @@ use swayconnect_protocol::ops::TOPIC_DESKTOP;
 use swayconnect_protocol::uri::PairingUri;
 use swayconnect_protocol::{ByeCode, Desktop, ErrorBody, JsonObject, RejectCode, Scope};
 use swayconnect_sway::SwayTarget;
-use swayconnect_testkit::{FakeSway, TestDirs};
+use swayconnect_testkit::{FakeSway, TestDirs, nonexistent_programs};
 
 pub const PATIENCE: Duration = Duration::from_secs(20);
 pub const EVERY_SCOPE: [Scope; 3] = [Scope::StateRead, Scope::StateTitles, Scope::Control];
@@ -93,7 +93,12 @@ impl Harness {
             data_dir: dirs.data_dir(),
             runtime_dir: dirs.runtime_dir(),
         };
-        let config = format!("listen = [\"127.0.0.1:0\"]\nserver_name = \"desk\"\n{extra_config}");
+        // Every program path is one that does not exist: the M2b services start `pactl` at
+        // once, and the tier 2 connect notice runs `notify-send`.
+        let config = format!(
+            "listen = [\"127.0.0.1:0\"]\nserver_name = \"desk\"\n{extra_config}\n{}",
+            nonexistent_programs()
+        );
         let config = Config::from_toml(&config).expect("config");
         let target = SwayTarget::Explicit(dirs.sway_socket());
         let daemon = match icons(&dirs) {

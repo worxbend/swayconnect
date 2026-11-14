@@ -13,4 +13,29 @@
     <string name="window_same_app_index_spoken">window %1$d of this app</string>
     <string name="window_waiting">waiting for the computer</string>
     <string name="window_more_actions">More actions</string>
+
+    <!-- Hold buttons (UX 12, 15) -->
+    <string name="hold_confirm_action">confirm</string>
+
+    <!-- Locked feature sheet (UX 10.4) -->
+    <string name="locked_title">Off for this phone</string>
+    <string name="locked_run">To turn it on, run on the computer:</string>
+    <string name="locked_command" translatable="false">swayconnectd devices grant %1$s %2$s</string>
+    <string name="locked_command_unknown_id" translatable="false">swayconnectd devices grant &lt;id&gt; %1$s</string>
+    <string name="locked_device_hint">Use the device id that swayconnectd devices list shows for this phone.</string>
+    <string name="locked_reconnects">The phone reconnects by itself after.</string>
+    <string name="locked_title_titles">Window titles are off for this phone</string>
+    <string name="locked_title_control">Switching and arranging windows is off for this phone</string>
+    <string name="locked_title_destructive">Closing windows is off for this phone</string>
+    <string name="locked_title_idle_inhibit">Keep awake is off for this phone</string>
+    <string name="locked_title_audio">Volume control is off for this phone</string>
+    <string name="locked_title_audio_capture">Microphone control is off for this phone</string>
+    <string name="locked_title_media">Media control is off for this phone</string>
+    <string name="locked_title_launch">Starting apps is off for this phone</string>
+    <string name="locked_title_launch_risky">Terminals are off for this phone</string>
+    <string name="locked_title_input">Typing is off for this phone</string>
+    <string name="locked_copy">Copy</string>
+    <string name="locked_copied">Copied</string>
+    <string name="locked_share">Share…</string>
+    <string name="locked_share_title">swayconnect command</string>
 </resources>

@@ -8,6 +8,7 @@
 use std::sync::Arc;
 
 use swayconnect_protocol::Desktop;
+use swayconnect_protocol::ops::{ContainerLayout, WorkspaceTarget};
 use swayconnect_sway::SwayTarget;
 use tokio::sync::{mpsc, oneshot, watch};
 
@@ -26,7 +27,30 @@ pub enum Action {
     FocusWorkspaceNumber(u16),
     FocusWorkspaceId(u64),
     FocusWindow(u64),
-    Fullscreen { window_id: u64, enabled: bool },
+    Fullscreen {
+        window_id: u64,
+        enabled: bool,
+    },
+    /// `window.move` (`docs/PROTOCOL.md` 17.6). Slice D-WIRE.2a added these variants.
+    MoveWindow {
+        window_id: u64,
+        to: WorkspaceTarget,
+    },
+    Floating {
+        window_id: u64,
+        enabled: bool,
+    },
+    Layout {
+        window_id: u64,
+        layout: ContainerLayout,
+    },
+    MoveToScratchpad(u64),
+    /// The id of a window of the state's `scratchpad`.
+    ScratchpadShow(u64),
+    /// `window.close` (17.7).
+    Close(u64),
+    /// The fixed `output * power on` of keep awake (17.8 rule 2). It has no target.
+    OutputsPowerOn,
 }
 
 #[derive(Debug, PartialEq, Eq)]

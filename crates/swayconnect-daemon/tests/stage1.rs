@@ -51,7 +51,7 @@ async fn pair_subscribe_follow_a_change_act_and_get_revoked() {
     assert_eq!(paired.scopes, ["state.read", "state.titles", "control"]);
     let mut session = harness.connect(&profile).await;
     assert_eq!(session.welcome().server.name, "desk");
-    assert_eq!(session.welcome().topics, ["desktop"]);
+    assert_eq!(session.welcome().topics, ["desktop", "session"]);
 
     // Step 3.
     let (first_rev, desktop) = support::online_desktop(&mut session).await;

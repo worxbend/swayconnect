@@ -2,6 +2,8 @@
 //!
 //! JSON `null` is a wrong type everywhere except where a function says `nullable`.
 
+use std::ops::RangeInclusive;
+
 use serde_json::Value;
 
 use crate::fingerprint::decode_base64url;
@@ -48,6 +50,19 @@ pub(crate) fn as_int(value: &Value) -> Option<u64> {
 
 pub(crate) fn int(object: &JsonObject, name: &'static str) -> Member<u64> {
     object.get(name).and_then(as_int).ok_or(InvalidMember(name))
+}
+
+/// An `int` in a narrower stated range (spec 2.2), held as the smallest type that fits it.
+pub(crate) fn int_in<T: TryFrom<u64> + PartialOrd>(
+    object: &JsonObject,
+    name: &'static str,
+    range: RangeInclusive<T>,
+) -> Member<T> {
+    int(object, name)
+        .ok()
+        .and_then(|number| T::try_from(number).ok())
+        .filter(|number| range.contains(number))
+        .ok_or(InvalidMember(name))
 }
 
 /// A member of type `int or null`.

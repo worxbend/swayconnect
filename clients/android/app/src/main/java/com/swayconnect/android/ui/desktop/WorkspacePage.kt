@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -51,9 +50,11 @@ import com.swayconnect.android.ui.common.DashedCard
 import com.swayconnect.android.ui.common.PillTone
 import com.swayconnect.android.ui.common.StatePill
 import com.swayconnect.android.ui.common.WindowCard
+import com.swayconnect.android.ui.launch.GhostTile
 import com.swayconnect.android.ui.map.MapActions
 import com.swayconnect.android.ui.map.MapSlab
 import com.swayconnect.android.ui.state.Granted
+import com.swayconnect.android.ui.state.PendingLaunch
 import com.swayconnect.android.ui.state.ViewMode
 import com.swayconnect.android.ui.theme.LocalHaptics
 import com.swayconnect.android.ui.theme.SwayHaptic
@@ -63,8 +64,6 @@ import com.swayconnect.protocol.Op
 import com.swayconnect.protocol.OpAvailability
 import com.swayconnect.protocol.Window
 import com.swayconnect.protocol.Workspace
-
-private const val NARROW_WIDTH_DP = 360
 
 /** M2b op behind the "open an app" card. Same name as the shell's round button. */
 private const val APP_LAUNCH_OP = "app.launch"
@@ -83,6 +82,7 @@ internal class PageActions(
     val onSmallWindows: (workspaceId: Long, windowIds: List<Long>) -> Unit,
     val onOpenLaunch: () -> Unit,
     val onLocked: (String) -> Unit,
+    val window: WindowOps,
 )
 
 /** The facts every page shares. [live] false: the desktop is stale, taps are off (UX 5.9). */
@@ -105,6 +105,7 @@ internal class PageFacts(
  * One workspace page (docs/UX.md 5.1, 5.2, 17.5): a single `LazyColumn`, the only vertical scroll owner of
  * the page. Map view: header with its lines, chips, map slab, windows the map leaves out, focused-window card.
  * List view: header, window cards in tree order (the focused one carries its buttons), the "open an app" card.
+ * [ghost]: an app started for this workspace that has no window yet (UX 8.2), under the header.
  */
 @Composable
 internal fun WorkspacePage(
@@ -114,6 +115,7 @@ internal fun WorkspacePage(
     actions: PageActions,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    ghost: PendingLaunch? = null,
 ) {
     // "Dense workspace · Show list" switches this page only and is not stored (UX 5.9).
     var listForPage by rememberSaveable(workspace.id) { mutableStateOf(false) }
@@ -133,6 +135,7 @@ internal fun WorkspacePage(
             }
         }
         if (chips) item(key = "chips") { PageChips(workspace, mode, facts, actions) }
+        if (ghost != null) item(key = "ghost") { GhostTile(ghost) }
         if (mode.showMap) {
             mapItems(desktop, workspace, cards, label, facts, actions) { listForPage = true }
         } else {
@@ -388,7 +391,7 @@ private fun OpenAppCard(label: String, empty: Boolean, facts: PageFacts, actions
 
 /**
  * The focused-window card (UX 5.7): [window] is the window focused on the computer when it is on this page, with
- * its buttons; else (null) the hint "Tap a window to focus it". M1 has Full / Exit full only.
+ * its buttons; else (null) the hint "Tap a window to focus it".
  */
 @Composable
 private fun FocusedWindowCard(window: Window?, windows: PageWindows, facts: PageFacts, actions: PageActions) {
@@ -408,17 +411,6 @@ private fun FocusedWindowCard(window: Window?, windows: PageWindows, facts: Page
         sameAppIndex = windows.sameAppIndex[window.id],
     ) {
         FocusedButtons(window, enabled = facts.live && !pending, facts, actions)
-    }
-}
-
-/** The buttons of the focused window (UX 5.7): icon only below 360dp width or above font scale 1.5. */
-@Composable
-private fun FocusedButtons(window: Window, enabled: Boolean, facts: PageFacts, actions: PageActions) {
-    val density = LocalDensity.current
-    val widthDp = LocalWindowInfo.current.containerSize.width / density.density
-    val iconOnly = widthDp < NARROW_WIDTH_DP || density.fontScale > LARGE_FONT_SCALE
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FullscreenButton(window, iconOnly, enabled, facts, actions)
     }
 }
 

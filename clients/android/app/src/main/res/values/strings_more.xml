@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- More area: quick settings, keep-awake duration and scratchpad sheets (docs/UX.md 10). -->
+<resources>
+    <string name="more_computer">Computer</string>
+    <string name="more_waiting">Waiting for the computer</string>
+    <string name="more_read_only">The computer is set to look only.</string>
+    <string name="more_off_for_phone">Off for this phone</string>
+    <string name="more_show_how">show how to turn it on</string>
+
+    <!-- Keep-awake tile (UX 10.2) -->
+    <string name="keep_awake">Keep awake</string>
+    <string name="keep_awake_on">Awake</string>
+    <string name="keep_awake_off">Off</string>
+    <string name="keep_awake_on_untimed">On</string>
+    <string name="keep_awake_other_device">From another device</string>
+    <string name="keep_awake_minutes_left">%1$d min left</string>
+    <string name="keep_awake_seconds_left">%1$d s left</string>
+    <string name="keep_awake_available_in_minutes">Available in %1$d min</string>
+    <string name="keep_awake_available_in_seconds">Available in %1$d s</string>
+    <string name="keep_awake_computer_locked">Computer is locked</string>
+    <string name="keep_awake_window_too">A window also keeps it awake</string>
+    <string name="keep_awake_spoken_on">On</string>
+    <string name="keep_awake_spoken_off">Off</string>
+    <string name="keep_awake_spoken_waiting">Waiting for the computer</string>
+    <plurals name="keep_awake_spoken_left">
+        <item quantity="one">On, about %1$d minute left</item>
+        <item quantity="other">On, about %1$d minutes left</item>
+    </plurals>
+    <string name="keep_awake_spoken_other">On, from another device</string>
+    <plurals name="keep_awake_spoken_other_left">
+        <item quantity="one">On, from another device, about %1$d minute left</item>
+        <item quantity="other">On, from another device, about %1$d minutes left</item>
+    </plurals>
+    <string name="keep_awake_available_again">Available again in %1$d min.</string>
+    <plurals name="keep_awake_spoken_cooldown">
+        <item quantity="one">Available again in about %1$d minute</item>
+        <item quantity="other">Available again in about %1$d minutes</item>
+    </plurals>
+    <string name="keep_awake_turn_on">turn on</string>
+    <string name="keep_awake_turn_off">turn off</string>
+    <string name="keep_awake_choose">choose how long</string>
+
+    <!-- Duration sheet (UX 10.2) -->
+    <string name="keep_awake_sheet_title">Keep awake for</string>
+    <string name="keep_awake_choice_minutes">%1$d min</string>
+    <string name="keep_awake_choice_hours">%1$d h</string>
+    <string name="keep_awake_one_hour_from_now">1 h from now</string>
+    <string name="keep_awake_wakes_screens">Turning it on wakes the screens.</string>
+    <string name="keep_awake_locks_after">The computer locks as usual when this ends.</string>
+
+    <!-- Locked sheet sentence for idle.inhibit with the server's limits (UX 10.5) -->
+    <string name="scope_idle_inhibit_limits">Lets the phone stop the computer from locking itself when idle, for up to %1$s at a time, again after each expiry, up to %2$s in a row.</string>
+    <plurals name="duration_hours">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
+    <plurals name="duration_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+
+    <!-- Other tiles (UX 10.3) -->
+    <string name="drive_tile">Drive</string>
+    <string name="drive_tile_on">On</string>
+    <string name="drive_tile_off">Off</string>
+    <string name="scratchpad">Scratchpad</string>
+    <plurals name="scratchpad_hidden">
+        <item quantity="one">%1$d hidden</item>
+        <item quantity="other">%1$d hidden</item>
+    </plurals>
+    <string name="scratchpad_empty">Empty</string>
+    <string name="lock_tile">Lock</string>
+    <string name="lock_tile_now">now</string>
+    <string name="lock_tile_spoken">Lock the computer now</string>
+
+    <!-- Scratchpad sheet (UX 10.3) -->
+    <string name="scratchpad_sheet_empty">Nothing in the scratchpad.</string>
+    <string name="scratchpad_show">Show</string>
+    <string name="scratchpad_show_spoken">Show %1$s on the computer</string>
+    <string name="scratchpad_untitled">Untitled window</string>
+</resources>

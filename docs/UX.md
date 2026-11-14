@@ -539,7 +539,7 @@ Tap = `window.focus`, in both Drive and Browse mode (P2: a tap always acts). Lon
 
 - App cell: 56dp round icon badge, 2-line label (`labelMedium`, centred). Risky apps (terminal or owner-marked) carry a 14dp shield. Without `launch.risky` they show a lock and open the Locked sheet (the server refuses them anyway).
 - Tap: `app.launch {entry_id, number}` with the target workspace of the context pill (default: the computer's focused workspace). Risky apps need a 600ms hold (UX only). Then the app **returns to Desktop** on the target page and draws a ghost tile ("Opening Firefox…", icon pulsing at 1 Hz) until any new window id appears on the target workspace or 10 s pass. After 10 s: one line "Firefox did not open a window yet." No toast on success.
-- Long press: "Open on workspace…", "Pin to top" (pins are stored on the phone per profile).
+- Long press: "Open on workspace…". "Pin to top" (pins stored on the phone per profile) is deferred: not in M2 (`V2_PLAN.md` status, "Not done"). A risky app has no long-press menu; its press is the hold.
 - Search: client-side fuzzy match over name, generic name and keywords (`FuzzyMatch`, pure, tested). The grid reflows with `animateItem`. The keyboard opens only when the field is tapped.
 - Round button (⌕): `launcher.open`. If `input.text` is granted and `session.launcher.holder` is `this_device`, the app goes to Keys with the target "Launcher (fuzzel)". Otherwise one line: "Fuzzel is open on the computer."
 - Owner buttons are later (`DESIGN.md` 11.13).
@@ -643,14 +643,14 @@ M1 has no settings store, so Theme, Default view, Reduce motion and Haptics come
 
 ```
 ╭──────────────────────────────────────────╮
-│ 🔒 Typing is off for this phone          │
-│ It lets the phone type into the focused  │
-│ window. In a terminal that is the same   │
-│ as running commands.                     │
+│ 🔒 Terminals are off for this phone      │
+│ It lets the phone start terminals and    │
+│ apps marked risky. That is the same as   │
+│ running commands.                        │
 │ To turn it on, run on the computer:      │
 │ ┌──────────────────────────────────────┐ │
 │ │ swayconnectd devices grant wMHC      │ │ mono, selectable
-│ │   input.text input.keys              │ │
+│ │   launch.risky                       │ │
 │ └──────────────────────────────────────┘ │
 │ [ Copy ]   [ Share… ]                    │
 │ The phone reconnects by itself after.    │
@@ -658,9 +658,10 @@ M1 has no settings store, so Theme, Default view, Reduce motion and Haptics come
 ```
 
 - One honest risk sentence per scope (table in 10.5).
+- A default pairing (`DESIGN.md` 11.8) leaves only `destructive`, `audio.capture` and `launch.risky` off, so those are the usual Locked sheets. Every other scope can still be missing (paired with `--scopes`, removed with `devices deny`, or an older pairing); the sheet then reads the same way. The text never says a scope is "off by default".
 - The prefix is the first 4 characters of the device id (more if the daemon lists a clash).
 - `swayconnectd devices grant` exists from M1 on, so the sheet text is the same in every milestone.
-- On `bye` `scopes_changed` the app reconnects at once. A newly unlocked feature morphs its lock into its icon, `ToggleOn`, one line "Typing is now on."
+- On `bye` `scopes_changed` the app reconnects at once. A newly unlocked feature morphs its lock into its icon, `ToggleOn`, one line "Terminals are now on." (the feature's name).
 
 ### 10.5 Scope sentences
 
@@ -685,7 +686,7 @@ Server name, short fingerprint, device id prefix, granted scopes (ink pills) and
 1. **Welcome card.** "Control your sway desktop from here." Primary: "Paste link". The line "On the computer, run: swayconnectd pair" in a mono pill with Copy.
 2. **Target card.** Host, port, fingerprint in four 4-digit groups, the computer name. Device name field (prefilled `Build.MODEL`). "Pair" (ink, full width).
 3. **Confirm code.** Six digits, 64sp tabular, split 3 + 3, inside a slowly breathing ring (static under reduce motion). Text: where the code appears, answer no if it differs, keep the app open.
-4. **What this phone can do.** After `pairing.confirmed`: ink pills for granted features, outline pills with a lock for the others, "Ask at the computer to turn more on". "Done" goes to Desktop.
+4. **What this phone can do.** After `pairing.confirmed`: ink pills for granted features, outline pills with a lock for the others, "Ask at the computer to turn more on". "Done" goes to Desktop. The pills come from `welcome.scopes`, never from an assumed default. With the default pairing (`DESIGN.md` 11.8) the ink pills include Typing and Launch, so the step adds one line under them: "This phone can type and start apps on the computer. Remove it there if the phone is lost: swayconnectd revoke" (mono pill for the command). The outline pills are then Close windows, Microphone and Terminals.
 5. `FLAG_SECURE` on all pair screens (closes DESIGN 5.6 item 12).
 
 ## 12. Gestures
@@ -772,7 +773,7 @@ API 29 fallback: types the platform lacks map to `LongPress` (Confirm, Reject, G
 
 **TalkBack order.** Title → status line → context pill → round button → workspace cards → page header → map or list → focused-window card → capsule → nav. Sheets trap focus until closed.
 
-**Announcements.** Only the connection word of the status line is a polite live region, and only transitions are announced: Ready, Offline, Locked, Screens off, Keep awake on, Keep awake ended. Countdown pills and "last seen" text sit in their own nodes with no live region. A settled page: "Workspace 4, term, 7 windows" (once per settle). While touch exploration is on, follow focus never moves the page (5.5); the chip appears instead. `focus_changed` while typing: assertive.
+**Announcements.** The connection word of the status line is a polite live region, and only transitions are announced: Ready, Offline, Locked, Screens off, Keep awake on, Keep awake ended. The one other polite live region is the refusal line of an area (the UX 16 text that comes with the `Reject` haptic), so a refusal is never told by the haptic alone (section 14). Countdown pills and "last seen" text sit in their own nodes with no live region. A settled page: "Workspace 4, term, 7 windows" (once per settle). While touch exploration is on, follow focus never moves the page (5.5); the chip appears instead. `focus_changed` while typing: assertive.
 
 **Font scale (to 200 %).**
 

@@ -14,7 +14,7 @@ enum class ViewMode { Map, List }
  */
 enum class DriveMode { Drive, Browse }
 
-/** The one open sheet (docs/UX.md 17.7). M1 kinds only; M2a adds its own. */
+/** The one open sheet (docs/UX.md 17.7). */
 sealed interface Sheet {
     /** Long press on a map tile or a window card. */
     data class WindowActions(val windowId: Long) : Sheet
@@ -33,6 +33,18 @@ sealed interface Sheet {
 
     /** Server name, fingerprint, scopes, Retry now, Forget (docs/UX.md 10.6). */
     data object Computer : Sheet
+
+    /** Long press on the keep-awake tile or a tap on the status pill (docs/UX.md 10.2). */
+    data object KeepAwakeDuration : Sheet
+
+    /** The windows of `desktop.scratchpad`, each with Show (docs/UX.md 10.3). */
+    data object Scratchpad : Sheet
+
+    /** Where to move [windowId]. */
+    data class MoveTo(val windowId: Long) : Sheet
+
+    /** "Close this window?": `window.close` needs the user's yes first (docs/PROTOCOL.md 17.7). */
+    data class ConfirmClose(val windowId: Long) : Sheet
 }
 
 /** False when the sheet names a window or workspace that [desktop] no longer has: such a sheet closes. */
@@ -41,9 +53,11 @@ internal fun Sheet.fits(desktop: Desktop): Boolean {
     val liveWindowIds = desktop.windows.map { it.id }.toSet()
     return when (this) {
         is Sheet.WindowActions -> windowId in liveWindowIds
+        is Sheet.MoveTo -> windowId in liveWindowIds
+        is Sheet.ConfirmClose -> windowId in liveWindowIds
         is Sheet.WorkspaceActions -> workspaceId in workspaceIds
         is Sheet.SmallWindows -> workspaceId in workspaceIds
         is Sheet.TabGroup -> workspaceId in workspaceIds && windowIds.any { it in liveWindowIds }
-        is Sheet.Locked, Sheet.Computer -> true
+        is Sheet.Locked, Sheet.Computer, Sheet.KeepAwakeDuration, Sheet.Scratchpad -> true
     }
 }

@@ -1,251 +1,15 @@
 //! Tests of `session.rs` over an in-memory stream. No TLS, no sway, no TCP.
 
 use serde_json::{Value, json};
-use swayconnect_protocol::proof::{self, Context};
-use swayconnect_protocol::{Auth, Desktop, Pair, SwayStatus, Window};
-use swayconnect_sway::SwayTarget;
-use swayconnect_testkit::TestDirs;
-use tokio::io::DuplexStream;
+use swayconnect_protocol::Pair;
 
-use super::wire::{LENGTH_PREFIX_BYTES, READ_CHUNK_BYTES};
+use super::harness::*;
+use super::wire::LENGTH_PREFIX_BYTES;
 use super::*;
-use crate::config::Config;
-use crate::pairing::PendingNotice;
-use crate::paths::Paths;
-use swayconnect_protocol::frame::{FrameDecoder, encode_frame};
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-
-const PIPE_BYTES: usize = 1 << 20;
-const CLIENT_NONCE: [u8; 32] = [7; 32];
-const WINDOW_LIFETIME: Duration = Duration::from_secs(300);
-const TITLE: &str = "Packing list for the lake trip";
-pub(super) const EVERY_SCOPE: [Scope; 3] = [Scope::StateRead, Scope::StateTitles, Scope::Control];
-
-pub(super) struct Daemon {
-    pub(super) dirs: TestDirs,
-    pub(super) shared: Shared,
-    pub(super) desktop: watch::Sender<Arc<Published>>,
-    shutdown: watch::Sender<bool>,
-}
-
-/// The client end of one connection.
-pub(super) struct Client {
-    stream: DuplexStream,
-    decoder: FrameDecoder,
-}
-
-/// A credential, as a client holds it after a confirmed pairing.
-pub(super) struct Device {
-    pub(super) id: DeviceId,
-    key: [u8; 32],
-}
-
-/// A connection in state `PENDING`, with the admin side's view of it.
-struct PendingClient {
-    client: Client,
-    welcome: JsonObject,
-    notice: PendingNotice,
-    device: Device,
-}
-
-pub(super) fn published(rev: u64) -> Arc<Published> {
-    let window = Window {
-        id: 6,
-        workspace_id: 4,
-        app_id: Some("notes".to_owned()),
-        title: Some(TITLE.to_owned()),
-        focused: true,
-        urgent: false,
-        floating: false,
-        fullscreen: false,
-        icon: None,
-    };
-    let desktop = Desktop {
-        sway: SwayStatus {
-            online: true,
-            version: Some("1.12".to_owned()),
-        },
-        workspaces: Vec::new(),
-        windows: vec![window],
-        truncated: false,
-        outputs: None,
-        scratchpad: None,
-        layouts_cut: None,
-    };
-    Arc::new(Published { rev, desktop })
-}
-
-fn frame(message: &Value) -> Vec<u8> {
-    let object = message.as_object().expect("a JSON object");
-    encode_frame(object, u32::MAX).expect("frame")
-}
-
-pub(super) fn ping(id: u64) -> Value {
-    json!({"type": "req", "id": id, "op": "ping"})
-}
-
-pub(super) fn subscribe(id: u64) -> Value {
-    json!({"type": "req", "id": id, "op": "state.subscribe", "args": {"topics": ["desktop"]}})
-}
-
-impl Daemon {
-    pub(super) fn start() -> Daemon {
-        let dirs = TestDirs::new();
-        let paths = Paths {
-            config_file: dirs.config_file(),
-            data_dir: dirs.data_dir(),
-            runtime_dir: dirs.runtime_dir(),
-        };
-        let config = Config::from_toml("server_name = \"desk\"").expect("config");
-        let security = Security::open(&config, &paths).expect("security");
-        let (desktop, desktop_reader) = watch::channel(published(1));
-        let (shutdown, shutdown_reader) = watch::channel(false);
-        let shared = Shared {
-            security,
-            desktop: desktop_reader,
-            // No sway here: a supervisor that is told to stop at once refuses every action.
-            sway: Arc::new(SwayHandle::spawn(
-                SwayTarget::Explicit(dirs.sway_socket()),
-                watch::channel(true).1,
-            )),
-            server_name: Arc::from("desk"),
-            read_only: Arc::new(AtomicBool::new(false)),
-            shutdown: shutdown_reader,
-            icons: None,
-        };
-        Daemon {
-            dirs,
-            shared,
-            desktop,
-            shutdown,
-        }
-    }
-
-    fn connect(&self) -> Client {
-        let peer = SocketAddr::from(([127, 0, 0, 1], 40_000));
-        let (client, server) = tokio::io::duplex(PIPE_BYTES);
-        let permit = self.shared.security.admit(peer.ip()).expect("admitted");
-        tokio::spawn(serve(server, peer, permit, self.shared.clone()));
-        Client {
-            stream: client,
-            decoder: FrameDecoder::new(MAX_FRAME_S2C_BYTES),
-        }
-    }
-
-    fn context(&self, hello: &JsonObject) -> Context {
-        let Ok(Message::Hello(hello)) = Message::decode(hello) else {
-            panic!("the first frame is not `hello`");
-        };
-        Context {
-            fp: self.shared.security.fingerprint(),
-            server_nonce: hello.nonce,
-            client_nonce: CLIENT_NONCE,
-        }
-    }
-
-    /// Runs `pair` with a fresh window that grants `scopes`, up to `welcome`.
-    async fn pair(&self, scopes: &[Scope]) -> PendingClient {
-        let scopes = scopes.iter().copied().collect();
-        let security = &self.shared.security;
-        let window = security
-            .open_pairing(scopes, WINDOW_LIFETIME)
-            .expect("window");
-        let mut client = self.connect();
-        let context = self.context(&client.receive().await);
-        let pair = Pair {
-            protocol: PROTOCOL_VERSION,
-            nonce: CLIENT_NONCE,
-            proof: proof::pair_proof(window.secret.bytes(), &context),
-            device_name: "test phone".to_owned(),
-            platform: None,
-            client: None,
-        };
-        client
-            .send(&Value::Object(Message::Pair(pair).encode()))
-            .await;
-        let welcome = client.receive().await;
-        let id = welcome["device_id"].as_str().expect("device_id");
-        let device = Device {
-            id: DeviceId::parse(id).expect("device id"),
-            key: proof::device_key(window.secret.bytes(), &context),
-        };
-        PendingClient {
-            client,
-            welcome,
-            notice: window.pending.await.expect("pending notice"),
-            device,
-        }
-    }
-
-    /// A stored device with `scopes`: paired and confirmed by the owner.
-    pub(super) async fn paired_device(&self, scopes: &[Scope]) -> Device {
-        let mut pending = self.pair(scopes).await;
-        pending.notice.answer.send(true).expect("answer taken");
-        assert_eq!(pending.client.receive().await["event"], "pairing.confirmed");
-        pending.device
-    }
-
-    fn auth(&self, device: &Device, hello: &JsonObject) -> Auth {
-        let context = self.context(hello);
-        Auth {
-            protocol: PROTOCOL_VERSION,
-            device_id: device.id.clone(),
-            nonce: CLIENT_NONCE,
-            proof: proof::client_proof(&device.key, &context, &device.id),
-            client: None,
-        }
-    }
-
-    /// A connection of `device` in state `READY`, and its `welcome`.
-    pub(super) async fn ready(&self, device: &Device) -> (Client, JsonObject) {
-        let mut client = self.connect();
-        let hello = client.receive().await;
-        let auth = Message::Auth(self.auth(device, &hello)).encode();
-        client.send(&Value::Object(auth)).await;
-        let welcome = client.receive().await;
-        assert_eq!(welcome["type"], "welcome");
-        (client, welcome)
-    }
-}
-
-impl Client {
-    pub(super) async fn send(&mut self, message: &Value) {
-        self.send_bytes(&frame(message)).await;
-    }
-
-    async fn send_bytes(&mut self, bytes: &[u8]) {
-        self.stream.write_all(bytes).await.expect("client write");
-    }
-
-    /// The next frame, or `None` when the server closed the connection.
-    async fn next(&mut self) -> Option<JsonObject> {
-        loop {
-            if let Some(frame) = self.decoder.next_frame().expect("a valid server frame") {
-                return Some(frame);
-            }
-            let mut chunk = [0u8; READ_CHUNK_BYTES];
-            match self.stream.read(&mut chunk).await.expect("client read") {
-                0 => return None,
-                length => self.decoder.push(&chunk[..length]),
-            }
-        }
-    }
-
-    pub(super) async fn receive(&mut self) -> JsonObject {
-        self.next().await.expect("a frame, not a close")
-    }
-
-    /// Asserts the last frame is `kind` with `code` and that the server then closes.
-    pub(super) async fn expect_last(&mut self, kind: &str, code: &str) {
-        let last = self.receive().await;
-        assert_eq!((&last["type"], &last["code"]), (&json!(kind), &json!(code)));
-        assert_eq!(self.next().await, None, "the server closes after `{kind}`");
-    }
-}
 
 #[tokio::test]
 async fn hello_is_the_first_frame_and_holds_the_version_range_and_a_nonce_only() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let hello = daemon.connect().receive().await;
     assert_eq!(hello["type"], "hello");
     assert_eq!(hello["protocol"], json!({"min": 1, "max": 1}));
@@ -256,13 +20,19 @@ async fn hello_is_the_first_frame_and_holds_the_version_range_and_a_nonce_only()
 
 #[tokio::test]
 async fn auth_gets_welcome_with_scopes_ops_topics_and_limits() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (_client, welcome) = daemon.ready(&device).await;
     assert_eq!(welcome["device_id"], device.id.as_str());
     assert_eq!(
         welcome["scopes"],
-        json!(["state.read", "state.titles", "control"])
+        json!([
+            "state.read",
+            "state.titles",
+            "control",
+            "idle.inhibit",
+            "destructive"
+        ])
     );
     let ops = json!([
         "ping",
@@ -270,12 +40,48 @@ async fn auth_gets_welcome_with_scopes_ops_topics_and_limits() {
         "workspace.focus",
         "window.focus",
         "window.fullscreen",
-        "icon.get"
+        "icon.get",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+        "session.lock",
+        "window.close",
+        "keep_awake.set"
     ]);
     assert_eq!(welcome["ops"], ops);
-    assert_eq!(welcome["known_ops"], ops);
-    assert_eq!(welcome["known_scopes"], welcome["scopes"]);
-    assert_eq!(welcome["topics"], json!(["desktop"]));
+    let m2b_ops = [
+        "audio.set_volume",
+        "audio.set_mute",
+        "audio.set_default",
+        "media.play_pause",
+        "media.next",
+        "media.previous",
+        "app.launch",
+        "launcher.open",
+        "input.text",
+        "input.key",
+    ];
+    let mut known_ops = ops.as_array().expect("ops").clone();
+    known_ops.extend(m2b_ops.map(Value::from));
+    assert_eq!(welcome["known_ops"], Value::Array(known_ops));
+    let known_scopes = json!([
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive",
+        "audio",
+        "audio.capture",
+        "media",
+        "launch",
+        "launch.risky",
+        "input.keys",
+        "input.text"
+    ]);
+    assert_eq!(welcome["known_scopes"], known_scopes);
+    assert_eq!(welcome["topics"], json!(["desktop", "session"]));
     assert_eq!(welcome["read_only"], false);
     assert_eq!(welcome["server"]["name"], "desk");
     let limits =
@@ -286,7 +92,7 @@ async fn auth_gets_welcome_with_scopes_ops_topics_and_limits() {
 
 #[tokio::test]
 async fn bytes_after_the_first_frame_and_before_welcome_are_refused() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     for extra in [frame(&ping(1)), vec![0u8]] {
         let mut client = daemon.connect();
@@ -301,7 +107,7 @@ async fn bytes_after_the_first_frame_and_before_welcome_are_refused() {
 
 #[tokio::test(start_paused = true)]
 async fn the_first_frame_deadline_closes_with_no_frame() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let mut client = daemon.connect();
     client.receive().await;
     let hello_at = Instant::now();
@@ -313,7 +119,7 @@ async fn the_first_frame_deadline_closes_with_no_frame() {
 
 #[tokio::test]
 async fn the_frame_limit_is_4096_before_welcome_and_16384_after() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let mut early = daemon.connect();
     early.receive().await;
     early.send_bytes(&4097u32.to_be_bytes()).await;
@@ -334,7 +140,7 @@ async fn the_frame_limit_is_4096_before_welcome_and_16384_after() {
 
 #[tokio::test]
 async fn a_bad_frame_after_welcome_gets_bye_bad_frame() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;
     client.send_bytes(b"\x00\x00\x00\x02[]").await;
@@ -343,7 +149,7 @@ async fn a_bad_frame_after_welcome_gets_bye_bad_frame() {
 
 #[tokio::test]
 async fn pair_auth_and_a_frame_without_type_after_welcome_are_protocol_errors() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let auth = {
         let hello = daemon.connect().receive().await;
@@ -363,7 +169,7 @@ async fn pair_auth_and_a_frame_without_type_after_welcome_are_protocol_errors() 
 
 #[tokio::test]
 async fn an_unknown_type_after_welcome_is_ignored() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;
     client.send(&json!({"type": "telemetry", "id": 1})).await;
@@ -377,7 +183,7 @@ async fn an_unknown_type_after_welcome_is_ignored() {
 
 #[tokio::test]
 async fn a_version_outside_the_range_is_reported_before_the_proof() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let mut client = daemon.connect();
     let hello = client.receive().await;
@@ -392,7 +198,7 @@ async fn a_version_outside_the_range_is_reported_before_the_proof() {
 
 #[tokio::test]
 async fn a_wrong_proof_gets_auth_failed_and_a_wrong_secret_pairing_failed() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let mut client = daemon.connect();
     let hello = client.receive().await;
@@ -421,7 +227,7 @@ async fn a_wrong_proof_gets_auth_failed_and_a_wrong_secret_pairing_failed() {
 
 #[tokio::test]
 async fn a_pending_device_has_no_scopes_and_can_only_ping_until_the_owner_says_yes() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let mut pending = daemon.pair(&EVERY_SCOPE).await;
     let welcome = &pending.welcome;
     assert_eq!(
@@ -451,7 +257,7 @@ async fn a_pending_device_has_no_scopes_and_can_only_ping_until_the_owner_says_y
 
 #[tokio::test]
 async fn a_refused_pairing_gets_bye_revoked() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let mut pending = daemon.pair(&EVERY_SCOPE).await;
     pending.notice.answer.send(false).expect("answer taken");
     pending.client.expect_last("bye", "revoked").await;
@@ -459,7 +265,7 @@ async fn a_refused_pairing_gets_bye_revoked() {
 
 #[tokio::test]
 async fn a_device_without_state_titles_gets_every_title_as_null() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let reader = daemon.paired_device(&[Scope::StateRead]).await;
     let (mut client, _) = daemon.ready(&reader).await;
     client.send(&subscribe(1)).await;
@@ -480,7 +286,7 @@ async fn a_device_without_state_titles_gets_every_title_as_null() {
 
 #[tokio::test]
 async fn a_subscribed_device_with_state_titles_gets_titles_and_every_newer_state() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;
     // Not subscribed yet: this change must not be pushed.
@@ -504,7 +310,7 @@ async fn a_subscribed_device_with_state_titles_gets_titles_and_every_newer_state
 
 #[tokio::test]
 async fn a_revoke_closes_the_session_with_bye_revoked() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;
     let was_stored = daemon.shared.security.revoke(&device.id).expect("revoke");
@@ -514,7 +320,7 @@ async fn a_revoke_closes_the_session_with_bye_revoked() {
 
 #[tokio::test]
 async fn shutdown_sends_bye_shutdown() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;
     daemon.shutdown.send_replace(true);
@@ -523,7 +329,7 @@ async fn shutdown_sends_bye_shutdown() {
 
 #[tokio::test(start_paused = true)]
 async fn an_idle_connection_gets_bye_idle_and_every_frame_resets_the_timer() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;
     tokio::time::sleep(IDLE_TIMEOUT - Duration::from_secs(1)).await;

@@ -1,0 +1,1652 @@
+{
+  "config": {
+    "max_volume_pct": 100
+  },
+  "server_states": {
+    "main": {
+      "state": {
+        "available": true,
+        "max_volume_pct": 100,
+        "default_sink": 1,
+        "default_source": 2,
+        "sinks": [
+          {
+            "id": 1,
+            "description": "Built-in Audio Analog Stereo",
+            "kind": "speaker",
+            "volume_pct": 40,
+            "muted": false,
+            "available": true
+          },
+          {
+            "id": 3,
+            "description": "Dell P3223QE",
+            "kind": "hdmi",
+            "volume_pct": 100,
+            "muted": false,
+            "available": true
+          },
+          {
+            "id": 5,
+            "description": "WH-1000XM4",
+            "kind": "bluetooth",
+            "volume_pct": 35,
+            "muted": false,
+            "available": false
+          }
+        ],
+        "sources": [
+          {
+            "id": 2,
+            "description": "Built-in Audio Analog Stereo",
+            "kind": "microphone",
+            "volume_pct": 60,
+            "muted": true,
+            "available": true
+          },
+          {
+            "id": 4,
+            "description": "Yeti Stereo Microphone",
+            "kind": "usb",
+            "volume_pct": 80,
+            "muted": false,
+            "available": true
+          }
+        ],
+        "truncated": false
+      },
+      "names": {
+        "1": "alsa_output.pci-0000_00_1f.3.analog-stereo",
+        "3": "alsa_output.pci-0000_01_00.1.hdmi-stereo",
+        "5": "bluez_output.38_18_4C_00_00_01.1",
+        "2": "alsa_input.pci-0000_00_1f.3.analog-stereo",
+        "4": "alsa_input.usb-Blue_Yeti-00.analog-stereo"
+      }
+    }
+  },
+  "states": [
+    {
+      "name": "01-two-sinks-two-sources",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":4,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "02-sound-server-unreachable",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":false,\"max_volume_pct\":100,\"default_sink\":null,\"default_source\":null,\"sinks\":[],\"sources\":[],\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "03-every-kind",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":7,\"sinks\":[{\"id\":1,\"description\":\"Device 1\",\"kind\":\"speaker\",\"volume_pct\":50,\"muted\":false,\"available\":true},{\"id\":2,\"description\":\"Device 2\",\"kind\":\"headphones\",\"volume_pct\":50,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Device 3\",\"kind\":\"hdmi\",\"volume_pct\":50,\"muted\":false,\"available\":true},{\"id\":4,\"description\":\"Device 4\",\"kind\":\"bluetooth\",\"volume_pct\":50,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"Device 5\",\"kind\":\"usb\",\"volume_pct\":50,\"muted\":false,\"available\":true},{\"id\":6,\"description\":\"Device 6\",\"kind\":\"other\",\"volume_pct\":50,\"muted\":false,\"available\":true}],\"sources\":[{\"id\":7,\"description\":\"Mic\",\"kind\":\"microphone\",\"volume_pct\":50,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "04-volume-bounds-and-max-150",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":150,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":0,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":1000,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "05-no-default-devices",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":null,\"default_source\":null,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "06-truncated",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":null,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[],\"truncated\":true}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "07-description-with-replacement-characters",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Speaker��[31m\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "ok"
+    },
+    {
+      "name": "10-unknown-kind-is-other",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"television\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": {
+        "normalized": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"other\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}"
+      }
+    },
+    {
+      "name": "11-unknown-members-ignored",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true,\"ports\":[\"analog-output-speaker\"]},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true,\"monitor_of\":null},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false,\"balance\":0}}}",
+      "expect": {
+        "normalized": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}"
+      }
+    },
+    {
+      "name": "20-available-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "21-available-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":null,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "22-max-volume-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "23-max-volume-99",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":99,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "24-max-volume-151",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":151,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "25-default-sink-string",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":\"1\",\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "26-default-source-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "27-sinks-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":null,\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "28-sources-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "29-sinks-an-object",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":{\"1\":{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true}},\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "30-truncated-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}]}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "31-device-id-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "32-device-id-negative",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":-1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "33-description-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":null,\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "34-kind-null",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":null,\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "35-kind-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "36-volume-1001",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":1001,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "37-volume-negative",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":-5,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "38-volume-with-fraction",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40.5,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "39-muted-string",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":\"true\",\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "40-device-available-missing",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[{\"id\":1,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"speaker\",\"volume_pct\":40,\"muted\":false,\"available\":true},{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "41-device-not-an-object",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":{\"available\":true,\"max_volume_pct\":100,\"default_sink\":1,\"default_source\":2,\"sinks\":[1,{\"id\":3,\"description\":\"Dell P3223QE\",\"kind\":\"hdmi\",\"volume_pct\":100,\"muted\":false,\"available\":true},{\"id\":5,\"description\":\"WH-1000XM4\",\"kind\":\"bluetooth\",\"volume_pct\":35,\"muted\":false,\"available\":false}],\"sources\":[{\"id\":2,\"description\":\"Built-in Audio Analog Stereo\",\"kind\":\"microphone\",\"volume_pct\":60,\"muted\":true,\"available\":true},{\"id\":4,\"description\":\"Yeti Stereo Microphone\",\"kind\":\"usb\",\"volume_pct\":80,\"muted\":false,\"available\":true}],\"truncated\":false}}}",
+      "expect": "bad"
+    },
+    {
+      "name": "42-state-not-an-object",
+      "payload": "{\"type\":\"evt\",\"event\":\"state.changed\",\"data\":{\"topic\":\"audio\",\"rev\":1,\"data\":[]}}",
+      "expect": "bad"
+    }
+  ],
+  "requests": [
+    {
+      "name": "01-volume-spec-example",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":10,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":55}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-volume",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "55%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "02-volume-above-max-spec-example",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":11,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":180}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "03-volume-0",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":3,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":3,\"volume_pct\":0}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-volume",
+          "--",
+          "alsa_output.pci-0000_01_00.1.hdmi-stereo",
+          "0%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "04-volume-at-max",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":4,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":100}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-volume",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "100%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "05-volume-max-plus-one",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":5,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":101}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "06-volume-negative",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":6,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":-1}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "07-volume-string",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":7,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":\"50\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "08-volume-with-fraction",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":8,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":50.5}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "09-volume-with-exponent",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":9,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":5e1}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "10-volume-null",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":10,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "11-volume-missing",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":11,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "12-volume-device-missing",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":12,\"op\":\"audio.set_volume\",\"args\":{\"volume_pct\":50}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "13-volume-device-string",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":13,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":\"1\",\"volume_pct\":50}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "14-volume-device-null",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":14,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":null,\"volume_pct\":50}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "15-volume-unknown-device",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":15,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":99,\"volume_pct\":50}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "16-volume-unplugged-sink-is-still-a-target",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":16,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":5,\"volume_pct\":20}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-volume",
+          "--",
+          "bluez_output.38_18_4C_00_00_01.1",
+          "20%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "17-volume-source-without-capture",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":17,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":4,\"volume_pct\":50}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio.capture"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "18-volume-source-with-capture",
+      "scopes": [
+        "state.read",
+        "audio",
+        "audio.capture"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":18,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":4,\"volume_pct\":50}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-source-volume",
+          "--",
+          "alsa_input.usb-Blue_Yeti-00.analog-stereo",
+          "50%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "19-volume-read-only",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":19,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":50}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "20-volume-without-audio",
+      "scopes": [
+        "state.read"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":20,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":50}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "21-volume-capture-alone-is-not-enough",
+      "scopes": [
+        "state.read",
+        "audio.capture"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":21,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":4,\"volume_pct\":50}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "22-volume-rate-limited",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 0
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":22,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":50}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 100
+          }
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "23-volume-rate-limit-before-args",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 0
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":23,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":180}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 100
+          }
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "24-volume-uses-the-continuous-bucket",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 0,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":24,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":50}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-volume",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "50%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "25-volume-sound-server-fails",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "fails",
+      "payload": "{\"type\":\"req\",\"id\":25,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":50}}",
+      "expect": {
+        "error": "backend_unavailable"
+      },
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-volume",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "50%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "26-volume-sound-server-hangs",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "hangs",
+      "payload": "{\"type\":\"req\",\"id\":26,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":1,\"volume_pct\":50}}",
+      "expect": {
+        "error": "timeout"
+      },
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-volume",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "50%"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "28-volume-range-checked-before-target",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":28,\"op\":\"audio.set_volume\",\"args\":{\"device_id\":99,\"volume_pct\":101}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "30-mute-sink",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":30,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":true}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-mute",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "1"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "31-unmute-sink",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":31,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":false}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-mute",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "0"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "32-mute-source-needs-only-audio",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":32,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":4,\"muted\":true}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-source-mute",
+          "--",
+          "alsa_input.usb-Blue_Yeti-00.analog-stereo",
+          "1"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "33-unmute-source-spec-example",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":12,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":2,\"muted\":false}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio.capture"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "34-unmute-source-with-capture-shows-a-notice",
+      "scopes": [
+        "state.read",
+        "audio",
+        "audio.capture"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":34,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":2,\"muted\":false}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-source-mute",
+          "--",
+          "alsa_input.pci-0000_00_1f.3.analog-stereo",
+          "0"
+        ]
+      ],
+      "notice": true
+    },
+    {
+      "name": "35-mute-missing",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":35,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "36-mute-string",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":36,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":\"false\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "37-mute-number",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":37,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":0}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "38-mute-null",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":38,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "39-unmute-unknown-device-without-capture",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":39,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":99,\"muted\":false}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "40-mute-uses-the-actions-bucket",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 0,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":40,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":true}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "41-mute-with-empty-continuous-bucket",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 0
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":41,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":true}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-sink-mute",
+          "--",
+          "alsa_output.pci-0000_00_1f.3.analog-stereo",
+          "1"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "42-mute-read-only",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":42,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":1,\"muted\":true}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "43-mute-without-audio",
+      "scopes": [
+        "state.read"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":43,\"op\":\"audio.set_mute\",\"args\":{\"device_id\":2,\"muted\":true}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "50-default-sink",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":50,\"op\":\"audio.set_default\",\"args\":{\"device_id\":3}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-default-sink",
+          "--",
+          "alsa_output.pci-0000_01_00.1.hdmi-stereo"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "51-default-source-without-capture",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":51,\"op\":\"audio.set_default\",\"args\":{\"device_id\":4}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio.capture"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "52-default-source-with-capture",
+      "scopes": [
+        "state.read",
+        "audio",
+        "audio.capture"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":52,\"op\":\"audio.set_default\",\"args\":{\"device_id\":4}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-default-source",
+          "--",
+          "alsa_input.usb-Blue_Yeti-00.analog-stereo"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "53-default-unknown-device",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":53,\"op\":\"audio.set_default\",\"args\":{\"device_id\":99}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "54-default-device-string",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":54,\"op\":\"audio.set_default\",\"args\":{\"device_id\":\"alsa_output.x\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "55-default-args-not-an-object",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":55,\"op\":\"audio.set_default\",\"args\":[3]}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "56-default-args-absent",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":56,\"op\":\"audio.set_default\"}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "57-default-unknown-member-ignored",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":57,\"op\":\"audio.set_default\",\"args\":{\"device_id\":3,\"kind\":\"source\"}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [
+        [
+          "set-default-sink",
+          "--",
+          "alsa_output.pci-0000_01_00.1.hdmi-stereo"
+        ]
+      ],
+      "notice": false
+    },
+    {
+      "name": "58-default-rate-limited",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 0,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":58,\"op\":\"audio.set_default\",\"args\":{\"device_id\":3}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "59-default-read-only-scope-first",
+      "scopes": [
+        "state.read"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":59,\"op\":\"audio.set_default\",\"args\":{\"device_id\":3}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "70-subscribe-audio",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":70,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"audio\"]}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "71-subscribe-audio-without-audio",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":71,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"audio\"]}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "audio"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "72-subscribe-audio-read-only",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":72,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"audio\"]}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "73-subscribe-desktop-and-audio",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":73,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"desktop\",\"audio\"]}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "74-subscribe-needs-state-read",
+      "scopes": [
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 5,
+        "continuous": 10
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":74,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"audio\"]}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "state.read"
+        }
+      },
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    },
+    {
+      "name": "75-subscribe-audio-with-empty-buckets",
+      "scopes": [
+        "state.read",
+        "audio"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "audio": "main",
+      "buckets": {
+        "actions": 0,
+        "continuous": 0
+      },
+      "backend": "ok",
+      "payload": "{\"type\":\"req\",\"id\":75,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"audio\"]}}",
+      "expect": "ok",
+      "sway": [],
+      "pactl": [],
+      "notice": false
+    }
+  ],
+  "results": [
+    {
+      "name": "01-volume-spec-example",
+      "op": "audio.set_volume",
+      "payload": "{\"type\":\"res\",\"id\":10,\"ok\":true,\"result\":{}}",
+      "expect": "ok"
+    },
+    {
+      "name": "02-mute-empty-result",
+      "op": "audio.set_mute",
+      "payload": "{\"type\":\"res\",\"id\":3,\"ok\":true,\"result\":{}}",
+      "expect": "ok"
+    },
+    {
+      "name": "03-default-unknown-member",
+      "op": "audio.set_default",
+      "payload": "{\"type\":\"res\",\"id\":4,\"ok\":true,\"result\":{\"applied\":true}}",
+      "expect": "ok"
+    }
+  ],
+  "errors": [
+    {
+      "name": "01-volume-above-max-spec-example",
+      "op": "audio.set_volume",
+      "payload": "{\"type\":\"res\",\"id\":11,\"ok\":false,\"error\":{\"code\":\"bad_request\",\"message\":\"volume_pct above max_volume_pct\"}}",
+      "expect": {
+        "code": "bad_request"
+      }
+    },
+    {
+      "name": "02-unmute-source-spec-example",
+      "op": "audio.set_mute",
+      "payload": "{\"type\":\"res\",\"id\":12,\"ok\":false,\"error\":{\"code\":\"forbidden\",\"message\":\"needs audio.capture\",\"detail\":{\"scope\":\"audio.capture\"}}}",
+      "expect": {
+        "code": "forbidden",
+        "scope": "audio.capture"
+      }
+    }
+  ]
+}

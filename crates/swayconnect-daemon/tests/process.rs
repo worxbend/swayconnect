@@ -21,7 +21,7 @@ use swayconnect_protocol::ByeCode;
 use swayconnect_protocol::fingerprint::{encode_base64url, fingerprint};
 use swayconnect_protocol::limits::DEFAULT_PORT;
 use swayconnect_protocol::uri::PairingUri;
-use swayconnect_testkit::{FakeSway, TestDirs};
+use swayconnect_testkit::{FakeSway, TestDirs, nonexistent_programs};
 
 const DAEMON: &str = env!("CARGO_BIN_EXE_swayconnectd");
 const PATIENCE: Duration = Duration::from_secs(20);
@@ -123,8 +123,9 @@ impl Harness {
         let dirs = TestDirs::new();
         let sway = FakeSway::start(&dirs.runtime_dir(), &support::real_sway_sockets());
         let config = format!(
-            "listen = [\"127.0.0.1:0\"]\nserver_name = \"desk\"\n[sway]\nsocket = \"{}\"\n",
-            sway.socket_path().display()
+            "listen = [\"127.0.0.1:0\"]\nserver_name = \"desk\"\n[sway]\nsocket = \"{}\"\n{}",
+            sway.socket_path().display(),
+            nonexistent_programs()
         );
         fs::write(dirs.config_file(), config).expect("config file");
         Harness { dirs, sway }
@@ -309,7 +310,11 @@ async fn pair_devices_and_revoke_work_against_a_running_daemon() {
         .expect("pairing confirmed");
     let id = profile.device_id.as_str();
     let paired = pairing.lines.expect("paired: ");
-    let expected = format!("paired: test phone id {id} scopes state.read,state.titles,control");
+    // The owner's default of 2026-11-14 (`docs/DESIGN.md` 11.8), in the order of spec 17.2.
+    let expected = format!(
+        "paired: test phone id {id} scopes \
+         state.read,state.titles,control,idle.inhibit,audio,media,launch,input.keys,input.text"
+    );
     assert_eq!(paired, format!("Confirm this device? [y/N] {expected}"));
     assert!(pairing.exit_status().success());
 

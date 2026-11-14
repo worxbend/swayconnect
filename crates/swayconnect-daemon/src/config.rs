@@ -10,7 +10,13 @@ use serde::Deserialize;
 use swayconnect_protocol::limits::{DEFAULT_PORT, MAX_NAME_BYTES};
 use swayconnect_protocol::text::{is_display_name, replace_unsafe};
 
+use crate::apps::{AppsConfig, LauncherConfig};
+use crate::audio::AudioConfig;
 use crate::icons::IconsConfig;
+use crate::input::{InputConfig, WaylandConfig};
+use crate::keep_awake::KeepAwakeConfig;
+use crate::lockstate::SessionConfig;
+use crate::notify::NotifyConfig;
 use crate::paths::PathError;
 
 const HOSTNAME_FILE: &str = "/proc/sys/kernel/hostname";
@@ -27,6 +33,22 @@ pub struct Config {
     pub sway_socket: Option<PathBuf>,
     /// Section `[icons]` (`docs/DESIGN.md` 11.9).
     pub icons: IconsConfig,
+    /// Section `[session]`: lock command and lock heuristic.
+    pub session: SessionConfig,
+    /// Section `[keep_awake]`.
+    pub keep_awake: KeepAwakeConfig,
+    /// Section `[notify]`.
+    pub notify: NotifyConfig,
+    /// Section `[audio]` (M2b).
+    pub audio: AudioConfig,
+    /// Section `[apps]`.
+    pub apps: AppsConfig,
+    /// Section `[launcher]`.
+    pub launcher: LauncherConfig,
+    /// Section `[input]`.
+    pub input: InputConfig,
+    /// Section `[wayland]`.
+    pub wayland: WaylandConfig,
 }
 
 /// Why the daemon cannot start (exit code 2, `docs/DESIGN.md` 4.7).
@@ -112,6 +134,14 @@ struct RawConfig {
     read_only: bool,
     sway: RawSway,
     icons: IconsConfig,
+    session: SessionConfig,
+    keep_awake: KeepAwakeConfig,
+    notify: NotifyConfig,
+    audio: AudioConfig,
+    apps: AppsConfig,
+    launcher: LauncherConfig,
+    input: InputConfig,
+    wayland: WaylandConfig,
 }
 
 #[derive(Deserialize, Default)]
@@ -170,6 +200,14 @@ impl Config {
                 .filter(|socket| !socket.is_empty())
                 .map(PathBuf::from),
             icons: raw.icons,
+            session: raw.session,
+            keep_awake: raw.keep_awake,
+            notify: raw.notify,
+            audio: raw.audio,
+            apps: raw.apps,
+            launcher: raw.launcher,
+            input: raw.input,
+            wayland: raw.wayland,
         })
     }
 }
@@ -262,6 +300,103 @@ mod tests {
         assert!(error_text("read_onli = true").contains("read_onli"));
         assert!(error_text("[sway]\nsoket = \"/x\"").contains("soket"));
         assert!(error_text("[icons]\nalias = {}").contains("alias"));
+        assert!(error_text("[session]\nlocks = []").contains("locks"));
+        assert!(error_text("[keep_awake]\ninhibitor = \"/x\"").contains("inhibitor"));
+        assert!(error_text("[notify]\nsend = \"/x\"").contains("send"));
+        assert!(error_text("[audio]\npactls = \"/x\"").contains("pactls"));
+        assert!(error_text("[apps]\nsystemd = \"/x\"").contains("systemd"));
+        assert!(error_text("[launcher]\nprogram = [\"/x\"]").contains("program"));
+        assert!(error_text("[input]\nseats = \"seat0\"").contains("seats"));
+        assert!(error_text("[wayland]\ndisplay = \"/x\"").contains("display"));
+        assert!(error_text("[clipboard]\nprogram = \"/x\"").contains("clipboard"));
+    }
+
+    #[test]
+    fn the_m2b_sections_are_kept_and_default_when_absent() {
+        let toml = "[audio]\npactl = \"/opt/pactl\"\nmax_volume_pct = 150\n\
+                    [apps]\nsystemd_run = \"/opt/systemd-run\"\ndeny = [\"gparted\"]\n\
+                    [launcher]\nargv = [\"/opt/fuzzel\", \"--dmenu\"]\n\
+                    [input]\nseat = \"seat1\"\n[wayland]\nsocket = \"/run/w/wayland-1\"";
+        let config = Config::from_toml(toml).expect("valid");
+        assert_eq!(config.audio.pactl.as_path(), Path::new("/opt/pactl"));
+        assert_eq!(config.audio.max_volume_pct.get(), 150);
+        assert_eq!(
+            config.apps.systemd_run.as_path(),
+            Path::new("/opt/systemd-run")
+        );
+        assert_eq!(config.apps.deny, ["gparted"]);
+        assert_eq!(
+            config.launcher.argv.program().as_path(),
+            Path::new("/opt/fuzzel")
+        );
+        assert_eq!(config.input.seat.as_str(), "seat1");
+        assert_eq!(
+            config.wayland.socket.as_deref(),
+            Some(Path::new("/run/w/wayland-1"))
+        );
+
+        let defaults = Config::from_toml("").expect("defaults");
+        assert_eq!(defaults.audio, AudioConfig::default());
+        assert_eq!(defaults.apps, AppsConfig::default());
+        assert_eq!(defaults.launcher, LauncherConfig::default());
+        assert_eq!(defaults.input, InputConfig::default());
+        assert_eq!(defaults.wayland, WaylandConfig::default());
+    }
+
+    #[test]
+    fn an_m2b_value_against_the_rules_is_an_error() {
+        for toml in [
+            "[audio]\npactl = \"pactl\"",
+            "[audio]\nmax_volume_pct = 99",
+            "[audio]\nmax_volume_pct = 151",
+            "[apps]\nsystemd_run = \"systemd-run\"",
+            "[apps]\nterminal = [\"alacritty\", \"-e\"]",
+            "[launcher]\nargv = []",
+            "[input]\nseat = \"\"",
+            "[wayland]\nsocket = \"wayland-1\"",
+        ] {
+            assert!(Config::from_toml(toml).is_err(), "{toml}");
+        }
+    }
+
+    #[test]
+    fn the_m2a_sections_are_kept_and_default_when_absent() {
+        let toml = "[session]\nlock = [\"/opt/lock.sh\", \"now\"]\n\
+                    [keep_awake]\ninhibit = \"/opt/inhibit\"\nmax_duration_s = 3600\n\
+                    default_duration_s = 600\n\
+                    [notify]\nnotify_send = \"/opt/notify\"";
+        let config = Config::from_toml(toml).expect("valid");
+        let lock = config.session.lock.expect("lock command");
+        assert_eq!(lock.program().as_path(), Path::new("/opt/lock.sh"));
+        assert_eq!(lock.args(), ["now"]);
+        assert_eq!(
+            config.keep_awake.inhibit.as_path(),
+            Path::new("/opt/inhibit")
+        );
+        assert_eq!(config.keep_awake.max_duration_s, 3600);
+        assert_eq!(
+            config.notify.notify_send.as_path(),
+            Path::new("/opt/notify")
+        );
+
+        let defaults = Config::from_toml("").expect("defaults");
+        assert_eq!(defaults.session, SessionConfig::default());
+        assert_eq!(defaults.keep_awake, KeepAwakeConfig::default());
+        assert_eq!(defaults.notify, NotifyConfig::default());
+        assert_eq!(defaults.session.lock, None);
+    }
+
+    #[test]
+    fn a_relative_program_or_a_keep_awake_value_against_the_rules_is_an_error() {
+        for toml in [
+            "[session]\nlock = [\"lock.sh\"]",
+            "[session]\nlock = []",
+            "[notify]\nnotify_send = \"notify-send\"",
+            "[keep_awake]\ncooldown_s = 59",
+            "[keep_awake]\nmax_continuous_s = 60",
+        ] {
+            assert!(Config::from_toml(toml).is_err(), "{toml}");
+        }
     }
 
     #[test]

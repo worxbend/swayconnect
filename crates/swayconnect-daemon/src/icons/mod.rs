@@ -6,7 +6,7 @@
 //! in a child process ([`raster`]).
 
 pub mod entries;
-mod keyfile;
+pub(crate) mod keyfile;
 mod png;
 pub mod raster;
 pub mod store;

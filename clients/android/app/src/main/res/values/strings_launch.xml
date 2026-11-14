@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launch area: search, recent and all apps, target workspace, ghost tile (docs/UX.md 8). -->
+<resources>
+    <string name="launch_search">Search apps</string>
+    <string name="launch_recent">Recent</string>
+    <string name="launch_all">All apps</string>
+    <string name="launch_no_match">No app matches \'%1$s\'</string>
+    <string name="launch_no_apps">The computer lists no apps.</string>
+    <string name="launch_waiting">Waiting for the computer</string>
+    <string name="launch_none">This computer offers no app starting.</string>
+    <string name="launch_locked">Starting apps is off for this phone. Show how to turn it on</string>
+    <string name="launch_truncated">The computer lists more apps than it sends.</string>
+    <string name="launch_read_only">The computer is set to look only.</string>
+
+    <!-- App cell (UX 8.2) -->
+    <string name="launch_start">Start</string>
+    <string name="launch_state_risky">Risky app, hold to start</string>
+    <string name="launch_state_locked">Locked</string>
+    <string name="launch_state_starting">Starting</string>
+    <string name="launch_open_on">Open on workspace</string>
+    <string name="launch_confirm_title">Start %1$s?</string>
+    <string name="launch_confirm_text">It is a terminal or an app marked risky. Starting it is the same as running commands.</string>
+
+    <!-- Context pill: the target workspace (UX 4.1, 8.1) -->
+    <string name="launch_on">On %1$d</string>
+    <string name="launch_on_focused">On focused</string>
+    <string name="launch_focused_workspace">Focused workspace</string>
+    <string name="launch_target_spoken">Start apps on</string>
+    <string name="launch_target_state_number">workspace %1$d</string>
+    <string name="launch_target_state_focused">the focused workspace</string>
+
+    <!-- Ghost tile on Desktop (UX 8.2) -->
+    <string name="launch_opening">Opening %1$s…</string>
+</resources>

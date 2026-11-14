@@ -42,18 +42,45 @@ impl DeviceId {
     }
 }
 
-/// Spec 7.1. Wire names: `state.read`, `state.titles`, `control`.
+/// Spec 7.1 and the scopes of 17.2.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Scope {
     StateRead,
     StateTitles,
     Control,
+    /// `keep_awake.set`.
+    IdleInhibit,
+    /// `window.close`.
+    Destructive,
+    /// Topic `audio` and the audio ops on sinks; muting a source.
+    Audio,
+    /// With `audio`: every other write to a source (step 8a of 17.16).
+    AudioCapture,
+    /// Topic `media` and the `media.*` ops.
+    Media,
+    /// Topic `apps`, `launcher.open` and `app.launch` of an entry that is not risky.
+    Launch,
+    /// With `launch`: `app.launch` of a risky entry (step 8b of 17.16).
+    LaunchRisky,
+    /// `input.key`.
+    InputKeys,
+    /// `input.text`.
+    InputText,
 }
 
 wire_names!(Scope {
     StateRead => "state.read",
     StateTitles => "state.titles",
     Control => "control",
+    IdleInhibit => "idle.inhibit",
+    Destructive => "destructive",
+    Audio => "audio",
+    AudioCapture => "audio.capture",
+    Media => "media",
+    Launch => "launch",
+    LaunchRisky => "launch.risky",
+    InputKeys => "input.keys",
+    InputText => "input.text",
 });
 
 /// `hello.protocol`.

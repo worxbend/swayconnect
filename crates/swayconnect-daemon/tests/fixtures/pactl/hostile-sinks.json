@@ -1,0 +1,153 @@
+[
+ {
+  "index": 1,
+  "name": "-evil",
+  "description": "Dropped: leading dash",
+  "mute": false,
+  "volume": {
+   "mono": {
+    "value": 65536
+   }
+  }
+ },
+ {
+  "index": 2,
+  "name": "--server=x",
+  "description": "Dropped: looks like an option",
+  "mute": false,
+  "volume": {
+   "mono": {
+    "value": 65536
+   }
+  }
+ },
+ {
+  "index": 3,
+  "name": "",
+  "description": "Dropped: empty name"
+ },
+ {
+  "index": 4,
+  "name": 5,
+  "description": "Skipped: name is not a string"
+ },
+ {
+  "index": 5,
+  "name": "bad\u0007bell",
+  "description": "Dropped: control character in the name"
+ },
+ {
+  "index": 6,
+  "name": "bluez_output.00_00_00_00_00_01.1",
+  "description": "Head\u202ephones\u001b[31m",
+  "mute": true,
+  "volume": {
+   "front-left": {
+    "value": 1000,
+    "value_percent": "2%"
+   },
+   "front-right": {
+    "value": 70000
+   },
+   "lfe": {
+    "value": 131072
+   }
+  },
+  "properties": {
+   "device.bus": "bluetooth",
+   "device.api": "bluez5"
+  },
+  "ports": [
+   {
+    "name": "headset-output",
+    "type": "Headset",
+    "availability": "not available"
+   }
+  ],
+  "active_port": "headset-output"
+ },
+ {
+  "index": 7,
+  "name": "alsa_output.pci-0000_01_00.1.hdmi-stereo",
+  "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "mute": false,
+  "volume": {
+   "mono": {
+    "value": 65536
+   }
+  },
+  "properties": {
+   "device.bus": "pci",
+   "device.api": "alsa",
+   "device.profile.name": "hdmi-stereo"
+  },
+  "ports": [
+   {
+    "name": "hdmi-output-0",
+    "type": "HDMI",
+    "availability": "available"
+   }
+  ],
+  "active_port": "hdmi-output-0"
+ },
+ {
+  "index": 8,
+  "name": "easyeffects_sink",
+  "description": "",
+  "properties": {},
+  "some_future_member": {
+   "a": [
+    1,
+    2
+   ]
+  }
+ },
+ {
+  "index": 9,
+  "name": "alsa_output.usb-Foo-00.analog-stereo",
+  "description": "USB DAC",
+  "mute": false,
+  "volume": {
+   "front-left": {
+    "value": 32768
+   },
+   "front-right": {
+    "value": 32768
+   }
+  },
+  "properties": {
+   "device.bus": "usb",
+   "device.api": "alsa"
+  },
+  "ports": [
+   {
+    "name": "analog-output-headphones",
+    "type": "Headphones",
+    "availability": "availability unknown"
+   }
+  ],
+  "active_port": "analog-output-headphones"
+ },
+ {
+  "index": 10,
+  "name": "loud_sink",
+  "description": "Absurd volume",
+  "mute": "no",
+  "volume": {
+   "mono": {
+    "value": 1000000000000
+   }
+  }
+ },
+ {
+  "index": 11,
+  "name": "loud_sink_2",
+  "description": "Absurd volume",
+  "volume": {
+   "mono": {
+    "value": 1000000000000
+   }
+  }
+ },
+ 42
+]

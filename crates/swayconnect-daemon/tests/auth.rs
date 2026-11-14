@@ -41,7 +41,17 @@ async fn welcome_and_state_follow_the_scopes_of_the_device() {
 
     let mut session = harness.connect(&controller).await;
     assert_eq!(session.welcome().scopes, [Scope::Control]);
-    let actions = ["workspace.focus", "window.focus", "window.fullscreen"];
+    // The M2a ops of `control`; without `[session] lock` there is no `session.lock`.
+    let actions = [
+        "workspace.focus",
+        "window.focus",
+        "window.fullscreen",
+        "window.move",
+        "window.floating",
+        "window.layout",
+        "window.scratchpad",
+        "scratchpad.show",
+    ];
     assert_eq!(session.welcome().ops, [&["ping"][..], &actions].concat());
     assert_eq!(session.welcome().topics, Vec::<String>::new());
     let subscribe = Args::StateSubscribe {

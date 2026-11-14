@@ -1,6 +1,6 @@
 # swayconnect
 
-Remote control for a [sway](https://swaywm.org/) desktop. A daemon on the computer (`swayconnectd`) shows paired devices the live workspaces and windows and lets them change focus. Clients are a Rust command line tool (`swayconnect`) and an Android app.
+Remote control for a [sway](https://swaywm.org/) desktop. A daemon on the computer (`swayconnectd`) shows paired devices the live workspaces and windows and lets them act on them: focus, move, float, close, keep the desktop awake, lock, set the volume, control media, start apps and type. Clients are a Rust command line tool (`swayconnect`) and an Android app.
 
 ## Status
 
@@ -12,6 +12,24 @@ Remote control for a [sway](https://swaywm.org/) desktop. A daemon on the comput
 | V2 "act" | focus a workspace, focus a window, fullscreen on or off | Written. Tested against a fake sway only. No action has reached a real sway: the owner has not run step S12 yet. |
 | V3 "phone" | Android app | Builds and passes its JVM tests locally. Ran on one emulator. The owner has not run step S13 yet. |
 | v2 M1 "UI/UX" | layout map, app icons, new Android shell and desktop | Written. `just ci` and the Android gate are green. Seen on one emulator against a `read_only` daemon on the real sway; actions only against a fake sway. The owner has not run gate G-M1 yet. What was and was not checked: `docs/V2_PLAN.md`, Status. |
+| v2 M2a "desktop controls" | move, float, layout, scratchpad, close; keep awake; lock; audit log | Written. `just ci` and the Android gate are green. Tested against a fake sway and the testkit's `fake-proc` only. No real `systemd-inhibit`, lock script or window action has run. The owner has not run gates G-WIN, G-KA, G-LOCK. |
+| v2 M2b "devices and typing" | audio, media, app launch and launcher, remote keyboard | Written. `just ci` and the Android gate are green. Tested against fakes only: fake `pactl`, fake MPRIS backend, fake `systemd-run`, fake keyboard. No real sound server write, player command, launch or virtual keyboard has run. The owner has not run gates G-AUDIO, G-MEDIA, G-LAUNCH, G-INPUT. |
+
+What v2 adds, and what is proven so far:
+
+| Feature | Command line | Android | Proven against | Owner gate still to run |
+|---|---|---|---|---|
+| Layout map and app icons | `layout`, `icon` | Desktop map, list | real sway, read-only | G-M1 |
+| Move, float, layout, scratchpad, close a window | `move`, `float`, `close --yes`; `raw` for layout and scratchpad | Desktop card buttons and sheets; close needs a hold | fake sway | G-WIN |
+| Keep awake (logind idle inhibitor, 1 h default, 2 h max) | `awake on [--for 90m]`, `awake off` | More: first tile, duration sheet | fake `systemd-inhibit` | G-KA |
+| Lock the screen | `lock` | More: round button | fake lock script | G-LOCK |
+| Volume, mute, default device | `volume`, `mute` (no default-device command) | Audio area, volume keys | fake `pactl` | G-AUDIO |
+| Play/pause, next, previous | `play` (play/pause only) | Audio card, now-playing capsule | fake MPRIS backend (tests only) | G-MEDIA |
+| Start an app, open the launcher | `launch` | Launch area | fake `systemd-run`, fake launcher | G-LAUNCH |
+| Type text, press keys | `type` (stdin), `key` | Keys area | fake keyboard (tests only) | G-INPUT |
+| Audit log of tier 2 actions | `swayconnectd audit` | none | tests | none |
+
+Every gate is in `docs/V2_PLAN.md` section 5. Each one is the first real run of that control, and only the owner runs it.
 
 Read it this way:
 
@@ -30,7 +48,8 @@ Not verified: a physical phone, a LAN address with the firewall rule, a QR scann
 Read this before you run the daemon.
 
 - **Sway IPC is a shell.** Whoever controls sway can run programs as you. swayconnect never forwards a command string: it accepts three typed actions whose targets are numeric ids. This design is new and has had no outside security review.
-- **A paired device can steer your keyboard focus.** With the default scopes it can also read your window titles (URLs, document names, chat partners). Pair only devices you own. Use `swayconnectd pair --scopes state.read,control` to withhold titles.
+- **A paired device can do a lot by default.** `swayconnectd pair` grants `state.read`, `state.titles`, `control`, `audio`, `media`, `idle.inhibit`, `launch`, `input.keys` and `input.text`. So a paired phone can read your window titles (URLs, document names, chat partners), steer focus, start apps, open the launcher and type into the focused window. Fuzzel plus typing reaches a terminal even without `launch.risky`: a stolen, unlocked phone can run code as you (`docs/DESIGN.md` D30, the owner's accepted risk). What limits it: typing is refused while the screen is locked or a keyboard grabber runs and stops when focus moves; a desktop notice shows when a remote keyboard session starts and when such a device connects; every tier 2 action is in the audit log; revoke and the panic switch end it. Pair only devices you own. Narrow the scopes with `swayconnectd pair --scopes state.read,control` or `swayconnectd devices deny <prefix> <scope>`.
+- **Off by default, granted only by name:** `destructive` (close windows), `audio.capture` (unmute a microphone) and `launch.risky` (terminals and the apps in `[apps] risky`).
 - **The pairing handshake is written for this project.** It uses TLS 1.3 with a pinned certificate and HMAC-SHA256 proofs. It is not a reviewed standard protocol.
 - **Do not expose the port to the internet.** The daemon listens on `127.0.0.1` by default. It refuses wildcard addresses. A LAN address needs an explicit `allow_from` list.
 - **Authentication and encryption cannot be turned off.** There is no flag for it and none is planned.
@@ -92,6 +111,24 @@ Needs Linux with sway, and a Rust toolchain through `rustup` (the version is pin
    swayconnect fullscreen <window_id> on
    ```
 
+6. v2 controls (none has run against the real desktop yet; the owner gates of `docs/V2_PLAN.md` section 5 come first):
+
+   ```
+   swayconnect move <window_id> 3          # or --id <workspace_id>
+   swayconnect float <window_id> on
+   swayconnect close <window_id> --yes     # needs the destructive scope
+   swayconnect awake on --for 90m          # awake off
+   swayconnect lock                        # needs [session] lock in the config
+   swayconnect volume 30                   # mute on|off; --device <id>
+   swayconnect play                        # --player <id>
+   swayconnect launch firefox              # desktop entry id, without .desktop
+   echo hello | swayconnect type --window <window_id>
+   swayconnect key --window <window_id> Escape
+   swayconnectd audit -n 20
+   ```
+
+   Exit codes: 1 server refusal or no target in the state, 2 usage (also a risky app without `--yes`), 3 invalid state or result.
+
 ### Reach the daemon from the LAN (phone)
 
 1. Copy `config.example.toml` to `~/.config/swayconnect/config.toml`. The example already lists a LAN address, so edit it first: put your computer's own address in `listen` and your network in `allow_from`.
@@ -113,7 +150,7 @@ Needs Linux with sway, and a Rust toolchain through `rustup` (the version is pin
 
 ## Panic switch
 
-`SIGUSR1` switches the running daemon to read-only mode until it is restarted. Paired devices can still read state. Every action is refused with `read_only`.
+`SIGUSR1` switches the running daemon to read-only mode until it is restarted. Paired devices can still read state. Every action is refused with `read_only`. It also ends a running keep-awake, closes a launcher the daemon opened and releases every remote key.
 
 ```
 pkill -USR1 -x swayconnectd
@@ -139,6 +176,16 @@ File: `~/.config/swayconnect/config.toml`. Every key is optional. [`config.examp
 | `allow_from` | none | source networks allowed on non-loopback addresses; required with a LAN address |
 | `read_only` | `false` | refuse every action |
 | `sway.socket` | empty (discover) | sway IPC socket path |
+| `icons.aliases`, `icons.theme` | empty, hicolor only | app id to desktop entry fallbacks; icon theme searched first |
+| `session.lock` | not set | argv of the lock command; without it `lock` is not offered |
+| `session.lock_processes` | `["swaylock"]` | process names that mean "locked" |
+| `session.keyboard_grabbers` | fuzzel, wofi, bemenu, tofi, swaylock | typing is refused while one runs |
+| `keep_awake.*` | `systemd-inhibit`, `sleep`; 3600, 7200, 14400, 900 s | inhibitor programs; default, max, continuous cap, cooldown |
+| `notify.notify_send` | `/usr/bin/notify-send` | desktop notices |
+| `audio.pactl`, `audio.max_volume_pct` | `/usr/bin/pactl`, 100 | sound server tool; highest volume (100 to 150) |
+| `apps.systemd_run`, `apps.deny`, `apps.risky`, `apps.terminal` | `/usr/bin/systemd-run`, none, gparted and KernelManager, alacritty `-e` | how apps start; hidden entries; entries that need `launch.risky` |
+| `launcher.argv` | `["/usr/bin/fuzzel"]` | what `launcher.open` runs |
+| `input.seat`, `wayland.socket` | `seat0`, discover | the virtual keyboard's seat and compositor socket |
 
 ## Repository layout
 
@@ -147,13 +194,14 @@ File: `~/.config/swayconnect/config.toml`. Every key is optional. [`config.examp
 | `docs/PROTOCOL.md` | the wire protocol, normative |
 | `docs/DESIGN.md` | architecture, security model, decisions |
 | `docs/RESEARCH.md` | why, with the alternatives |
-| `docs/IMPLEMENTATION_PLAN.md` | slices and order of work |
+| `docs/IMPLEMENTATION_PLAN.md` | stage 1 slices and order of work |
+| `docs/UX.md`, `docs/V2_PLAN.md` | v2 screens and v2 slices, status and owner gates |
 | `protocol/vectors/v1/` | conformance vectors shared by every client |
 | `crates/swayconnect-protocol` | messages, frames, proofs, pairing URI |
 | `crates/swayconnect-sway` | sway IPC client and the only command builder |
 | `crates/swayconnect-daemon` | `swayconnectd` |
 | `crates/swayconnect-cli` | `swayconnect` and the Rust client library |
-| `crates/swayconnect-testkit` | fake sway server for tests |
+| `crates/swayconnect-testkit` | fake sway server, `fake-proc` and test configs for tests |
 | `clients/android` | Android app (emulator only, see Status) |
 | `packaging/systemd` | user unit |
 
@@ -170,7 +218,7 @@ Needs [`just`](https://github.com/casey/just) and [`cargo-deny`](https://github.
 | `just deny` | licenses and advisories |
 | `just ci` | the full gate |
 
-Tests use a fake sway on a temporary Unix socket. No test connects to a real sway session.
+Tests use a fake sway on a temporary Unix socket, and the testkit's `fake-proc` for every program the daemon starts. No test connects to a real sway session, sound server, session bus or compositor.
 
 Android, from `clients/android`, with an Android SDK (`platforms;android-37.0`) and a JDK (Temurin 25 is tested; `android.yml` pins 21, untested): `./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`. Rules for contributors and coding agents are in [`AGENTS.md`](AGENTS.md).
 

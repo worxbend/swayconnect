@@ -1,12 +1,9 @@
 package com.swayconnect.android.ui.shell
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -18,33 +15,43 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemGestures
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.IntState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import com.swayconnect.android.R
 import com.swayconnect.android.ui.MainViewModel
-import com.swayconnect.android.ui.common.DashedCard
+import com.swayconnect.android.ui.audio.AudioArea
+import com.swayconnect.android.ui.common.PillTone
+import com.swayconnect.android.ui.common.StatePill
+import com.swayconnect.android.ui.keys.KeysArea
+import com.swayconnect.android.ui.keys.KeysPrivateButton
+import com.swayconnect.android.ui.launch.LaunchArea
+import com.swayconnect.android.ui.launch.LaunchTargetPill
+import com.swayconnect.android.ui.launch.shownPageTarget
+import com.swayconnect.android.ui.more.MoreArea
+import com.swayconnect.android.ui.more.MoreSheet
 import com.swayconnect.android.ui.state.Area
 import com.swayconnect.android.ui.state.DriveMode
-import com.swayconnect.android.ui.state.ServerSummary
 import com.swayconnect.android.ui.state.Sheet
 import com.swayconnect.android.ui.state.UiState
 import com.swayconnect.android.ui.theme.SwayIcon
@@ -56,23 +63,31 @@ private val NAV_SIDE = 16.dp
 private val NAV_LIFT = 12.dp
 private val CONTENT_CLEARANCE = 24.dp
 private const val TIMED_PILL_BASE_MS = 2000L
+private const val VOLUME_KEY_PILL_MS = 1200L
 
 /**
  * The paired app (docs/UX.md 2, 4, 17.2): title row, the content of the selected area and the floating pill nav.
- * [desktop] renders the Desktop area; the padding it gets keeps its last item clear of the nav.
+ * [desktop] renders the Desktop area; the padding it gets keeps its last item clear of the nav and the now-playing
+ * capsule. [volumeKeyPresses] counts the phone volume keys the activity handled; each one shows "PC 45 %" (UX 7.2).
  * Back closes the shell sheet, then returns to Desktop; on Desktop with no sheet the system handles it
  * (predictive back to home, `enableOnBackInvokedCallback`).
  */
 @Composable
-fun AppShell(state: UiState, viewModel: MainViewModel, desktop: @Composable (PaddingValues) -> Unit) {
+fun AppShell(state: UiState, viewModel: MainViewModel, volumeKeyPresses: IntState, desktop: @Composable (PaddingValues) -> Unit) {
     BackHandler(enabled = state.sheet != null || state.area != Area.Desktop) { viewModel.goBack() }
     DrivePausedTimeout(state.drivePaused, viewModel::clearDrivePaused)
+    // Launch's target workspace (UX 8.1), shared by its context pill and its grid. Null: the computer's focused
+    // workspace. Desktop's "+" aims it at the shown page; leaving Launch resets it.
+    val launchTarget = rememberSaveable { mutableStateOf<Int?>(null) }
+    LaunchedEffect(state.area) { if (state.area != Area.Launch) launchTarget.value = null }
 
     val items = navItems(state)
     val showLocked = { scope: String -> viewModel.openSheet(Sheet.Locked(scope)) }
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscape = maxWidth > maxHeight
+            // The pill nav hides while the IME is open (UX 9.1); the content then ends just above the keyboard.
+            val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
             val direction = LocalLayoutDirection.current
             val safe = WindowInsets.safeDrawing.asPaddingValues()
             val gestures = WindowInsets.systemGestures.asPaddingValues()
@@ -81,12 +96,21 @@ fun AppShell(state: UiState, viewModel: MainViewModel, desktop: @Composable (Pad
             val gutterStart = if (landscape) NAV_SIDE else max(NAV_SIDE, gestures.calculateStartPadding(direction) - safe.calculateStartPadding(direction))
             val gutterEnd = max(NAV_SIDE, gestures.calculateEndPadding(direction) - safe.calculateEndPadding(direction))
             val gutter = PaddingValues(start = gutterStart, end = gutterEnd)
+            // The capsule hides with the nav while the IME is open (UX 4.3); while shown, the content clears it too.
+            val capsule = capsuleOf(state).takeUnless { imeOpen }
+            val capsuleRoom = if (capsule != null) CAPSULE_HEIGHT + CAPSULE_GAP else 0.dp
+            val capsuleActions = CapsuleActions(
+                onCommand = { command -> capsule?.let { viewModel.controlMedia(it.player.id, command) } },
+                onOpenAudio = { viewModel.selectArea(Area.Audio) },
+                onHide = viewModel::hideNowPlaying,
+            )
             val content: @Composable (Modifier, PaddingValues) -> Unit = { modifier, padding ->
                 Column(modifier) {
-                    ShellTitle(state, viewModel, gutter, showLocked)
+                    ShellTitle(state, viewModel, gutter, showLocked, launchTarget)
                     // The area below draws no inset of its own: the shell already placed it.
                     Box(Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(WindowInsets.safeDrawing)) {
-                        AreaContent(state, padding, viewModel, desktop)
+                        AreaContent(state, padding, viewModel, launchTarget.value, desktop)
+                        VolumeKeyPill(state, volumeKeyPresses, Modifier.align(Alignment.TopCenter).padding(top = 4.dp))
                     }
                 }
             }
@@ -100,8 +124,19 @@ fun AppShell(state: UiState, viewModel: MainViewModel, desktop: @Composable (Pad
                         top = safe.calculateTopPadding(),
                         end = safe.calculateEndPadding(direction),
                     ),
-                    PaddingValues(start = gutterStart, end = gutterEnd, bottom = safe.calculateBottomPadding() + 16.dp),
+                    PaddingValues(start = gutterStart, end = gutterEnd, bottom = safe.calculateBottomPadding() + 16.dp + capsuleRoom),
                 )
+                capsule?.let {
+                    NowPlayingCapsule(
+                        it,
+                        capsuleActions,
+                        Modifier.align(Alignment.BottomCenter).padding(
+                            start = navStart + NAV_HEIGHT + 8.dp + gutterStart,
+                            end = safe.calculateEndPadding(direction) + gutterEnd,
+                            bottom = safe.calculateBottomPadding() + NAV_LIFT,
+                        ),
+                    )
+                }
                 PillNavBar(items, state.area, viewModel::selectArea, vertical = true, Modifier.align(Alignment.CenterStart).padding(start = navStart))
             } else {
                 content(
@@ -110,9 +145,25 @@ fun AppShell(state: UiState, viewModel: MainViewModel, desktop: @Composable (Pad
                         top = safe.calculateTopPadding(),
                         end = safe.calculateEndPadding(direction),
                     ),
-                    PaddingValues(start = gutterStart, end = gutterEnd, bottom = safe.calculateBottomPadding() + NAV_LIFT + NAV_HEIGHT + CONTENT_CLEARANCE),
+                    PaddingValues(
+                        start = gutterStart,
+                        end = gutterEnd,
+                        bottom = safe.calculateBottomPadding() + (if (imeOpen) 8.dp else NAV_LIFT + NAV_HEIGHT + CONTENT_CLEARANCE + capsuleRoom),
+                    ),
                 )
-                PillNavBar(
+                // Before the nav, so TalkBack reads the capsule first (UX 15).
+                capsule?.let {
+                    NowPlayingCapsule(
+                        it,
+                        capsuleActions,
+                        Modifier.align(Alignment.BottomCenter).padding(
+                            start = safe.calculateStartPadding(direction) + NAV_SIDE,
+                            end = safe.calculateEndPadding(direction) + NAV_SIDE,
+                            bottom = safe.calculateBottomPadding() + NAV_LIFT + NAV_HEIGHT + CAPSULE_GAP,
+                        ),
+                    )
+                }
+                if (!imeOpen) PillNavBar(
                     items,
                     state.area,
                     viewModel::selectArea,
@@ -135,6 +186,7 @@ fun AppShell(state: UiState, viewModel: MainViewModel, desktop: @Composable (Pad
             onForget = viewModel::forget,
         ),
     )
+    MoreSheet(state, viewModel)
 }
 
 @Composable
@@ -167,14 +219,19 @@ private val Area.icon: SwayIcon
     }
 
 @Composable
-private fun ShellTitle(state: UiState, viewModel: MainViewModel, gutter: PaddingValues, showLocked: (String) -> Unit) {
+private fun ShellTitle(state: UiState, viewModel: MainViewModel, gutter: PaddingValues, showLocked: (String) -> Unit, launchTarget: MutableState<Int?>) {
     val area = state.area
     // Desktop shows the computer's name (UX 4.1); the other areas their own name.
     val title = if (area == Area.Desktop) state.server?.name ?: areaLabel(area) else areaLabel(area)
     TitleRow(
         title = title,
         status = statusKind(state),
-        drivePaused = state.drivePaused,
+        pills = StatusPills(
+            awake = awakePill(state),
+            typing = typingPill(state),
+            drivePaused = state.drivePaused,
+            onAwakeClick = { viewModel.openSheet(Sheet.KeepAwakeDuration) },
+        ),
         gutter = gutter,
         onStatusClick = { viewModel.openSheet(Sheet.Computer) },
         contextPill = {
@@ -187,22 +244,38 @@ private fun ShellTitle(state: UiState, viewModel: MainViewModel, gutter: Padding
                     onReadOnly = { viewModel.openSheet(Sheet.Computer) },
                 )
             }
+            if (area == Area.Launch) LaunchTargetPill(state, launchTarget.value) { launchTarget.value = it }
         },
-        roundButton = { AreaRoundButton(state, viewModel, showLocked) },
+        roundButton = { AreaRoundButton(state, viewModel, showLocked, launchTarget) },
     )
 }
 
 @Composable
-private fun AreaRoundButton(state: UiState, viewModel: MainViewModel, showLocked: (String) -> Unit) {
+private fun AreaRoundButton(state: UiState, viewModel: MainViewModel, showLocked: (String) -> Unit, launchTarget: MutableState<Int?>) {
+    if (state.area == Area.Keys) {
+        // Keys toggles a phone-side mode, Private (UX 9.1): no op of its own.
+        KeysPrivateButton(state, viewModel, showLocked)
+        return
+    }
     val op = roundButtonOp(state.area) ?: return
+    val sink = state.audio?.defaultSink
     val (icon, label) = when (state.area) {
         Area.Desktop -> SwayIcons.Plus to R.string.action_open_launch
-        Area.Audio -> SwayIcons.VolumeOff to R.string.action_mute
+        Area.Audio -> if (sink?.muted == true) SwayIcons.Volume to R.string.audio_unmute_default else SwayIcons.VolumeOff to R.string.action_mute
         Area.Launch -> SwayIcons.Search to R.string.action_launcher
         Area.Keys, Area.More -> SwayIcons.Lock to R.string.action_lock
     }
-    // M1 wires only the jump to Launch. The other ops have no client call before M2a/M2b: hidden when available.
-    val onClick: (() -> Unit)? = if (state.area == Area.Desktop) ({ viewModel.selectArea(Area.Launch) }) else null
+    // Audio has no call without a default output: hidden when available.
+    val onClick: (() -> Unit)? = when (state.area) {
+        Area.Desktop -> ({
+            launchTarget.value = shownPageTarget(state)
+            viewModel.selectArea(Area.Launch)
+        })
+        Area.Launch -> viewModel::openComputerLauncher
+        Area.Audio -> sink?.takeIf { state.audio?.live == true }?.let { { viewModel.setMuted(it.id, !it.muted) } }
+        Area.More -> viewModel::lockComputer
+        else -> null
+    }
     RoundButton(icon.outline, stringResource(label), state.granted?.availabilityOf(op), onClick, showLocked)
 }
 
@@ -211,61 +284,37 @@ private fun AreaContent(
     state: UiState,
     padding: PaddingValues,
     viewModel: MainViewModel,
+    launchTarget: Int?,
     desktop: @Composable (PaddingValues) -> Unit,
 ) {
-    when (val area = state.area) {
+    when (state.area) {
         Area.Desktop -> desktop(padding)
-        else -> AreaLater(area, state, padding, viewModel::openSheet)
+        Area.Audio -> AudioArea(state, viewModel, padding)
+        Area.Launch -> LaunchArea(state, viewModel, padding, launchTarget)
+        Area.More -> MoreArea(state, viewModel, padding)
+        Area.Keys -> KeysArea(state, viewModel, padding)
     }
 }
 
 /**
- * The page of an area that M1 does not fill yet (UX 2 rule 4): the nav keeps its shape. More shows the Computer
- * card (UX 10.6); every area says plainly that its controls come later, or how to turn a locked one on.
+ * "PC 45 %" under the title row for 1.2 s after each phone volume key (UX 7.2). It shows the default output's value as
+ * the slider would (the step's draft, then the server's), and only while Audio is shown.
  */
 @Composable
-private fun AreaLater(area: Area, state: UiState, padding: PaddingValues, onShowSheet: (Sheet) -> Unit) {
-    val lockedScope = lockedScopeOf(state, area)
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(top = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        if (area == Area.More) ComputerCard(state.server) { onShowSheet(Sheet.Computer) }
-        if (lockedScope != null) {
-            DashedCard(text = stringResource(R.string.area_locked_how), icon = SwayIcons.Lock.outline, onClick = { onShowSheet(Sheet.Locked(lockedScope)) })
-        } else {
-            DashedCard(text = stringResource(if (area == Area.More) R.string.area_more_later else R.string.area_later), icon = area.icon.outline)
-        }
+private fun VolumeKeyPill(state: UiState, presses: IntState, modifier: Modifier) {
+    val count = presses.intValue
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(count) {
+        if (count == 0) return@LaunchedEffect
+        shown = true
+        delay(VOLUME_KEY_PILL_MS)
+        shown = false
     }
-}
-
-/** The computer as a card, like a window card: badge, name, short fingerprint. A tap opens the Computer sheet. */
-@Composable
-private fun ComputerCard(server: ServerSummary?, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceContainer, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(SwayIcons.Desktop.outline, contentDescription = null, modifier = Modifier.size(24.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(server?.name ?: stringResource(R.string.area_computer), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                server?.let {
-                    Text(
-                        stringResource(R.string.computer_fingerprint, it.shortFingerprint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-    }
+    val audio = state.audio
+    val sink = audio?.defaultSink
+    if (!shown || state.area != Area.Audio || audio == null || sink == null) return
+    val pct = audio.shownVolume(sink)
+    StatePill(stringResource(if (sink.muted) R.string.volume_key_pill_muted else R.string.volume_key_pill, pct), PillTone.Ink, modifier)
 }
 
 /** "Drive paused" lasts the recommended timeout for a text pill, base 2 s (UX 4.1), then clears. */

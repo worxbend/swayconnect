@@ -2,6 +2,7 @@ package com.swayconnect.android.ui.pair
 
 import com.swayconnect.android.ui.state.Granted
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,6 +24,18 @@ class PairCapabilitiesTest {
 
         assertEquals(listOf("state.read", "state.titles", "control"), capabilities.granted)
         assertEquals(listOf("idle.inhibit", "audio"), capabilities.locked)
+    }
+
+    @Test
+    fun `typing or launching says how to remove the phone and seeing or steering does not`() {
+        val default =
+            listOf("state.read", "state.titles", "control", "audio", "media", "idle.inhibit", "launch", "input.keys", "input.text")
+
+        assertTrue(PairCapabilities.of(granted(scopes = default, known = null)).canRunCode)
+        assertTrue(PairCapabilities.of(granted(scopes = listOf("input.keys"), known = null)).canRunCode)
+        assertFalse(
+            PairCapabilities.of(granted(scopes = listOf("state.read", "control", "audio"), known = listOf("launch"))).canRunCode
+        )
     }
 
     @Test

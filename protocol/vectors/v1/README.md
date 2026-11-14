@@ -65,6 +65,12 @@ Protocol and ALPN stay version 1. The files above stay byte-identical.
 | `ext/desktop.json` | M1 | `[{"name","payload","expect": "ok" \| "bad" \| {"normalized": payload}}]` |
 | `ext/icons.json` | M1 | `{"store": [{"hash","png_b64url"}], "requests": [...], "results": [...]}` |
 | `ext/welcome.json` | M1 | `{"op_table", "frames", "availability", "server_ops", "bye"}` |
+| `ext/requests.json` | M2a | `{"config", "requests": [...]}` |
+| `ext/session.json` | M2a | `{"states": [...], "results": [...]}` |
+| `ext/audio.json` | M2b | `{"config", "server_states", "states", "requests", "results", "errors"}` |
+| `ext/media.json` | M2b | `{"server_states", "states", "server", "requests", "results"}` |
+| `ext/apps.json` | M2b | `{"server_states", "states", "cut", "requests", "results"}` |
+| `ext/input.json` | M2b | `{"requests", "results", "errors"}` |
 
 ### `ext/desktop.json`
 
@@ -121,3 +127,139 @@ Each `payload` is a `state.changed` event of topic `desktop` (17.4).
 - `bye`: `[{"name","payload","expect"}]`. `expect` is the client reaction: `reconnect_now`
   (`scopes_changed`, 17.15), `reconnect_backoff` (`shutdown`, and any unknown code) or `forget`
   (`revoked`).
+
+### `ext/requests.json`
+
+Window ops, `window.close`, `session.lock`, `keep_awake.set` and `state.subscribe` of topic `session`
+(17.6 to 17.8), read as `requests.json` (rule 6), with these additions:
+
+- `config`: the `[keep_awake]` values of the server under test (`docs/DESIGN.md` 11.9 defaults).
+- `state_ref` also takes `"ext-desktop-03"`: the state of `ext/desktop.json` case `03` (workspaces
+  30, 31 and 32, which has no number; windows 41 to 48; scratchpad windows 50 and 51; output
+  `HDMI-A-1` is active with `power: false`).
+- `session`: what the server holds when the frame arrives. `locked` is its lock belief (`true`,
+  `false` or `null`), `lock_command` whether the owner configured one, `lock_running` whether the
+  lock command it started last still runs, `spawn` (`"ok"` or `"fails"`) whether a child the
+  request makes it start (lock command, inhibitor) starts. `keep_awake` gives `active`,
+  `remaining_ms`, `on_time_s` (the on-time count of 17.8 rule 5 at that moment) and
+  `cooldown_remaining_ms` (not `null` while `limit_reached` applies).
+- `expect` may also be `{"result": object}`: a `res` with `ok: true` whose `result` has each listed
+  member with an equal value. A member given as `{"min", "max"}` is a number in that range, both
+  ends included; this holds for `detail` too. Times are exact with a paused clock; the range allows
+  1 s of a live one.
+- `sway` (present when `sway_online` is true): the exact sway commands the reference server sends,
+  in order; `[]` means none. They follow `docs/DESIGN.md` 11.4. A server that renders commands
+  differently checks only that the list is empty or not.
+- Case `108` expects `unknown_op` because the server has no lock command (17.6 rule 1), not because
+  the name is unknown. Cases `64` and `114` check 10.2 step 5 before step 6 and before the result.
+- Cases `70` and `101` hold the `keep_awake.set` and `session.lock` requests of 17.18.
+
+### `ext/session.json`
+
+- `states`: `[{"name","payload","expect"}]`, a `state.changed` event of topic `session` (17.8), read as
+  `ext/desktop.json`. The client rules: an unknown `holder` string (`keep_awake`, `input`,
+  `launcher`) is `other_device`; unknown members are ignored. Case `01` is the 17.18 example.
+- `results`: `[{"name","op","payload","expect"}]`, a `res` the client gets for `op`. `expect` is
+  `"ok"` (the client accepts the result) or `"bad"` (it rejects it: a result member missing, of
+  the wrong type, or `null` where the type has no `or null`). Cases `01` and `04` are the 17.18
+  examples.
+
+### M2b files: shared rules
+
+`ext/audio.json`, `ext/media.json`, `ext/apps.json` and `ext/input.json` cover 17.9 to 17.13.
+
+- `states`: a `state.changed` event of the file's topic, read as `ext/desktop.json` (`"ok"`, `"bad"`,
+  `{"normalized"}`). `"bad"` also covers an `int` outside the range its table states (2.2: an `int`
+  is 0 to 2^53 - 1 unless a narrower range is stated), for example `volume_pct` 1001 or
+  `max_volume_pct` 151. A client does not check string contents: the server cleans them (17.1
+  rule 7), and a case with U+FFFD in a string is `"ok"`.
+- `results`: `[{"name","op","payload","expect"}]`, read as `ext/session.json` `results`.
+- `errors`: `[{"name","op","payload","expect"}]`, an error `res` the client decodes. `expect` lists
+  `code` and the `detail` members the client reads; a member not listed is not checked.
+- `requests`: read as `ext/requests.json` (rule 6 and its additions), with these changes:
+  - `buckets` replaces `actions_left`: tokens left per rate class of 17.14 (`actions`,
+    `continuous`, `launch`, `input`, `input_text`). A full bucket holds the class burst. A
+    `rate_limited` `retry_after_ms` range ends at one refill interval of the op's class.
+  - `server_states` (audio, media, apps) holds what the server has when the frame arrives, by name;
+    the case names it in `audio`, `media` or `apps`. `state` is the topic state the server
+    publishes; `names` (audio) maps each device id to its pactl name and `buses` (media) each
+    player id to its MPRIS bus name. Both are server-internal and never on the wire.
+  - `backend` (audio, media): `"ok"`, `"fails"` (the program or player is missing or reports
+    failure: `backend_unavailable`) or `"hangs"` (no answer in time: `timeout`). `spawn` (apps):
+    `"ok"` or `"fails"` (`spawn_failed`).
+  - `state.subscribe` cases check the topic scope of 17.2 (`audio`, `media`, `launch`) after the
+    op scope `state.read` of 7.2. Subscribing is not an action: read-only mode and empty buckets
+    do not refuse it.
+  - Every case has `sway_online: true`. What an M2b op does while sway is offline is not covered.
+
+### `ext/audio.json`
+
+- `config`: `[audio] max_volume_pct` of the server under test.
+- `pactl`: the argv the reference server runs after the `pactl` program path, in order (`docs/DESIGN.md`
+  11.6), `[]` when it runs nothing. A server that talks to the sound server differently checks only
+  that the list is empty or not. `notice`: whether a desktop notice is shown (17.9: unmute of a
+  source).
+- Device ids 2 and 4 are sources. An unknown id is `not_found` before the capture rule (17.16 step
+  8a after step 8). Cases `01`, `02` and `33` hold the requests of 17.18 with their ids; `results`
+  `01` and `errors` hold its responses.
+
+### `ext/media.json`
+
+- `mpris`: the `[bus name, method]` calls the reference server makes, in order; `[]` for none.
+- `unsupported_target` follows the player's `can_*` flags: `media.next` needs `can_next`,
+  `media.previous` needs `can_previous`, `media.play_pause` is refused when the player allows
+  neither play nor pause.
+- `server`: `[{"name","scopes","players","expect"}]`. `players` is what the server's media backend
+  reports, in its order: `bus_name`, `identity`, `desktop_entry`, MPRIS `status` (`Playing`,
+  `Paused`, `Stopped`), `title`, `artist`, `album` (string or `null`), `can_play`, `can_pause`,
+  `can_go_next`, `can_go_previous`, and `last_playing` (a counter of when it last played, higher is
+  later, `null` never). `expect` is the `media` state the server publishes for a device with
+  `scopes`: `players` without `id` and `icon` (server-issued), `active` (index of the
+  `active_player_id` player in `expect.players`, or `null`) and `truncated`. Rules: the
+  `playerctld` name is skipped; `name` comes from `identity`, `app_id` from `desktop_entry`; each
+  control or format character (2.4) becomes U+FFFD before a string is cut to its length in Unicode
+  scalar values, so U+200D in a title is replaced too; `title`, `artist` and `album` are `null`
+  without `state.titles`; the active player is the one with the highest `last_playing`; at 17
+  players and more, players are dropped from the end, never the active one.
+- Case `server` `01` is the `album` with U+202E and ESC.
+
+### `ext/apps.json`
+
+- `started`: what the request makes the server start, `{"app": entry_id}`, `{"launcher": true}` or
+  `null`. A case with `spawn: "fails"` names the attempt. `sway`: the exact sway commands before the
+  start (`app.launch` with `number`), as in `ext/requests.json`. `launcher`: the launcher the server
+  runs when the frame arrives (`open`, `holder`); `launcher_after` (`launcher.open` cases): the same
+  after the request.
+- A request `entry_id` that is not 1 to 255 bytes of `A-Z a-z 0-9 . _ -` is `bad_request` (step 6);
+  a well-formed id that is not in the `apps` state is `not_found` (step 8), before the
+  `launch.risky` check (step 8b). The match is exact: no case folding, no `.desktop` suffix.
+- `cut`: `[{"name","stage","input","input_bytes","expect","expect_bytes"}]`, the cut rule of 17.11.
+  `input` is the `apps` state a server would build before any cut, as a compact JSON string;
+  `input_bytes` is its UTF-8 length, the size 17.1 rule 9 measures (compact JSON, UTF-8 not escaped).
+  `expect` is the state the server publishes, or `null` when it publishes `input` unchanged.
+  `stage` names the last step the cut needed: `none`, `count` (more than 512 apps), `keywords`,
+  `generic_name` or `apps`. Order: drop apps beyond 512; then, while the state is above 262144
+  bytes, set every `keywords` to `[]`, then every `generic_name` to `null`, then drop apps from the
+  end one at a time. Ids of dropped apps leave `recent`, which keeps its order. A cut state carries
+  `truncated: true`, counted in its size. Case `04` is exactly 262144 bytes and is not cut; case
+  `05` is one byte more.
+
+### `ext/input.json`
+
+- `state_ref` is `"ext-desktop-03"` (focused window 42) or `"ext-desktop-01"` (focused window 29;
+  the 17.18 example state). Cases `001`, `100` and `101` hold the requests of 17.18 with their ids;
+  `errors` `01` to `03` hold its responses.
+- `guard`: what the checks of 17.13 rule 2 see before each part. `locked` is `true`, `false` or
+  `null` (unknown). `grabber` is `"none"`, `"launcher"` (the only keyboard grabber running is the
+  launcher the server started) or `"other"`. `focus` is the focused window id a synchronous sway
+  read returns, or `null` for none. `launcher` is the launcher the server runs: `open`, `holder`
+  and `focus_window_id` (the window focused when `launcher.open` ran). `locked`, `grabber`,
+  `focus` and `launcher.open` may be a list: entry `i` is what the check before part `i` sees, and
+  the last entry holds for later parts.
+- `delivered`: for `input.text`, the parts the server hands to the keyboard, in order; for
+  `input.key`, the number of key presses. A part is at most 16 characters; a character is one
+  Unicode scalar value, so a part may end inside an emoji sequence. `delivered_chars` counts scalar
+  values.
+- Text rule: 1 to 1024 bytes of UTF-8, no control or format character (2.4) except U+200C and
+  U+200D. One bad character refuses the whole request with `bad_request` before anything is
+  typed.

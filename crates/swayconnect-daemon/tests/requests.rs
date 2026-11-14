@@ -17,6 +17,11 @@ const PROBE_ID: u64 = 9_000;
 const DRAIN_ID: u64 = 9_001;
 /// Far more than the bucket holds; reached only when the bucket never runs empty.
 const MAX_DRAIN_REQUESTS: u32 = 50;
+/// Cases whose precondition no longer holds for a v2 daemon, with its answer. Spec 15.14
+/// case 3 names topic `media`, unknown in version 1; this daemon offers it (17.10), so a
+/// device without scope `media` gets `forbidden` as `ext/media.json` case 31 says. The file
+/// stays byte-identical; the conflict is reported to INT.
+const V2_ANSWERS: [(&str, &str); 1] = [("03-unknown-topic", "forbidden")];
 
 /// The `desktop` state that `state_ref` of `requests.json` names.
 fn referenced_desktop(state_ref: &str) -> Desktop {
@@ -156,6 +161,10 @@ async fn every_request_vector_is_answered_by_a_daemon_as_the_spec_says() {
         let mut session = session_for(vector, &harness).await;
 
         let (answered, detail) = answer_to(vector, &mut session).await;
+        if let Some((_, code)) = V2_ANSWERS.iter().find(|(case, _)| *case == name) {
+            assert_eq!(answered, json!({"error": code}), "{name}");
+            continue;
+        }
 
         let expect = &vector["expect"];
         let mut expected_answer = expect.clone();

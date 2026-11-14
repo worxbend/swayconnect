@@ -291,15 +291,36 @@ class Session internal constructor(
     private val unanswered = ConcurrentHashMap<Long, CompletableDeferred<Res>>()
 
     private val stateLock = Any()
-    private var desktopWanted = false
-    private var appliedDesktopRev: Long? = null
-    private val desktopState = MutableStateFlow<Desktop?>(null)
+    private val desktopFeed = TopicFeed { Wire.decode(DesktopSerializer, it).normalized() }
+    private val sessionFeed = TopicFeed { Wire.decode(SessionStateSerializer, it) }
+    private val audioFeed = TopicFeed { Wire.decode(AudioState.serializer(), it) }
+    private val mediaFeed = TopicFeed { Wire.decode(MediaState.serializer(), it) }
+    private val appsFeed = TopicFeed { Wire.decode(AppsState.serializer(), it) }
+    private val feeds = mapOf(
+        Topic.DESKTOP to desktopFeed,
+        Topic.SESSION to sessionFeed,
+        Topic.AUDIO to audioFeed,
+        Topic.MEDIA to mediaFeed,
+        Topic.APPS to appsFeed,
+    )
 
     /**
      * The newest `desktop` state of this connection, after the client rules of 17.4 ([normalized]).
      * Null until [subscribeDesktop] has an answer.
      */
-    val desktop: StateFlow<Desktop?> = desktopState.asStateFlow()
+    val desktop: StateFlow<Desktop?> = desktopFeed.state
+
+    /** The newest `session` state of this connection (17.8). Null until a subscription to it has an answer. */
+    val sessionState: StateFlow<SessionState?> = sessionFeed.state
+
+    /** The newest `audio` state (17.9). Null until a subscription to it has an answer. */
+    val audio: StateFlow<AudioState?> = audioFeed.state
+
+    /** The newest `media` state (17.10). Null until a subscription to it has an answer. */
+    val media: StateFlow<MediaState?> = mediaFeed.state
+
+    /** The newest `apps` state (17.11). Null until a subscription to it has an answer. */
+    val apps: StateFlow<AppsState?> = appsFeed.state
 
     /** Reads frames until the connection ends. [onReady] and the keepalive run in [scope] next to it. */
     internal suspend fun runUntilEnd(scope: CoroutineScope, onReady: suspend (Session) -> Unit): SessionEnd {
@@ -333,10 +354,26 @@ class Session internal constructor(
 
     /** Subscribes to topic `desktop`. Afterwards [desktop] follows the server. */
     @Throws(IOException::class)
-    suspend fun subscribeDesktop() {
+    suspend fun subscribeDesktop() = subscribe(listOf(Topic.DESKTOP))
+
+    /**
+     * Subscribes to [topics] in one request: [Topic.DESKTOP] fills [desktop], [Topic.SESSION] [sessionState],
+     * [Topic.AUDIO] [audio], [Topic.MEDIA] [media] and [Topic.APPS] [apps].
+     *
+     * @param topics distinct topics this client reads.
+     * @throws RequestFailedException with [RequestFailedException.NOT_OFFERED] when `welcome.topics` lacks one (17.1 rule 2).
+     */
+    @Throws(IOException::class)
+    suspend fun subscribe(topics: List<String>) {
+        require(topics.isNotEmpty() && topics.all { it in feeds }) { "subscribe takes topics this client reads" }
+        require(topics.toSet().size == topics.size) { "topics must be distinct" }
+        val missing = topics.firstOrNull { it !in welcome.topics }
+        if (missing != null) {
+            throw RequestFailedException(RequestFailedException.NOT_OFFERED, "the server does not offer topic $missing", null)
+        }
         // Set before the request: a state.changed can be read before this coroutine sees the response.
-        synchronized(stateLock) { desktopWanted = true }
-        val args = buildJsonObject { putJsonArray("topics") { add(Topic.DESKTOP) } }
+        synchronized(stateLock) { topics.forEach { feeds.getValue(it).wanted = true } }
+        val args = buildJsonObject { putJsonArray("topics") { topics.forEach { add(it) } } }
         val result = Wire.decode(SubscribeResult.serializer(), request(Op.STATE_SUBSCRIBE, args))
         result.states.forEach(::applyState)
     }
@@ -461,14 +498,25 @@ class Session internal constructor(
         return null
     }
 
-    /** docs/PROTOCOL.md 8.2: a state is applied only when its `rev` is higher than the applied one. */
+    /** A state of a topic this session did not subscribe to is dropped. */
     private fun applyState(state: TopicState) {
-        synchronized(stateLock) {
-            if (state.topic != Topic.DESKTOP || !desktopWanted) return
-            val applied = appliedDesktopRev
-            if (applied != null && state.rev <= applied) return
-            desktopState.value = Wire.decode(DesktopSerializer, state.data).normalized()
-            appliedDesktopRev = state.rev
-        }
+        synchronized(stateLock) { feeds[state.topic]?.apply(state) }
+    }
+}
+
+/** One topic of a [Session]: whether it is subscribed, and its newest state. Guarded by the session's state lock. */
+private class TopicFeed<T : Any>(private val decode: (JsonObject) -> T) {
+    var wanted = false
+    private var appliedRev: Long? = null
+    private val newest = MutableStateFlow<T?>(null)
+    val state: StateFlow<T?> = newest.asStateFlow()
+
+    /** docs/PROTOCOL.md 8.2: a state is applied only when its `rev` is higher than the applied one. */
+    fun apply(topicState: TopicState) {
+        if (!wanted) return
+        val applied = appliedRev
+        if (applied != null && topicState.rev <= applied) return
+        newest.value = decode(topicState.data)
+        appliedRev = topicState.rev
     }
 }

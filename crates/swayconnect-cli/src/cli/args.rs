@@ -9,6 +9,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use swayconnect_protocol::IconHash;
 use swayconnect_protocol::limits::MAX_FOCUS_NUMBER;
 
+use super::control_args::{KeyArgs, LaunchArgs, MuteArgs, PlayArgs, TypeArgs, VolumeArgs};
+use super::duration::parse_duration_s;
+
 #[derive(Debug, Parser)]
 #[command(
     name = "swayconnect",
@@ -107,6 +110,58 @@ pub enum Command {
         #[arg(short, long = "output", value_name = "FILE")]
         output: PathBuf,
     },
+    /// Move a window to a workspace, by its number or with --id by its id
+    Move {
+        /// Id of a window, as `windows` lists it
+        window_id: u64,
+
+        /// Workspace number. Sway creates the workspace when none has it
+        #[arg(
+            value_name = "NUMBER",
+            value_parser = clap::value_parser!(u16).range(..=i64::from(MAX_FOCUS_NUMBER)),
+            required_unless_present = "id",
+            conflicts_with = "id"
+        )]
+        number: Option<u16>,
+
+        /// Id of a workspace, as `workspaces` lists it
+        #[arg(long, value_name = "ID")]
+        id: Option<u64>,
+    },
+    /// Make a window floating, or tile it again
+    Float {
+        /// Id of a window, as `windows` lists it
+        window_id: u64,
+        switch: Switch,
+    },
+    /// Ask the app of a window to close it. The app may refuse or ask to save
+    Close {
+        /// Id of a window, as `windows` lists it
+        window_id: u64,
+
+        /// Confirm the close. Without it nothing is sent
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Lock the screen with the lock command of the server
+    Lock,
+    /// Keep the desktop awake for a while, or end that
+    Awake {
+        #[command(subcommand)]
+        switch: AwakeSwitch,
+    },
+    /// Set the volume of the default sink, or of the device given with --device
+    Volume(VolumeArgs),
+    /// Mute or unmute the default sink, or the device given with --device
+    Mute(MuteArgs),
+    /// Play or pause the active media player, or the player given with --player
+    Play(PlayArgs),
+    /// Start an app of the server's list by its desktop entry id
+    Launch(LaunchArgs),
+    /// Type the text read from stdin into the focused window. One final newline is dropped
+    Type(TypeArgs),
+    /// Press one key, with modifiers, in the focused window
+    Key(KeyArgs),
     /// Send one frame as it is and print every reply for 2 seconds. For negative tests
     Raw {
         /// The frame payload. Nothing checks it
@@ -118,6 +173,19 @@ pub enum Command {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Switch {
     On,
+    Off,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Subcommand)]
+pub enum AwakeSwitch {
+    /// Start keep-awake, or give it a new end. Every device shares the one keep-awake
+    On {
+        /// How long from now: a whole number with s, m or h, at least 60 s, such as 90m.
+        /// Default: the server's default. The server may end it sooner because of its cap
+        #[arg(long = "for", value_name = "DURATION", value_parser = parse_duration_s)]
+        duration_s: Option<u64>,
+    },
+    /// End keep-awake, whichever device started it
     Off,
 }
 
@@ -332,6 +400,96 @@ mod tests {
             &["icon", "firefox", "-o", "app.png"],
             &["icon", "q83vEjRWeJCrze8SNFZ4kA==", "-o", "app.png"],
             &["icon", "q83vEjRWeJCrze8SNFZ4kB", "-o", "app.png"],
+        ] {
+            let error = parse(arguments).expect_err("usage error");
+            assert_eq!(error.exit_code(), 2, "{arguments:?}");
+        }
+    }
+
+    #[test]
+    fn move_takes_a_window_and_a_workspace_number_or_id() {
+        for (arguments, number, id) in [
+            (&["move", "6", "0"][..], Some(0), None),
+            (&["move", "6", "999"], Some(999), None),
+            (&["move", "6", "--id", "5"], None, Some(5)),
+        ] {
+            let cli = parse(arguments).expect("move");
+            let expected = Command::Move {
+                window_id: 6,
+                number,
+                id,
+            };
+            assert_eq!(cli.command, expected);
+        }
+    }
+
+    #[test]
+    fn float_close_and_lock_parse() {
+        let float = parse(&["float", "6", "on"]).expect("float");
+        let expected = Command::Float {
+            window_id: 6,
+            switch: Switch::On,
+        };
+        assert_eq!(float.command, expected);
+        for (arguments, yes) in [
+            (&["close", "6"][..], false),
+            (&["close", "6", "--yes"], true),
+        ] {
+            let close = parse(arguments).expect("close");
+            assert_eq!(close.command, Command::Close { window_id: 6, yes });
+        }
+        assert_eq!(parse(&["lock"]).expect("lock").command, Command::Lock);
+    }
+
+    #[test]
+    fn a_window_or_lock_command_with_a_wrong_argument_is_a_usage_error() {
+        for arguments in [
+            &["move", "6"][..],
+            &["move", "6", "1000"],
+            &["move", "6", "web"],
+            &["move", "6", "3", "--id", "5"],
+            &["move", "title", "3"],
+            &["float", "6"],
+            &["float", "6", "toggle"],
+            &["close"],
+            &["close", "-6"],
+            &["close", "6", "--yes=no"],
+            &["lock", "now"],
+        ] {
+            let error = parse(arguments).expect_err("usage error");
+            assert_eq!(error.exit_code(), 2, "{arguments:?}");
+        }
+    }
+
+    #[test]
+    fn awake_on_takes_an_optional_duration_with_a_unit() {
+        for (arguments, duration_s) in [
+            (&["awake", "on"][..], None),
+            (&["awake", "on", "--for", "60s"], Some(60)),
+            (&["awake", "on", "--for", "1m"], Some(60)),
+            (&["awake", "on", "--for", "90m"], Some(5400)),
+            (&["awake", "on", "--for", "2h"], Some(7200)),
+        ] {
+            let cli = parse(arguments).expect("awake on");
+            let switch = AwakeSwitch::On { duration_s };
+            assert_eq!(cli.command, Command::Awake { switch }, "{arguments:?}");
+        }
+        let off = parse(&["awake", "off"]).expect("awake off");
+        let switch = AwakeSwitch::Off;
+        assert_eq!(off.command, Command::Awake { switch });
+    }
+
+    #[test]
+    fn awake_with_a_bad_duration_or_switch_is_a_usage_error() {
+        for duration in ["59s", "60", "1d"] {
+            let error = parse(&["awake", "on", "--for", duration]).expect_err(duration);
+            assert_eq!(error.exit_code(), 2, "{duration:?}");
+        }
+        for arguments in [
+            &["awake"][..],
+            &["awake", "toggle"],
+            &["awake", "off", "--for", "1h"],
+            &["awake", "on", "--for"],
         ] {
             let error = parse(arguments).expect_err("usage error");
             assert_eq!(error.exit_code(), 2, "{arguments:?}");

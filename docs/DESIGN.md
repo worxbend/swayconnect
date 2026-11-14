@@ -80,7 +80,7 @@ Defaults chosen without asking the owner. Change them in config or in a later co
 | Default | Value | Where |
 |---|---|---|
 | TCP port | 28414 (not in `/etc/services`; IANA registry not checked) | config `listen` |
-| Scopes given at pairing | `state.read`, `state.titles`, `control` | `swayconnectd pair --scopes` |
+| Scopes given at pairing | `state.read`, `state.titles`, `control` (v1; the v2 default is in 11.8) | `swayconnectd pair --scopes` |
 | Pairing window | 300 s (30 to 600) | `swayconnectd pair --ttl` |
 | Pairing confirmation deadline | 60 s | fixed (`docs/PROTOCOL.md` section 14) |
 | Server label | system hostname | config `server_name` |
@@ -338,6 +338,8 @@ Every client-supplied string (`device_name`, `platform`, `client`) and every swa
 | Code already running as the owner | Out of scope. It already has `SWAYSOCK`. |
 
 ### 5.3 Rules that must never be broken
+
+Amended for v2 by 11.3 (approved by the owner on 2026-11-14). The v1 text stays here for reference; 11.3 and `AGENTS.md` section 5 hold the rules in force.
 
 1. No operation accepts a sway command, a shell command or a file path.
 2. No string is placed into a sway command. Integers and one boolean only.
@@ -700,7 +702,7 @@ Steps 5 and 6: the owner runs them himself. Agents do not. These are proofs c an
 
 Status: proposed, 2026-11-13 (review 2). Not implemented. Wire contract: `docs/PROTOCOL.md` section 17. UX: `docs/UX.md`. Evidence: `docs/V2_RESEARCH.md`. Order and ownership: `docs/V2_PLAN.md`.
 
-Next action: the owner answers `docs/V2_PLAN.md` section 0, then slice C1 starts.
+Next action: M2a starts with C2a. The owner answered `docs/V2_PLAN.md` section 0 on 2026-11-14: 11.3 approved, no step-up, typing on at pairing (11.8, D30), deferrals kept.
 
 ### 11.1 What v2 is
 
@@ -728,15 +730,15 @@ Deferred to 11.13: owner buttons, per-app streams, card profiles, media seek, Li
 | D27 | Keep awake: a `systemd-inhibit --what=idle --mode=block ... sleep N` child. | swayidle 1.9.1 honours logind block inhibitors. The child expires by itself even if the daemon hangs. `V2_RESEARCH.md` section 7. |
 | D28 | Apps start from the daemon's own desktop-entry index under `systemd-run --user --scope`. Never through sway `exec`. | No client text in a shell. The app gets its own cgroup and survives a daemon restart. |
 | D29 | Text input through a daemon-owned `zwp_virtual_keyboard_v1` client with a generated keymap. | Sway IPC cannot type. No injector is installed. Works for every app and both layouts. |
-| D30 | Fine-grained scopes, all new ones off by default and granted by name at the desktop. No client scope request. No presets in v2. | D9. A request op would be a social-engineering channel. A preset would hand out controls the owner did not name. |
+| D30 | Fine-grained scopes, granted at the desktop only. No client scope request. Owner's choice (2026-11-14): `swayconnectd pair` gives by default `state.read`, `state.titles`, `control`, `audio`, `media`, `idle.inhibit`, `launch`, `input.keys`, `input.text`; `destructive`, `audio.capture` and `launch.risky` stay off and are granted only by name. Named presets stay deferred (11.13). | D9. A request op would be a social-engineering channel. The owner wants a new phone to type and launch without a second step. **Risk, stated plainly:** with the default set, anyone holding the unlocked, paired phone can run any command as the owner: `launcher.open` plus `input.text` types a terminal's name into fuzzel, then types commands into it. `launch.risky` off does not stop that path. What still stands: typing is refused while the screen is locked or a grabber runs, focus is checked before each 16-character part, a desktop notice shows when a remote keyboard session starts, every input session is in the audit log, and `devices deny`, `revoke` and SIGUSR1 end it. An owner who wants less pairs with `--scopes` or runs `devices deny`. |
 | D31 | `K` stays the device credential ("API key"), stored as in v1. | Nothing secret crosses the wire already. Per-scope keys or tokens add nothing on one TLS connection. Keystore hardening is deferred (11.13). |
-| D32 | Biometric step-up is not in v2 unless the owner asks (`V2_PLAN.md` question 1). | New unreviewed crypto flow. Input is off by default and desktop-granted. |
+| D32 | No biometric step-up in v2 (owner, 2026-11-14, `V2_PLAN.md` question 1). | New unreviewed crypto flow. Input is granted at the desktop only (at pairing or by name). The cost is in D30. |
 | D33 | Android stays on material3 1.4.0 (BOM pin) and adds no library. Expressive look is built by hand. | The catalog rule "nothing is bumped". |
 | D34 | Every UI piece is Compose. No XML layouts, no View widgets, no WebView. Icons are Kotlin `ImageVector`s. One exception is allowed only if the owner approves: none is planned. | Owner direction. Private typing uses `BasicSecureTextField`, not an `EditText`. |
 
 ### 11.3 Changes to the security rules of 5.3
 
-5.3 is amended, not worked around. `AGENTS.md` section 5 copies the new text in slice INT after `V2_PLAN.md` question 2 is answered. Rules 2, 8, 9 (first sentence) and 11 gate M2a; the `input.text` exception of rule 9 and rule 10 gate M2b.
+5.3 is amended, not worked around. **Approved by the owner on 2026-11-14** (`V2_PLAN.md` questions 2a and 2b). `AGENTS.md` section 5 carries the text. Rules 2, 8, 9 (first sentence) and 11 apply from M2a; the `input.text` exception of rule 9 and rule 10 from M2b.
 
 | Rule | v1 text | v2 text |
 |---|---|---|
@@ -748,7 +750,7 @@ Deferred to 11.13: owner buttons, per-app streams, card profiles, media seek, Li
 | 10 (new) | | Remote input fails closed: refused while the screen is locked or lock state is unknown, while a keyboard-grabbing surface runs, or when focus, read from sway just before each part, is not the target. |
 | 11 (new) | | No client-chosen string reaches a desktop notification. Notices use fixed text and the device short id. |
 
-The stage 1 claim "no code execution path exists" (5.2) ends with M2b: `launch`, `launch.risky` and `input.*` are code-execution equivalent. They are tier 2, off by default and granted only at the desktop.
+The stage 1 claim "no code execution path exists" (5.2) ends with M2b: `launch`, `launch.risky` and `input.*` are code-execution equivalent. They are tier 2 and granted only at the desktop. `launch`, `input.keys` and `input.text` are in the default of `swayconnectd pair` (11.8, D30); `launch.risky` is granted only by name.
 
 ### 11.4 Daemon modules
 
@@ -833,7 +835,7 @@ A new `WaylandTarget` mirrors `SwayTarget`: `Explicit(path)` from config `[wayla
 
 **Media (M2b).** zbus on the session bus (explicit address, 11.4). Players are `org.mpris.MediaPlayer2.*` names except `playerctld`, at most 16. Metadata text is cleaned (2.4) and cut. Titles are withheld from devices without `state.titles`. Ops: play/pause, next, previous.
 
-**Apps and launcher (M2b).** `apps/` reuses `icons/entries.rs`. Filters: `NoDisplay`, `Hidden`, `OnlyShowIn`/`NotShowIn` against `sway`, `TryExec`, URL-only handlers, ids outside `[A-Za-z0-9._-]`. Config `[apps] deny = [...]` hides entries; `risky = [...]` marks them (terminals are always risky). A risky entry needs scope `launch.risky` on the server; the phone's hold is UX only. Launch argv: `[apps] systemd_run` `--user --scope --collect --unit=app-swayconnect-<sanitised id>-<random hex> -- <Exec tokens>`, with an env allowlist (`WAYLAND_DISPLAY`, `DISPLAY`, `SWAYSOCK`, `XDG_RUNTIME_DIR`, `XDG_CURRENT_DESKTOP`, `XDG_DATA_DIRS`, `DBUS_SESSION_BUS_ADDRESS`, `PATH`, `HOME`, `LANG`) taken from the real session at start, not from the daemon's own temp dirs. `Terminal=true` wraps with config `[apps] terminal = ["/usr/bin/alacritty","-e"]`. The topic keeps to `PROTOCOL.md` 17.11 caps and cut rule. `launcher.open` runs config `[launcher] argv` (default `["/usr/bin/fuzzel"]`) as a tracked child, one at a time, and records the holder device and the window focused at open time.
+**Apps and launcher (M2b).** `apps/` reuses `icons/entries.rs`. Filters: `NoDisplay`, `Hidden`, `OnlyShowIn`/`NotShowIn` against `sway`, `TryExec`, URL-only handlers, ids outside `[A-Za-z0-9._-]`. Config `[apps] deny = [...]` hides entries; `risky = [...]` marks them (terminals are always risky: `Terminal=true` entries and terminal emulators, `TerminalEmulator` in `Categories`). A risky entry needs scope `launch.risky` on the server; the phone's hold is UX only. Launch argv: `[apps] systemd_run` `--user --scope --collect --unit=app-swayconnect-<sanitised id>-<random hex> -- <Exec tokens>`, with an env allowlist (`WAYLAND_DISPLAY`, `DISPLAY`, `SWAYSOCK`, `XDG_RUNTIME_DIR`, `XDG_CURRENT_DESKTOP`, `XDG_DATA_DIRS`, `DBUS_SESSION_BUS_ADDRESS`, `DBUS_SYSTEM_BUS_ADDRESS`, `PATH`, `HOME`, `LANG`) taken from the real session at start, not from the daemon's own temp dirs. The same list applies to every child of the daemon (`pactl`, `notify-send`, `systemd-inhibit`, the lock script, the launcher). `DBUS_SYSTEM_BUS_ADDRESS` is on it so the `unix:path=/nonexistent` of the test guard (11.12) reaches a test daemon's children; on the desktop it is normally unset, and then a child gets nothing. `Terminal=true` wraps with config `[apps] terminal = ["/usr/bin/alacritty","-e"]`. The topic keeps to `PROTOCOL.md` 17.11 caps and cut rule. `launcher.open` runs config `[launcher] argv` (default `["/usr/bin/fuzzel"]`) as a tracked child, one at a time, and records the holder device and the window focused at open time.
 
 **Close window (M2a).** `[con_id=N] kill` under `destructive`.
 
@@ -843,10 +845,10 @@ A new `WaylandTarget` mirrors `SwayTarget`: `Explicit(path)` from config `[wayla
 2. `keymap.rs` (pure) maps each distinct character of a part to its own keycode in a generated XKB keymap: Latin-1 directly, other code points as keysym `0x01000000 | cp`. Named keys and modifiers use their real evdev codes, each with one level only. Text is never mapped onto Escape, BackSpace, Tab, Return or modifier codes. No key of a generated keymap resolves to `XF86Switch_VT_1`..`12`, `XF86Ungrab` or `Terminate_Server` under any modifier; `ctrl`+`alt`+`F1..F12` is refused at the protocol layer as well. The keymap is uploaded through a sealed memfd and changed only between complete press and release pairs.
 3. A request is cut into parts of at most 16 characters (a key press is one part). Before each part, `guard.rs` checks in this order, all synchronously:
    1. Lock: a process of the own uid whose `comm` is in config `lock_processes` (default `swaylock`) means locked. An unreadable `/proc` means unknown. Both refuse with `locked`.
-   2. Launcher (target `launcher` only): the request's device is the launcher holder, and the launcher child is still running (`try_wait` on the child handle). Else `launcher_closed`.
+   2. Launcher (target `launcher` only): the request's device is the launcher holder, and the launcher child is still running (its exit as the reaper published it, read through a probe of the child handle, not the topic view). Else `launcher_closed`.
    3. Grab: a process in `keyboard_grabbers` (default `fuzzel`, `wofi`, `bemenu`, `tofi`, `swaylock`) means keys may go elsewhere. Refuse with `keyboard_grabbed`. Exception: target `launcher` and the only grabber is the launcher child the daemon started.
    4. Focus: one `GET_TREE` on the command IPC connection, sent after the previous part's roundtrip. Sway answers IPC in order in its main loop, so the reply shows focus at that moment. The focused leaf must be `window_id`; for target `launcher` it must be the window recorded at `launcher.open` (the window that gets the keys back if the launcher closes). Else `focus_changed`. No event-based shortcut exists.
-4. Parts are paced: check, deliver, roundtrip, then the next check. Nothing is pipelined.
+4. Parts are paced: check, deliver, roundtrip, then the next check. Nothing is pipelined. A part carries the time of its check; the keyboard thread refuses it (`backend_unavailable`) when its caller has given up or the check is older than 250 ms, also after a slow first connect, so a part queued behind a stuck delivery is never written late.
 5. After each request and on any error or disconnect: release every key and modifier.
 6. Session arming: the first input of a connection sets `session.input.active` and sends a desktop notice "Remote keyboard active (device <short id>)". The session ends after 10 min without input or on disconnect.
 7. Residual risk, written into 5.6: keys processed between one IPC reply and the delivery of at most one part (16 characters) can reach a window that took focus in that gap, or the previously focused window when the launcher exits in that gap. A locker that is not in `lock_processes` defeats the lock check. Shortcuts with `super` reach sway bindings.
@@ -859,10 +861,11 @@ A new `WaylandTarget` mirrors `SwayTarget`: `Explicit(path)` from config `[wayla
 | Tier | Scopes | Default at pairing |
 |---|---|---|
 | 0 observe | `state.read`, `state.titles` | on (unchanged) |
-| 1 steer | `control`, `audio`, `media` | `control` on (unchanged); `audio`, `media` only by name |
-| 2 risky | `idle.inhibit`, `destructive`, `audio.capture`, `launch`, `launch.risky`, `input.keys`, `input.text` | off; only by name |
+| 1 steer | `control`, `audio`, `media` | on |
+| 2 risky | `idle.inhibit`, `launch`, `input.keys`, `input.text` | on (owner, 2026-11-14; risk in D30) |
+| 2 risky | `destructive`, `audio.capture`, `launch.risky` | off; only by name |
 
-No presets in v2. `swayconnectd pair` keeps the v1 default (`state.read`, `state.titles`, `control`). Every new scope is granted by name: `swayconnectd pair --scopes ...` or `swayconnectd devices grant`.
+`swayconnectd pair` gives by default: `state.read`, `state.titles`, `control`, `audio`, `media`, `idle.inhibit`, `launch`, `input.keys`, `input.text` (owner's answer of 2026-11-14). `destructive`, `audio.capture` and `launch.risky` are granted only by name: `swayconnectd pair --scopes ...` or `swayconnectd devices grant`. `--scopes` replaces the default, so an owner can pair with less. Devices already in `devices.json` keep their scopes. Named presets stay deferred (11.13).
 
 **Granting (M1).** New admin operations `devices.grant` and `devices.deny` (`swayconnectd devices grant <id-prefix> <scope>...`). A device is named by a unique prefix of its base64url id, at least 4 characters. A change rewrites `devices.json`, then sends `bye` `scopes_changed` to every live session of that device. An unknown scope name in `devices.json` is a start error (exit 2), like the strict config.
 
@@ -870,9 +873,9 @@ No presets in v2. `swayconnectd pair` keeps the v1 default (`state.read`, `state
 
 **Audit log (M2a).** `$XDG_DATA_HOME/swayconnect/audit.jsonl`, 0600, append. One line per tier 2 action, per keep-awake change, per scope change and per input session start: time, device id, peer address, op, target ids, result. Never titles, text or secrets. `swayconnectd audit [-n N]` prints it through `escape_for_terminal`. Rotation is deferred (11.13).
 
-**Desktop notices** (notify-send, fixed text, device short id): connect of a device that holds a tier 2 scope, input session start, keep-awake on, remote unmute of a source.
+**Desktop notices** (notify-send, fixed text, device short id): connect of a device that holds a tier 2 scope (each authenticated connect, not a pending pairing, and not while the daemon is read-only, when no tier 2 op is offered), input session start, keep-awake on, remote unmute of a source.
 
-**Panic.** SIGUSR1 also ends keep-awake, aborts input and kills the launcher.
+**Panic.** SIGUSR1 also ends keep-awake, aborts input and kills the launcher. The launcher and keep-awake then refuse every later start with `read_only` until the daemon restarts, so a request that passed the read-only check before the switch starts nothing after it; `app.launch` reads the flag again just before its start.
 
 **Android.** `K` stays stored as in v1 (AES-GCM under a Keystore key). Moving it to a non-exportable Keystore HMAC key is deferred: it needs a `DeviceKeyMac` interface in `:protocol` (`Proofs.kt` takes `ByteArray` today). `FLAG_SECURE` on the pair screens and the Keys screen.
 
@@ -880,8 +883,8 @@ No presets in v2. `swayconnectd pair` keeps the v1 default (`state.read`, `state
 
 | Attacker | Answer |
 |---|---|
-| Stolen, unlocked phone with tier 2 scopes | Can run code as the owner (terminal + typing). Answers: off by default, granted by name only, lock refusal, desktop notice, audit, revoke, panic. Step-up is question 1 of the plan. |
-| Stolen phone that re-arms keep-awake | `idle.inhibit` is off by default. On-time is counted across short breaks: off/on toggling still hits the 4 h cap, and only an off period of at least `cooldown_s` (15 min, longer than swayidle's 600 s timeout) resets it. A notice shows each start. |
+| Stolen, unlocked phone with the default scopes | Can run code as the owner: fuzzel + typing reaches a terminal even without `launch.risky` (D30, the owner's choice). Answers: lock refusal, keyboard-grabber refusal, focus check per part, desktop notice at input session start and at connect of a device with a tier 2 scope, audit, `devices deny`, revoke, panic. No step-up in v2 (D32). |
+| Stolen phone that re-arms keep-awake | `idle.inhibit` is on at pairing (D30). On-time is counted across short breaks: off/on toggling still hits the 4 h cap, and only an off period of at least `cooldown_s` (15 min, longer than swayidle's 600 s timeout) resets it. A notice shows each start. |
 | Hostile paired phone that unmutes the microphone | Plain `audio` can only mute sources. Unmute, source volume and default source need tier 2 `audio.capture`; each remote unmute shows a desktop notice. |
 | Patched client that skips the "risky" hold | The server refuses risky entries without `launch.risky`. |
 | App that claims another app's id | Gets its icon. The UI never treats an icon as identity; the Keys target always shows title and workspace. |
@@ -997,5 +1000,5 @@ The first real action of every new control runs by the owner's hand (`docs/V2_PL
 
 ### 11.13 Roadmap after v2
 
-Later: owner buttons (`commands`), per-app stream volume, card profiles (switching to the monitor's HDMI speakers), media seek and position, Live typing mode, presets, Android Keystore HMAC key (with `DeviceKeyMac` in `:protocol`), audit rotation, `status.json` for a waybar indicator, multi-output card groups, tablet split layout, map↔list shared-element morph, touchpad (`input.pointer`), biometric step-up (if not in v2), presentation mode, output power control, URL share, clipboard to desktop, Quick Settings tiles, media notification with a foreground service, urgent alerts, Wake-on-LAN, power menu (suspend, reboot, power off), album art, input-method "safe text" mode, `GET_BINDING_STATE` for the binding mode.
+Later: owner buttons (`commands`), per-app stream volume, card profiles (switching to the monitor's HDMI speakers), media seek and position, Live typing mode, presets, Android Keystore HMAC key (with `DeviceKeyMac` in `:protocol`), audit rotation, `status.json` for a waybar indicator, multi-output card groups, tablet split layout, map↔list shared-element morph, touchpad (`input.pointer`), biometric step-up (not in v2, owner 2026-11-14), presentation mode, output power control, URL share, clipboard to desktop, Quick Settings tiles, media notification with a foreground service, urgent alerts, Wake-on-LAN, power menu (suspend, reboot, power off), album art, input-method "safe text" mode, `GET_BINDING_STATE` for the binding mode.
 Never (unchanged and extended): raw sway commands, `exec` with client text, remote unlock, cliphist access, screen streaming, keystroke reading, cloud relay.

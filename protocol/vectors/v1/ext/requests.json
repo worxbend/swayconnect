@@ -1,0 +1,3439 @@
+{
+  "config": {
+    "default_duration_s": 3600,
+    "max_duration_s": 7200,
+    "max_continuous_s": 14400,
+    "cooldown_s": 900
+  },
+  "requests": [
+    {
+      "name": "01-move-by-number",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":1,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":2}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=41] move container to workspace number 2"
+      ]
+    },
+    {
+      "name": "02-move-by-workspace-id-uses-its-number",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":2,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"workspace_id\":31}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=41] move container to workspace number 2"
+      ]
+    },
+    {
+      "name": "03-move-to-a-new-number",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":3,\"op\":\"window.move\",\"args\":{\"window_id\":46,\"number\":7}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=46] move container to workspace number 7"
+      ]
+    },
+    {
+      "name": "04-move-number-0",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":4,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":0}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=41] move container to workspace number 0"
+      ]
+    },
+    {
+      "name": "05-move-number-999",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":5,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":999}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=41] move container to workspace number 999"
+      ]
+    },
+    {
+      "name": "06-move-t3-state",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":6,\"op\":\"window.move\",\"args\":{\"window_id\":5,\"workspace_id\":9}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=5] move container to workspace number 2"
+      ]
+    },
+    {
+      "name": "07-move-no-target",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":7,\"op\":\"window.move\",\"args\":{\"window_id\":41}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "08-move-both-targets",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":8,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":2,\"workspace_id\":31}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "09-move-number-1000",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":9,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":1000}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "10-move-number-negative",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":10,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":-1}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "11-move-number-string",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":11,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":\"2; exec true\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "12-move-workspace-name-is-not-a-target",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":12,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"workspace\":\"music\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "13-move-no-window",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":13,\"op\":\"window.move\",\"args\":{\"number\":2}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "14-move-window-id-null",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":14,\"op\":\"window.move\",\"args\":{\"window_id\":null,\"number\":2}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "15-move-number-null",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":15,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "16-move-number-with-fraction",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":16,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":2.0}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "17-move-window-id-above-int",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":17,\"op\":\"window.move\",\"args\":{\"window_id\":9007199254740992,\"number\":2}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "18-move-to-workspace-without-number",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":18,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"workspace_id\":32}}",
+      "expect": {
+        "error": "unsupported_target"
+      },
+      "sway": []
+    },
+    {
+      "name": "19-move-window-id-is-a-workspace-id",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":19,\"op\":\"window.move\",\"args\":{\"window_id\":30,\"number\":2}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "20-move-workspace-id-is-a-window-id",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":20,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"workspace_id\":42}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "21-move-scratchpad-window-is-not-in-windows",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":21,\"op\":\"window.move\",\"args\":{\"window_id\":50,\"number\":2}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "22-floating-enable",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":22,\"op\":\"window.floating\",\"args\":{\"window_id\":41,\"enabled\":true}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=41] floating enable"
+      ]
+    },
+    {
+      "name": "23-floating-disable",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":23,\"op\":\"window.floating\",\"args\":{\"window_id\":46,\"enabled\":false}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=46] floating disable"
+      ]
+    },
+    {
+      "name": "24-floating-unknown-member-ignored",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":24,\"op\":\"window.floating\",\"args\":{\"window_id\":46,\"enabled\":false,\"toggle\":true}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=46] floating disable"
+      ]
+    },
+    {
+      "name": "25-floating-no-enabled",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":25,\"op\":\"window.floating\",\"args\":{\"window_id\":46}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "26-floating-enabled-string",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":26,\"op\":\"window.floating\",\"args\":{\"window_id\":46,\"enabled\":\"true\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "27-floating-enabled-number",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":27,\"op\":\"window.floating\",\"args\":{\"window_id\":46,\"enabled\":1}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "28-floating-enabled-null",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":28,\"op\":\"window.floating\",\"args\":{\"window_id\":46,\"enabled\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "29-floating-scratchpad-window",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":29,\"op\":\"window.floating\",\"args\":{\"window_id\":51,\"enabled\":true}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "30-layout-splith",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":30,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"splith\"}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=43] layout splith"
+      ]
+    },
+    {
+      "name": "31-layout-splitv",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":31,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"splitv\"}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=43] layout splitv"
+      ]
+    },
+    {
+      "name": "32-layout-tabbed",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":32,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"tabbed\"}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=43] layout tabbed"
+      ]
+    },
+    {
+      "name": "33-layout-stacking",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":33,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"stacking\"}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=43] layout stacking"
+      ]
+    },
+    {
+      "name": "34-layout-uppercase",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":34,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"Tabbed\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "35-layout-trailing-space",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":35,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"tabbed \"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "36-layout-sway-default-is-not-in-the-enum",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":36,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"default\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "37-layout-toggle-is-not-in-the-enum",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":37,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"toggle split\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "38-layout-command-text",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":38,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"tabbed; exec true\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "39-layout-container-kind-letter",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":39,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"t\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "40-layout-empty",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":40,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "41-layout-null",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":41,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "42-layout-missing",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":42,\"op\":\"window.layout\",\"args\":{\"window_id\":43}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "43-layout-unknown-window",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":43,\"op\":\"window.layout\",\"args\":{\"window_id\":999,\"layout\":\"tabbed\"}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "44-scratchpad-hide",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":44,\"op\":\"window.scratchpad\",\"args\":{\"window_id\":45}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=45] move scratchpad"
+      ]
+    },
+    {
+      "name": "45-scratchpad-hide-already-hidden",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":45,\"op\":\"window.scratchpad\",\"args\":{\"window_id\":50}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "46-scratchpad-hide-no-window",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":46,\"op\":\"window.scratchpad\",\"args\":{}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "47-scratchpad-show",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":47,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":50}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=50] scratchpad show"
+      ]
+    },
+    {
+      "name": "48-scratchpad-show-window-without-app-id",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":48,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":51}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=51] scratchpad show"
+      ]
+    },
+    {
+      "name": "49-scratchpad-show-a-shown-window",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":49,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":41}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "50-scratchpad-show-a-workspace-id",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":50,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":30}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "51-scratchpad-show-t3-state-has-no-scratchpad",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":51,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":5}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "52-scratchpad-show-window-id-string",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":52,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":\"50\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "53-close",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":53,\"op\":\"window.close\",\"args\":{\"window_id\":41}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=41] kill"
+      ]
+    },
+    {
+      "name": "54-close-without-destructive",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":54,\"op\":\"window.close\",\"args\":{\"window_id\":41}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "destructive"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "55-close-control-does-not-grant-it",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":55,\"op\":\"window.close\",\"args\":{\"window_id\":41}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "destructive"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "56-close-destructive-alone-is-enough",
+      "scopes": [
+        "destructive"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":56,\"op\":\"window.close\",\"args\":{\"window_id\":41}}",
+      "expect": "ok",
+      "sway": [
+        "[con_id=41] kill"
+      ]
+    },
+    {
+      "name": "57-close-scratchpad-window",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":57,\"op\":\"window.close\",\"args\":{\"window_id\":50}}",
+      "expect": {
+        "error": "not_found"
+      },
+      "sway": []
+    },
+    {
+      "name": "58-close-no-window",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":58,\"op\":\"window.close\",\"args\":{}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "59-move-without-control",
+      "scopes": [
+        "state.read",
+        "idle.inhibit",
+        "destructive"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":59,\"op\":\"window.move\",\"args\":{\"window_id\":41,\"number\":2}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "control"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "60-layout-read-only",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":60,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"tabbed\"}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": []
+    },
+    {
+      "name": "61-close-read-only",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "idle.inhibit",
+        "destructive"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":61,\"op\":\"window.close\",\"args\":{\"window_id\":41}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": []
+    },
+    {
+      "name": "62-close-read-only-scope-first",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":62,\"op\":\"window.close\",\"args\":{\"window_id\":41}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "destructive"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "63-scratchpad-show-rate-limited",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 0,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":63,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":50}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "64-rate-limit-before-args",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 0,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":64,\"op\":\"window.layout\",\"args\":{\"window_id\":43,\"layout\":\"default\"}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "65-move-sway-offline",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": false,
+      "state_ref": "offline",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":65,\"op\":\"window.move\",\"args\":{\"window_id\":5,\"number\":2}}",
+      "expect": {
+        "error": "sway_unavailable"
+      }
+    },
+    {
+      "name": "66-offline-args-before-sway",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": false,
+      "state_ref": "offline",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":66,\"op\":\"window.move\",\"args\":{\"window_id\":5,\"number\":1000}}",
+      "expect": {
+        "error": "bad_request"
+      }
+    },
+    {
+      "name": "67-offline-sway-before-target",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": false,
+      "state_ref": "offline",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":67,\"op\":\"scratchpad.show\",\"args\":{\"window_id\":50}}",
+      "expect": {
+        "error": "sway_unavailable"
+      }
+    },
+    {
+      "name": "68-floating-args-not-an-object",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":68,\"op\":\"window.floating\",\"args\":[41,true]}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "70-keep-awake-spec-example",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":8,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":3600}}",
+      "expect": {
+        "result": {
+          "remaining_ms": {
+            "min": 3599000,
+            "max": 3600000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "71-keep-awake-default-duration",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":71,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "result": {
+          "remaining_ms": {
+            "min": 3599000,
+            "max": 3600000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "72-keep-awake-wakes-an-output-that-is-off",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":72,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "result": {
+          "remaining_ms": {
+            "min": 3599000,
+            "max": 3600000
+          }
+        }
+      },
+      "sway": [
+        "output * power on"
+      ]
+    },
+    {
+      "name": "73-keep-awake-duration-60",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":73,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":60}}",
+      "expect": {
+        "result": {
+          "remaining_ms": {
+            "min": 59000,
+            "max": 60000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "74-keep-awake-duration-max",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":74,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":7200}}",
+      "expect": {
+        "result": {
+          "remaining_ms": {
+            "min": 7199000,
+            "max": 7200000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "75-keep-awake-replace-sets-a-new-expiry",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": true,
+          "remaining_ms": 600000,
+          "on_time_s": 3000,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":75,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":1800}}",
+      "expect": {
+        "result": {
+          "remaining_ms": {
+            "min": 1799000,
+            "max": 1800000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "76-keep-awake-shortened-to-the-continuous-cap",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": true,
+          "remaining_ms": 600000,
+          "on_time_s": 12600,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":76,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":3600}}",
+      "expect": {
+        "result": {
+          "remaining_ms": {
+            "min": 1799000,
+            "max": 1800000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "77-keep-awake-off",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": true,
+          "remaining_ms": 600000,
+          "on_time_s": 3000,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":77,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":false}}",
+      "expect": {
+        "result": {
+          "remaining_ms": null
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "78-keep-awake-off-when-off",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":78,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":false}}",
+      "expect": {
+        "result": {
+          "remaining_ms": null
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "79-keep-awake-off-during-cooldown",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 14400,
+          "cooldown_remaining_ms": 540000
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":79,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":false}}",
+      "expect": {
+        "result": {
+          "remaining_ms": null
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "80-keep-awake-limit-reached",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 14400,
+          "cooldown_remaining_ms": 540000
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":80,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "error": "limit_reached",
+        "detail": {
+          "retry_after_ms": {
+            "min": 539000,
+            "max": 540000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "81-keep-awake-limit-reached-sends-no-power-on",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 14400,
+          "cooldown_remaining_ms": 540000
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":81,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "error": "limit_reached",
+        "detail": {
+          "retry_after_ms": {
+            "min": 539000,
+            "max": 540000
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "82-keep-awake-inhibitor-fails-to-start",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "fails",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":82,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "error": "spawn_failed"
+      },
+      "sway": []
+    },
+    {
+      "name": "83-keep-awake-duration-59",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":83,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":59}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "84-keep-awake-duration-above-max",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":84,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":7201}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "85-keep-awake-duration-string",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":85,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":\"3600\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "86-keep-awake-duration-null",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":86,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "87-keep-awake-duration-with-fraction",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":87,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":3600.0}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "88-keep-awake-duration-with-exponent",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":88,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true,\"duration_s\":36e2}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "89-keep-awake-no-enabled",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":89,\"op\":\"keep_awake.set\",\"args\":{\"duration_s\":3600}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "90-keep-awake-enabled-null",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":90,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":null}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "91-keep-awake-enabled-string",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":91,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":\"on\"}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "92-keep-awake-args-absent",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":92,\"op\":\"keep_awake.set\"}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "93-keep-awake-without-idle-inhibit",
+      "scopes": [
+        "state.read",
+        "state.titles",
+        "control",
+        "destructive"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":93,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "idle.inhibit"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "94-keep-awake-off-needs-the-scope-too",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": true,
+          "remaining_ms": 600000,
+          "on_time_s": 3000,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":94,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":false}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "idle.inhibit"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "95-keep-awake-read-only",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":95,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": []
+    },
+    {
+      "name": "96-keep-awake-off-read-only",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":96,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":false}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": []
+    },
+    {
+      "name": "97-keep-awake-rate-limited",
+      "scopes": [
+        "state.read",
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "t3-rev7",
+      "actions_left": 0,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":97,\"op\":\"keep_awake.set\",\"args\":{\"enabled\":true}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "100-lock",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":100,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "result": {
+          "already_locked": false
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "101-lock-spec-example-already-locked",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": true,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":9,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "result": {
+          "already_locked": true
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "102-lock-while-the-lock-command-runs",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": true,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":102,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "result": {
+          "already_locked": true
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "103-lock-state-unknown-locks",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": null,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":103,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "result": {
+          "already_locked": false
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "104-lock-args-absent",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":104,\"op\":\"session.lock\"}",
+      "expect": {
+        "result": {
+          "already_locked": false
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "105-lock-unknown-member-ignored",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":105,\"op\":\"session.lock\",\"args\":{\"command\":\"loginctl lock-session\"}}",
+      "expect": {
+        "result": {
+          "already_locked": false
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "106-lock-args-not-an-object",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":106,\"op\":\"session.lock\",\"args\":\"now\"}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "107-lock-args-null",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":107,\"op\":\"session.lock\",\"args\":null}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "108-lock-not-configured",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": false,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":108,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "error": "unknown_op"
+      },
+      "sway": []
+    },
+    {
+      "name": "109-lock-command-fails-to-start",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "fails",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":109,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "error": "spawn_failed"
+      },
+      "sway": []
+    },
+    {
+      "name": "110-lock-already-locked-starts-nothing",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": true,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "fails",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":110,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "result": {
+          "already_locked": true
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "111-lock-without-control",
+      "scopes": [
+        "state.read",
+        "idle.inhibit",
+        "destructive"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":111,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "control"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "112-lock-read-only",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":112,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "error": "read_only"
+      },
+      "sway": []
+    },
+    {
+      "name": "113-lock-rate-limited",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 0,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":113,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "114-lock-rate-limited-while-locked",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 0,
+      "session": {
+        "locked": true,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":114,\"op\":\"session.lock\",\"args\":{}}",
+      "expect": {
+        "error": "rate_limited",
+        "detail": {
+          "retry_after_ms": {
+            "min": 1,
+            "max": 500
+          }
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "120-subscribe-session",
+      "scopes": [
+        "state.read"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":120,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"session\"]}}",
+      "expect": "ok",
+      "sway": []
+    },
+    {
+      "name": "121-subscribe-desktop-and-session",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":121,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"desktop\",\"session\"]}}",
+      "expect": "ok",
+      "sway": []
+    },
+    {
+      "name": "122-subscribe-session-read-only",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": true,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":122,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"session\"]}}",
+      "expect": "ok",
+      "sway": []
+    },
+    {
+      "name": "123-subscribe-session-without-state-read",
+      "scopes": [
+        "control",
+        "idle.inhibit"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":123,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"session\"]}}",
+      "expect": {
+        "error": "forbidden",
+        "detail": {
+          "scope": "state.read"
+        }
+      },
+      "sway": []
+    },
+    {
+      "name": "124-subscribe-session-twice-in-one-request",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": true,
+      "state_ref": "ext-desktop-03",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":124,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"session\",\"session\"]}}",
+      "expect": {
+        "error": "bad_request"
+      },
+      "sway": []
+    },
+    {
+      "name": "125-subscribe-session-sway-offline",
+      "scopes": [
+        "state.read",
+        "control"
+      ],
+      "read_only": false,
+      "sway_online": false,
+      "state_ref": "offline",
+      "actions_left": 5,
+      "session": {
+        "locked": false,
+        "lock_command": true,
+        "lock_running": false,
+        "spawn": "ok",
+        "keep_awake": {
+          "active": false,
+          "remaining_ms": null,
+          "on_time_s": 0,
+          "cooldown_remaining_ms": null
+        }
+      },
+      "payload": "{\"type\":\"req\",\"id\":125,\"op\":\"state.subscribe\",\"args\":{\"topics\":[\"session\"]}}",
+      "expect": "ok"
+    }
+  ]
+}

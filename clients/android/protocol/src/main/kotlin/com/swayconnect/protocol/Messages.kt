@@ -144,6 +144,17 @@ enum class ByeReaction {
 object ErrorCode {
     const val READ_ONLY = "read_only"
     const val RATE_LIMITED = "rate_limited"
+
+    /** A server cap applies (17.15), for example the keep-awake continuous cap; wait `detail.retry_after_ms`. */
+    const val LIMIT_REACHED = "limit_reached"
+    const val BACKEND_UNAVAILABLE = "backend_unavailable"
+    const val SPAWN_FAILED = "spawn_failed"
+
+    // Remote keyboard refusals (17.13, 17.15); each carries `detail.delivered_chars`, see [InputRefusal].
+    const val FOCUS_CHANGED = "focus_changed"
+    const val LOCKED = "locked"
+    const val KEYBOARD_GRABBED = "keyboard_grabbed"
+    const val LAUNCHER_CLOSED = "launcher_closed"
 }
 
 object Op {
@@ -153,10 +164,32 @@ object Op {
     const val WINDOW_FOCUS = "window.focus"
     const val WINDOW_FULLSCREEN = "window.fullscreen"
     const val ICON_GET = "icon.get"
+    const val WINDOW_MOVE = "window.move"
+    const val WINDOW_FLOATING = "window.floating"
+    const val WINDOW_LAYOUT = "window.layout"
+    const val WINDOW_SCRATCHPAD = "window.scratchpad"
+    const val SCRATCHPAD_SHOW = "scratchpad.show"
+    const val SESSION_LOCK = "session.lock"
+    const val WINDOW_CLOSE = "window.close"
+    const val KEEP_AWAKE_SET = "keep_awake.set"
+    const val AUDIO_SET_VOLUME = "audio.set_volume"
+    const val AUDIO_SET_MUTE = "audio.set_mute"
+    const val AUDIO_SET_DEFAULT = "audio.set_default"
+    const val MEDIA_PLAY_PAUSE = "media.play_pause"
+    const val MEDIA_NEXT = "media.next"
+    const val MEDIA_PREVIOUS = "media.previous"
+    const val APP_LAUNCH = "app.launch"
+    const val LAUNCHER_OPEN = "launcher.open"
+    const val INPUT_TEXT = "input.text"
+    const val INPUT_KEY = "input.key"
 }
 
 object Topic {
     const val DESKTOP = "desktop"
+    const val SESSION = "session"
+    const val AUDIO = "audio"
+    const val MEDIA = "media"
+    const val APPS = "apps"
 }
 
 object EventName {

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Audio area: now playing, outputs and inputs (docs/UX.md 7). -->
+<resources>
+    <string name="audio_output">Output</string>
+    <string name="audio_input">Input</string>
+    <string name="audio_waiting">Waiting for the computer</string>
+    <string name="audio_unreachable">Sound server not reachable on %1$s.</string>
+    <string name="audio_unreachable_unnamed">Sound server not reachable on the computer.</string>
+    <string name="audio_no_devices">No sound devices</string>
+    <string name="audio_none">This computer offers no sound controls.</string>
+    <string name="audio_truncated">The computer lists more devices than it sends.</string>
+    <string name="audio_locked">Sound controls are off for this phone. Show how to turn them on</string>
+    <string name="audio_read_only">The computer is set to look only.</string>
+
+    <!-- Device card (UX 7.1, 7.2) -->
+    <string name="audio_default">Default</string>
+    <string name="audio_unplugged">Unplugged</string>
+    <string name="audio_live">Live</string>
+    <string name="audio_muted">Muted</string>
+    <string name="audio_percent">%1$d %%</string>
+    <string name="audio_make_default">make default</string>
+    <string name="audio_show_how">show how to turn it on</string>
+    <string name="audio_spoken_default">default output</string>
+    <string name="audio_spoken_default_input">default input</string>
+    <string name="audio_spoken_unplugged">unplugged</string>
+    <plurals name="audio_spoken_volume">
+        <item quantity="one">%1$d percent</item>
+        <item quantity="other">%1$d percent</item>
+    </plurals>
+    <plurals name="audio_spoken_volume_muted">
+        <item quantity="one">%1$d percent, muted</item>
+        <item quantity="other">%1$d percent, muted</item>
+    </plurals>
+    <string name="audio_volume_of">Volume of %1$s</string>
+    <string name="audio_level_of">Level of %1$s</string>
+    <string name="audio_mute">Mute %1$s</string>
+    <string name="audio_unmute">Unmute %1$s</string>
+    <string name="audio_hold_unmute">Hold to unmute</string>
+    <string name="audio_level_locked">Microphone level is off for this phone. Show how to turn it on</string>
+    <string name="audio_unmute_default">Unmute the default output</string>
+    <string name="audio_kind_speaker">Speaker</string>
+    <string name="audio_kind_headphones">Headphones</string>
+    <string name="audio_kind_hdmi">HDMI</string>
+    <string name="audio_kind_bluetooth">Bluetooth</string>
+    <string name="audio_kind_usb">USB</string>
+    <string name="audio_kind_microphone">Microphone</string>
+    <string name="audio_kind_other">Sound device</string>
+
+    <!-- Microphone confirm, the TalkBack way of the hold (UX 7.2, 15) -->
+    <string name="audio_unmute_title">Turn the microphone on?</string>
+    <string name="audio_unmute_text">%1$s starts listening. The computer shows a notice.</string>
+    <string name="audio_unmute_confirm">Unmute</string>
+
+    <!-- Now playing (UX 7.1) -->
+    <string name="media_nothing">Nothing playing</string>
+    <string name="media_playing_on">Playing · %1$s</string>
+    <string name="media_paused_on">Paused · %1$s</string>
+    <string name="media_stopped_on">Stopped · %1$s</string>
+    <string name="media_artist_on">%1$s · %2$s</string>
+    <string name="media_play">Play</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_next">Next track</string>
+    <string name="media_previous">Previous track</string>
+    <string name="media_locked">Media controls are off for this phone. Show how to turn them on</string>
+</resources>

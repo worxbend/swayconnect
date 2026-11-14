@@ -22,6 +22,7 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::watch;
 use tokio::task::JoinSet;
 
+use crate::audit::{AuditLog, Op, Outcome, Record, audit_file};
 use crate::config::StartError;
 use crate::devices::{DeviceInfo, ScopeChange, Secret};
 use crate::pairing::{OpenedWindow, PairingOutcome, PendingNotice};
@@ -220,6 +221,7 @@ pub struct AdminServer {
     listener: UnixListener,
     socket: PathBuf,
     uid: u32,
+    audit: AuditLog,
 }
 
 impl AdminServer {
@@ -233,10 +235,12 @@ impl AdminServer {
         remove_stale_socket(&paths.admin_socket(), uid)
     }
 
-    /// Runs [`AdminServer::claim`] and binds `admin.sock`. Needs a tokio runtime.
+    /// Runs [`AdminServer::claim`], opens the audit log and binds `admin.sock`. Needs a tokio
+    /// runtime.
     pub fn bind(paths: &Paths) -> Result<AdminServer, StartError> {
         AdminServer::claim(paths)?;
         let uid = own_uid()?;
+        let audit = AuditLog::open(&audit_file(paths), uid)?;
         let socket = paths.admin_socket();
         let listener = UnixListener::bind(&socket).map_err(PathError::io(&socket))?;
         // Until this line the socket has the mode the umask gives it; the 0700 directory
@@ -247,7 +251,13 @@ impl AdminServer {
             listener,
             socket,
             uid,
+            audit,
         })
+    }
+
+    /// The daemon's one audit log, for the request path (`docs/DESIGN.md` 11.8).
+    pub fn audit(&self) -> AuditLog {
+        self.audit.clone()
     }
 
     /// Serves until `shutdown` turns `true` or closes, then removes the socket.
@@ -267,6 +277,7 @@ impl AdminServer {
                         let session = Session {
                             security: security.clone(),
                             advertised: Arc::clone(&advertised),
+                            audit: self.audit.clone(),
                         };
                         connections.spawn(session.serve(stream, self.uid));
                     }
@@ -295,6 +306,7 @@ async fn stop_requested(shutdown: &mut watch::Receiver<bool>) {
 struct Session {
     security: Security,
     advertised: Arc<Advertised>,
+    audit: AuditLog,
 }
 
 impl Session {
@@ -331,7 +343,7 @@ impl Session {
                 } => match self.open_window(&scopes, lifetime_s, host) {
                     Ok((uri, opened)) => {
                         channel.send(&Reply::Window { uri }).await?;
-                        return pair(&mut channel, opened).await;
+                        return pair(&mut channel, opened, &self.audit).await;
                     }
                     Err(message) => channel.send(&Reply::Error { message }).await?,
                 },
@@ -346,7 +358,17 @@ impl Session {
                 message: "not a device id".to_owned(),
             };
         };
-        match self.security.revoke(&device_id) {
+        let revoked = self.security.revoke(&device_id);
+        let outcome = match &revoked {
+            Ok(false) => None,
+            Ok(true) => Some(Outcome::Ok),
+            Err(_) => Some(Outcome::NotStored),
+        };
+        if let Some(outcome) = outcome {
+            let line = Record::new(device_id, None, Op::Revoke, outcome);
+            self.audit.record_or_warn(&line);
+        }
+        match revoked {
             Ok(found) => Reply::Revoked { found },
             Err(error) => Reply::Error {
                 message: format!("revoked until the daemon restarts, but not on disk: {error}"),
@@ -360,15 +382,19 @@ impl Session {
             Err(message) => return Reply::Error { message },
         };
         match self.security.change_scopes(prefix, change, &scopes) {
-            Ok(set) => Reply::Scopes(ChangedScopes {
-                device_id: set.device_id.as_str().to_owned(),
-                scopes: set
-                    .scopes
-                    .iter()
-                    .map(|scope| scope.as_str().to_owned())
-                    .collect(),
-                changed: set.changed,
-            }),
+            Ok(set) => {
+                self.audit
+                    .record_or_warn(&Record::scope_change(change, &set));
+                Reply::Scopes(ChangedScopes {
+                    device_id: set.device_id.as_str().to_owned(),
+                    scopes: set
+                        .scopes
+                        .iter()
+                        .map(|scope| scope.as_str().to_owned())
+                        .collect(),
+                    changed: set.changed,
+                })
+            }
             Err(error) => Reply::Error {
                 message: error.to_string(),
             },
@@ -433,7 +459,11 @@ fn parse_scopes(names: &[String]) -> Result<BTreeSet<Scope>, String> {
 
 /// The rest of a `pair.open` connection: pending device, the owner's answer, the result.
 /// Returning early drops the window or the answer channel, which cancels the pairing.
-async fn pair(channel: &mut Channel, opened: OpenedWindow) -> Result<(), AdminError> {
+async fn pair(
+    channel: &mut Channel,
+    opened: OpenedWindow,
+    audit: &AuditLog,
+) -> Result<(), AdminError> {
     let notice = tokio::select! {
         notice = opened.pending => notice.ok(),
         () = tokio::time::sleep_until(opened.expires_at) => None,
@@ -476,14 +506,22 @@ async fn pair(channel: &mut Channel, opened: OpenedWindow) -> Result<(), AdminEr
             device_id,
             device_name,
             scopes,
-        }) => Reply::Paired(PairedDevice {
-            device_id: device_id.as_str().to_owned(),
-            device_name,
-            scopes: scopes
-                .iter()
-                .map(|scope| scope.as_str().to_owned())
-                .collect(),
-        }),
+        }) => {
+            let paired = PairedDevice {
+                device_id: device_id.as_str().to_owned(),
+                device_name,
+                scopes: scopes
+                    .iter()
+                    .map(|scope| scope.as_str().to_owned())
+                    .collect(),
+            };
+            let line = Record {
+                scopes,
+                ..Record::new(device_id, Some(peer), Op::Pair, Outcome::Ok)
+            };
+            audit.record_or_warn(&line);
+            Reply::Paired(paired)
+        }
         Ok(PairingOutcome::Refused) => Reply::Refused,
         Ok(PairingOutcome::DeadlinePassed) => Reply::DeadlinePassed,
         Ok(PairingOutcome::ClientGone) => Reply::ClientGone,

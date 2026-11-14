@@ -13,15 +13,23 @@ use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
+use self::controls::HostParts;
+use self::services::{KeyboardHost, MediaHost, ServiceHost, Services};
 use crate::admin::{AdminServer, Advertised};
+use crate::apps::index::IndexDirs;
 use crate::config::{Config, StartError};
 use crate::icons::raster::ChildRasteriser;
 use crate::icons::{IconService, IconSettings, IconsConfig};
+use crate::keep_awake::KeepAwake;
 use crate::listener;
 use crate::paths::{Paths, own_uid};
+use crate::proc::{ChildEnv, RealRunner, Runner};
 use crate::security::Security;
 use crate::session::Shared;
 use crate::sway_handle::SwayHandle;
+
+pub mod controls;
+pub mod services;
 
 const EXIT_RUNTIME_FAILURE: u8 = 1;
 const EXIT_CONFIG_ERROR: u8 = 2;
@@ -38,6 +46,8 @@ pub enum DaemonError {
     },
     #[error("cannot start the icon service: {0}")]
     Icons(#[source] io::Error),
+    #[error("cannot start the remote keyboard: {0}")]
+    Keyboard(#[source] io::Error),
 }
 
 impl DaemonError {
@@ -46,7 +56,9 @@ impl DaemonError {
     pub fn exit_code(&self) -> u8 {
         match self {
             DaemonError::Start(_) => EXIT_CONFIG_ERROR,
-            DaemonError::Bind { .. } | DaemonError::Icons(_) => EXIT_RUNTIME_FAILURE,
+            DaemonError::Bind { .. } | DaemonError::Icons(_) | DaemonError::Keyboard(_) => {
+                EXIT_RUNTIME_FAILURE
+            }
         }
     }
 }
@@ -65,11 +77,48 @@ pub struct IconSources {
     pub raster_program: PathBuf,
 }
 
+/// What the daemon takes from the host besides its config and paths. `main.rs` builds it
+/// from the environment; tests point it at temp directories and fake programs.
+pub struct Host {
+    pub target: SwayTarget,
+    /// `None`: no icon lookup. Every window icon is `null` and `icon.get` lists every hash as
+    /// `missing`.
+    pub icons: Option<IconSources>,
+    /// Starts every child program (`docs/DESIGN.md` 11.3 rule 8).
+    pub runner: Arc<dyn Runner>,
+    /// Where the lock heuristic and the input guard read processes: `/proc` outside tests.
+    pub proc_root: PathBuf,
+    /// Where `input.*` types (M2b).
+    pub keyboard: KeyboardHost,
+    /// Where topic `media` finds its players.
+    pub media: MediaHost,
+    /// Where topic `apps` reads desktop entries.
+    pub apps: IndexDirs,
+}
+
+impl Host {
+    /// No icon lookup, the real `/proc`, children with an empty environment, and nothing of
+    /// the desktop session: no keyboard, no session bus, no desktop entries.
+    pub fn new(target: SwayTarget) -> Host {
+        Host {
+            target,
+            icons: None,
+            runner: Arc::new(RealRunner::new(ChildEnv::default())),
+            proc_root: PathBuf::from("/proc"),
+            keyboard: KeyboardHost::none(),
+            media: MediaHost::Bus(None),
+            apps: IndexDirs::default(),
+        }
+    }
+}
+
 /// A running daemon. Dropping it without [`DaemonHandle::stop`] also stops the tasks, but
 /// waits for nothing and can leave `admin.sock` behind.
 pub struct DaemonHandle {
     shutdown: watch::Sender<bool>,
     read_only: Arc<AtomicBool>,
+    keep_awake: KeepAwake,
+    services: Services,
     bound: Vec<SocketAddr>,
     fingerprint: [u8; 32],
     tasks: Vec<JoinHandle<()>>,
@@ -83,7 +132,7 @@ impl Daemon {
         paths: Paths,
         target: SwayTarget,
     ) -> Result<DaemonHandle, DaemonError> {
-        Daemon::run(config, paths, target, None).await
+        Daemon::start_on(config, paths, Host::new(target)).await
     }
 
     /// A daemon whose icon service reads `icons`.
@@ -93,35 +142,70 @@ impl Daemon {
         target: SwayTarget,
         icons: IconSources,
     ) -> Result<DaemonHandle, DaemonError> {
-        Daemon::run(config, paths, target, Some(icons)).await
+        let host = Host {
+            icons: Some(icons),
+            ..Host::new(target)
+        };
+        Daemon::start_on(config, paths, host).await
     }
 
-    async fn run(
+    /// A daemon that takes everything outside its config and paths from `host`.
+    pub async fn start_on(
         config: Config,
         paths: Paths,
-        target: SwayTarget,
-        icon_sources: Option<IconSources>,
+        host: Host,
     ) -> Result<DaemonHandle, DaemonError> {
+        let Host {
+            target,
+            icons: icon_sources,
+            runner,
+            proc_root,
+            keyboard,
+            media,
+            apps,
+        } = host;
         let security = Security::open(&config, &paths)?;
         // Before the listeners: the address of a running daemon is in use, and that must
         // not hide the real reason.
         AdminServer::claim(&paths)?;
         let mut listeners = Vec::new();
         let mut bound = Vec::new();
-        for address in config.listen {
+        for &address in &config.listen {
             let bind_error = |source| DaemonError::Bind { address, source };
             let listener = TcpListener::bind(address).await.map_err(bind_error)?;
             bound.push(listener.local_addr().map_err(bind_error)?);
             listeners.push(listener);
         }
         let icons = match icon_sources {
-            Some(sources) => Some(Arc::new(start_icons(sources, config.icons)?)),
+            Some(sources) => Some(Arc::new(start_icons(sources, config.icons.clone())?)),
             None => None,
         };
-        // Last: a start that fails before leaves no dead `admin.sock` behind.
-        let admin = AdminServer::bind(&paths)?;
-
+        // A failed start drops the sender, which also stops the tasks started so far.
         let (shutdown, stop) = watch::channel(false);
+        let service_host = ServiceHost {
+            runner: Arc::clone(&runner),
+            proc_root: proc_root.clone(),
+            sway: target.clone(),
+            keyboard,
+            media,
+            apps,
+            icons: icons.clone(),
+        };
+        // Before the services: their watchers log at once (a missing `pactl`), and that must
+        // not bury a socket path that cannot be bound.
+        let admin = AdminServer::bind(&paths)?;
+        let services = match services::start(&config, service_host, &stop).await {
+            Ok(services) => services,
+            Err(error) => {
+                // A failed start leaves no `admin.sock` that nobody serves.
+                drop(admin);
+                if let Err(remove_error) = std::fs::remove_file(paths.admin_socket()) {
+                    tracing::warn!(error = %remove_error, "admin socket not removed");
+                }
+                return Err(DaemonError::Keyboard(error));
+            }
+        };
+
         let read_only = Arc::new(AtomicBool::new(config.read_only));
         let fingerprint = security.fingerprint();
         log_start(&bound, &fingerprint, config.read_only);
@@ -130,6 +214,9 @@ impl Daemon {
             stop.clone(),
             icons.clone(),
         ));
+        let host_parts = HostParts { runner, proc_root };
+        let controls = controls::start(&config, host_parts, &sway, admin.audit(), &stop);
+        let keep_awake = controls.keep_awake.clone();
         let shared = Shared {
             security: security.clone(),
             // The supervisor runs until shutdown; sessions keep the receiver alive.
@@ -139,18 +226,27 @@ impl Daemon {
             read_only: Arc::clone(&read_only),
             shutdown: stop.clone(),
             icons,
+            controls,
+            services: services.clone(),
         };
         let advertised = Advertised {
             server_name: config.server_name,
             bound: bound.clone(),
         };
-        let mut tasks = vec![tokio::spawn(admin.run(security, advertised, stop))];
+        let mut tasks = vec![tokio::spawn(controls::release_on_revoke(
+            keep_awake.clone(),
+            security.clone(),
+            stop.clone(),
+        ))];
+        tasks.push(tokio::spawn(admin.run(security, advertised, stop)));
         for listener in listeners {
             tasks.push(tokio::spawn(listener::run(listener, shared.clone())));
         }
         Ok(DaemonHandle {
             shutdown,
             read_only,
+            keep_awake,
+            services,
             bound,
             fingerprint,
             tasks,
@@ -199,15 +295,29 @@ impl DaemonHandle {
     }
 
     /// The panic switch: until the daemon restarts, every action is refused and new
-    /// sessions see `read_only`.
+    /// sessions see `read_only`. Keep-awake ends too (`docs/PROTOCOL.md` 17.8 rule 6), input
+    /// stops and the launcher is killed (`docs/DESIGN.md` 11.8), in a task, so the switch
+    /// never waits. Must be called inside a tokio runtime.
     pub fn enter_read_only(&self) {
-        self.read_only.store(true, Ordering::Relaxed);
+        self.read_only.store(true, Ordering::SeqCst);
         tracing::info!("read-only mode entered; it lasts until the daemon restarts");
+        // At once: a running request stops before its next part.
+        self.services.input.abort();
+        let keep_awake = self.keep_awake.clone();
+        let launcher = Arc::clone(&self.services.launcher);
+        // Both refuse a later start themselves, so a request that passed the read-only
+        // check before the switch starts nothing after it. Side by side: a slow launcher
+        // kill does not delay the end of keep-awake.
+        tokio::spawn(async move {
+            tokio::join!(launcher.close(), keep_awake.close());
+        });
     }
 
-    /// Stops accepting, lets the sessions send `bye`, removes `admin.sock`.
+    /// Ends keep-awake, stops accepting, lets the sessions send `bye`, removes `admin.sock`.
     pub async fn stop(self) {
         tracing::info!("stopping");
+        // The keep-awake task also ends its inhibitor on shutdown; this waits for the kill.
+        self.keep_awake.release().await;
         self.shutdown.send_replace(true);
         for task in self.tasks {
             if let Err(error) = task.await {
@@ -218,166 +328,4 @@ impl DaemonHandle {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::fs;
-    use std::path::{Path, PathBuf};
-
-    use swayconnect_protocol::limits::DEFAULT_PORT;
-    use swayconnect_testkit::{FakeSway, TestDirs};
-
-    use super::*;
-
-    const CRATES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
-    // Split, so that this file does not hold the texts it searches for.
-    const ENVIRONMENT_READS: [&str; 3] = [
-        concat!("std::env", "::var"),
-        concat!("env::var", "_os"),
-        concat!("env::va", "rs"),
-    ];
-    const COMMAND_TEXTS: [&str; 2] = [
-        concat!("[con", "_id="),
-        concat!("no-auto", "-back-and-forth"),
-    ];
-
-    fn rust_files_below(directory: &Path, found: &mut Vec<PathBuf>) {
-        for entry in fs::read_dir(directory).expect("readable directory") {
-            let path = entry.expect("directory entry").path();
-            if path.is_dir() {
-                rust_files_below(&path, found);
-            } else if path.extension().is_some_and(|extension| extension == "rs") {
-                found.push(path);
-            }
-        }
-    }
-
-    /// Every file under `crates/*/src/` that holds one of `needles`, as a path below `crates/`.
-    fn source_files_with(needles: &[&str]) -> Vec<String> {
-        let mut sources = Vec::new();
-        for entry in fs::read_dir(CRATES_DIR).expect("crates directory") {
-            let source_dir = entry.expect("crate directory").path().join("src");
-            if source_dir.is_dir() {
-                rust_files_below(&source_dir, &mut sources);
-            }
-        }
-        assert!(sources.len() > 20, "the scan found the workspace sources");
-        let crates_dir = Path::new(CRATES_DIR)
-            .canonicalize()
-            .expect("crates directory");
-        let mut hits = Vec::new();
-        for source in sources {
-            let text = fs::read_to_string(&source).expect("readable source file");
-            if needles.iter().any(|needle| text.contains(needle)) {
-                let source = source.canonicalize().expect("source path");
-                let relative = source.strip_prefix(&crates_dir).expect("below crates/");
-                hits.push(relative.display().to_string());
-            }
-        }
-        hits.sort();
-        hits
-    }
-
-    #[test]
-    fn only_the_two_main_files_read_the_environment() {
-        let allowed = [
-            "swayconnect-cli/src/main.rs",
-            "swayconnect-daemon/src/main.rs",
-        ];
-        let mut readers = source_files_with(&ENVIRONMENT_READS);
-        readers.retain(|file| !allowed.contains(&file.as_str()));
-        assert_eq!(readers, Vec::<String>::new());
-    }
-
-    #[test]
-    fn only_the_command_builder_spells_sway_command_text() {
-        let mut spellers = source_files_with(&COMMAND_TEXTS);
-        spellers.retain(|file| file != "swayconnect-sway/src/command.rs");
-        assert_eq!(spellers, Vec::<String>::new());
-    }
-
-    #[tokio::test]
-    async fn the_daemon_binds_an_ephemeral_port_and_removes_the_admin_socket_on_stop() {
-        let dirs = TestDirs::new();
-        let _sway = FakeSway::start(&dirs.runtime_dir(), &[]);
-        let paths = Paths {
-            config_file: dirs.config_file(),
-            data_dir: dirs.data_dir(),
-            runtime_dir: dirs.runtime_dir(),
-        };
-        let config = Config::from_toml("listen = [\"127.0.0.1:0\"]").expect("config");
-        let target = SwayTarget::Explicit(dirs.sway_socket());
-
-        let daemon = Daemon::start(config, paths.clone(), target)
-            .await
-            .expect("daemon starts");
-
-        let [address] = daemon.bound() else {
-            panic!("one listen address, got {:?}", daemon.bound());
-        };
-        assert!(address.ip().is_loopback());
-        assert!(![0, DEFAULT_PORT].contains(&address.port()));
-        assert!(paths.admin_socket().exists());
-        assert!(paths.identity_cert().exists());
-
-        daemon.stop().await;
-        assert!(!paths.admin_socket().exists());
-    }
-
-    #[tokio::test]
-    async fn an_address_in_use_is_a_runtime_failure_not_a_config_error() {
-        let dirs = TestDirs::new();
-        let taken = std::net::TcpListener::bind("127.0.0.1:0").expect("a free port");
-        let address = taken.local_addr().expect("address");
-        let paths = Paths {
-            config_file: dirs.config_file(),
-            data_dir: dirs.data_dir(),
-            runtime_dir: dirs.runtime_dir(),
-        };
-        let config = Config::from_toml(&format!("listen = [\"{address}\"]")).expect("config");
-        let target = SwayTarget::Explicit(dirs.sway_socket());
-
-        let Err(error) = Daemon::start(config, paths.clone(), target).await else {
-            panic!("the bind must fail");
-        };
-        assert!(matches!(error, DaemonError::Bind { .. }));
-        assert_eq!(error.exit_code(), 1);
-        assert!(
-            !paths.admin_socket().exists(),
-            "the failed start left an admin socket that nobody serves"
-        );
-    }
-
-    #[tokio::test]
-    async fn a_second_daemon_is_a_config_error_even_when_its_address_is_in_use() {
-        let dirs = TestDirs::new();
-        let _sway = FakeSway::start(&dirs.runtime_dir(), &[]);
-        let paths = Paths {
-            config_file: dirs.config_file(),
-            data_dir: dirs.data_dir(),
-            runtime_dir: dirs.runtime_dir(),
-        };
-        let config = Config::from_toml("listen = [\"127.0.0.1:0\"]").expect("config");
-        let target = SwayTarget::Explicit(dirs.sway_socket());
-        let first = Daemon::start(config, paths.clone(), target.clone())
-            .await
-            .expect("the first daemon starts");
-        let [address] = first.bound() else {
-            panic!("one listen address, got {:?}", first.bound());
-        };
-        let same_address = Config::from_toml(&format!("listen = [\"{address}\"]")).expect("config");
-
-        let Err(error) = Daemon::start(same_address, paths.clone(), target).await else {
-            panic!("the second start must fail");
-        };
-
-        assert!(matches!(
-            error,
-            DaemonError::Start(StartError::AlreadyRunning(_))
-        ));
-        assert_eq!(error.exit_code(), 2);
-        assert!(
-            paths.admin_socket().exists(),
-            "the refused start removed the socket of the running daemon"
-        );
-        first.stop().await;
-    }
-}
+mod tests;

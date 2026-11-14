@@ -1,14 +1,29 @@
 //! Operations, their arguments and results, and event payloads (`docs/PROTOCOL.md` 7, 8, 17).
 
+mod decode;
+mod topic;
+
 use serde_json::Value;
 
+use crate::apps::EntryId;
+use crate::audio::AudioChange;
 use crate::code::wire_names;
 use crate::icon::IconHash;
-use crate::json::{self, InvalidMember, Member, object_of};
-use crate::limits::{MAX_FOCUS_NUMBER, MAX_ICON_HASHES, MAX_TOPICS_PER_SUBSCRIBE};
+use crate::input::{InputTarget, InputText, KeyPress};
+use crate::json::{self, InvalidMember, object_of};
+use crate::media::MediaCommand;
 use crate::message::{JsonObject, Req, Scope};
 
+pub(crate) use decode::has_duplicate;
+pub use topic::{TopicState, decode_subscribe_result, encode_subscribe_result};
+
 pub const TOPIC_DESKTOP: &str = "desktop";
+/// Spec 17.8.
+pub const TOPIC_SESSION: &str = "session";
+/// Spec 17.9 to 17.11.
+pub const TOPIC_AUDIO: &str = "audio";
+pub const TOPIC_MEDIA: &str = "media";
+pub const TOPIC_APPS: &str = "apps";
 pub const EVENT_STATE_CHANGED: &str = "state.changed";
 pub const EVENT_PAIRING_CONFIRMED: &str = "pairing.confirmed";
 
@@ -22,6 +37,26 @@ pub enum Operation {
     WorkspaceFocus,
     WindowFocus,
     WindowFullscreen,
+    /// Spec 17.6 to 17.8.
+    WindowMove,
+    WindowFloating,
+    WindowLayout,
+    WindowScratchpad,
+    ScratchpadShow,
+    SessionLock,
+    WindowClose,
+    KeepAwakeSet,
+    /// Spec 17.9 to 17.13.
+    AudioSetVolume,
+    AudioSetMute,
+    AudioSetDefault,
+    MediaPlayPause,
+    MediaNext,
+    MediaPrevious,
+    AppLaunch,
+    LauncherOpen,
+    InputText,
+    InputKey,
 }
 
 wire_names!(Operation {
@@ -31,7 +66,42 @@ wire_names!(Operation {
     WorkspaceFocus => "workspace.focus",
     WindowFocus => "window.focus",
     WindowFullscreen => "window.fullscreen",
+    WindowMove => "window.move",
+    WindowFloating => "window.floating",
+    WindowLayout => "window.layout",
+    WindowScratchpad => "window.scratchpad",
+    ScratchpadShow => "scratchpad.show",
+    SessionLock => "session.lock",
+    WindowClose => "window.close",
+    KeepAwakeSet => "keep_awake.set",
+    AudioSetVolume => "audio.set_volume",
+    AudioSetMute => "audio.set_mute",
+    AudioSetDefault => "audio.set_default",
+    MediaPlayPause => "media.play_pause",
+    MediaNext => "media.next",
+    MediaPrevious => "media.previous",
+    AppLaunch => "app.launch",
+    LauncherOpen => "launcher.open",
+    InputText => "input.text",
+    InputKey => "input.key",
 });
+
+/// The per-device token bucket an operation takes from at step 5 of spec 10.2 (17.14).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RateClass {
+    /// Version 1's action bucket: burst 5, refill 2 per second.
+    Actions,
+    /// `icon.get`, also in read-only mode: burst 4, refill 2 per second.
+    Icons,
+    /// `audio.set_volume`: burst 10, refill 10 per second.
+    Continuous,
+    /// `app.launch`, `launcher.open`: burst 3, refill 1 per 5 s.
+    Launch,
+    /// `input.key`: burst 20, refill 10 per second.
+    Input,
+    /// `input.text`: burst 4, refill 1 per second, and at most 4096 characters per minute.
+    InputText,
+}
 
 /// Validated arguments of one request.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,9 +122,58 @@ pub enum Args {
         window_id: u64,
         enabled: bool,
     },
+    WindowMove {
+        window_id: u64,
+        target: WorkspaceTarget,
+    },
+    WindowFloating {
+        window_id: u64,
+        enabled: bool,
+    },
+    WindowLayout {
+        window_id: u64,
+        layout: ContainerLayout,
+    },
+    WindowScratchpad {
+        window_id: u64,
+    },
+    /// `window_id` is an id of the state's `scratchpad`, not of `windows`.
+    ScratchpadShow {
+        window_id: u64,
+    },
+    SessionLock,
+    WindowClose {
+        window_id: u64,
+    },
+    KeepAwakeSet(KeepAwake),
+    /// `audio.set_volume`, `audio.set_mute`, `audio.set_default`. `device_id` is an id of the
+    /// `audio` state, a sink or a source.
+    Audio {
+        device_id: u64,
+        change: AudioChange,
+    },
+    /// `media.play_pause`, `media.next`, `media.previous`.
+    Media {
+        player_id: u64,
+        command: MediaCommand,
+    },
+    /// With `number`, the server focuses that workspace (0 to 999) first.
+    AppLaunch {
+        entry_id: EntryId,
+        number: Option<u16>,
+    },
+    LauncherOpen,
+    InputText {
+        target: InputTarget,
+        text: InputText,
+    },
+    InputKey {
+        target: InputTarget,
+        press: KeyPress,
+    },
 }
 
-/// Exactly one of the two arguments of `workspace.focus`.
+/// Exactly one of the two arguments of `workspace.focus` and `window.move`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkspaceTarget {
     Id(u64),
@@ -62,27 +181,128 @@ pub enum WorkspaceTarget {
     Number(u16),
 }
 
+/// Argument `layout` of `window.layout` (17.6). A closed enum, matched exactly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ContainerLayout {
+    SplitH,
+    SplitV,
+    Tabbed,
+    Stacking,
+}
+
+wire_names!(ContainerLayout {
+    SplitH => "splith",
+    SplitV => "splitv",
+    Tabbed => "tabbed",
+    Stacking => "stacking",
+});
+
+/// Arguments of `keep_awake.set` (17.8).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeepAwake {
+    /// `duration_s` is at least 60; `None` means the server's `default_duration_s`.
+    On { duration_s: Option<u64> },
+    /// `duration_s` is ignored, so it is not read.
+    Off,
+}
+
+impl KeepAwake {
+    /// The upper end of `duration_s` is the server's `max_duration_s`, which this crate does not
+    /// know. A server applies this at step 6 of spec 10.2; an error is a `bad_request`.
+    pub fn check_max_duration(self, max_duration_s: u64) -> Result<KeepAwake, InvalidMember> {
+        match self {
+            KeepAwake::On {
+                duration_s: Some(duration_s),
+            } if duration_s > max_duration_s => Err(InvalidMember(DURATION_S)),
+            _ => Ok(self),
+        }
+    }
+}
+
+const DURATION_S: &str = "duration_s";
+const DEVICE_ID: &str = "device_id";
+const PLAYER_ID: &str = "player_id";
+const ENTRY_ID: &str = "entry_id";
+
+/// The scope a topic needs beside `state.read` (17.2): `audio`, `media` or `launch`. `None` for
+/// `desktop`, `session` and every name this version does not know.
+pub fn topic_scope(topic: &str) -> Option<Scope> {
+    match topic {
+        TOPIC_AUDIO => Some(Scope::Audio),
+        TOPIC_MEDIA => Some(Scope::Media),
+        TOPIC_APPS => Some(Scope::Launch),
+        _ => None,
+    }
+}
+
 impl Operation {
     pub const fn required_scope(self) -> Option<Scope> {
         match self {
             Operation::Ping => None,
             Operation::StateSubscribe | Operation::IconGet => Some(Scope::StateRead),
-            Operation::WorkspaceFocus | Operation::WindowFocus | Operation::WindowFullscreen => {
-                Some(Scope::Control)
+            Operation::WorkspaceFocus
+            | Operation::WindowFocus
+            | Operation::WindowFullscreen
+            | Operation::WindowMove
+            | Operation::WindowFloating
+            | Operation::WindowLayout
+            | Operation::WindowScratchpad
+            | Operation::ScratchpadShow
+            | Operation::SessionLock => Some(Scope::Control),
+            Operation::WindowClose => Some(Scope::Destructive),
+            Operation::KeepAwakeSet => Some(Scope::IdleInhibit),
+            Operation::AudioSetVolume | Operation::AudioSetMute | Operation::AudioSetDefault => {
+                Some(Scope::Audio)
             }
+            Operation::MediaPlayPause | Operation::MediaNext | Operation::MediaPrevious => {
+                Some(Scope::Media)
+            }
+            Operation::AppLaunch | Operation::LauncherOpen => Some(Scope::Launch),
+            Operation::InputText => Some(Scope::InputText),
+            Operation::InputKey => Some(Scope::InputKeys),
         }
     }
 
     /// An action changes the desktop.
     pub const fn is_action(self) -> bool {
-        matches!(
+        !matches!(
             self,
-            Operation::WorkspaceFocus | Operation::WindowFocus | Operation::WindowFullscreen
+            Operation::Ping | Operation::StateSubscribe | Operation::IconGet
         )
     }
 
+    /// Spec 17.14. `None` for an operation that takes no token.
+    pub const fn rate_class(self) -> Option<RateClass> {
+        match self {
+            Operation::Ping | Operation::StateSubscribe => None,
+            Operation::IconGet => Some(RateClass::Icons),
+            Operation::WorkspaceFocus
+            | Operation::WindowFocus
+            | Operation::WindowFullscreen
+            | Operation::WindowMove
+            | Operation::WindowFloating
+            | Operation::WindowLayout
+            | Operation::WindowScratchpad
+            | Operation::ScratchpadShow
+            | Operation::SessionLock
+            | Operation::WindowClose
+            | Operation::KeepAwakeSet
+            | Operation::AudioSetMute
+            | Operation::AudioSetDefault
+            | Operation::MediaPlayPause
+            | Operation::MediaNext
+            | Operation::MediaPrevious => Some(RateClass::Actions),
+            Operation::AudioSetVolume => Some(RateClass::Continuous),
+            Operation::AppLaunch | Operation::LauncherOpen => Some(RateClass::Launch),
+            Operation::InputKey => Some(RateClass::Input),
+            Operation::InputText => Some(RateClass::InputText),
+        }
+    }
+
     /// Step 6 of the check order (spec 10.2). `args` is `req.args`; absent means `{}`.
-    /// An error is answered with `bad_request`. Topic names are not looked up here.
+    /// An error is answered with `bad_request`. Topic names are not looked up here. The server
+    /// limits of step 6 are [`KeepAwake::check_max_duration`] and
+    /// [`AudioChange::check_max_volume`].
     pub fn decode_args(self, args: Option<&Value>) -> Result<Args, InvalidMember> {
         let empty = JsonObject::new();
         let args = match args {
@@ -90,21 +310,79 @@ impl Operation {
             Some(Value::Object(args)) => args,
             Some(_) => return Err(InvalidMember("args")),
         };
+        let window_id = || json::int(args, "window_id");
+        let enabled = || json::boolean(args, "enabled");
+        let audio = |change| {
+            Ok(Args::Audio {
+                device_id: json::int(args, DEVICE_ID)?,
+                change,
+            })
+        };
+        let media = |command| {
+            Ok(Args::Media {
+                player_id: json::int(args, PLAYER_ID)?,
+                command,
+            })
+        };
         match self {
             Operation::Ping => Ok(Args::Ping),
             Operation::StateSubscribe => Ok(Args::StateSubscribe {
-                topics: decode_topics(args)?,
+                topics: decode::decode_topics(args)?,
             }),
             Operation::IconGet => Ok(Args::IconGet {
-                hashes: decode_hashes(args)?,
+                hashes: decode::decode_hashes(args)?,
             }),
-            Operation::WorkspaceFocus => decode_workspace_target(args).map(Args::WorkspaceFocus),
+            Operation::WorkspaceFocus => {
+                decode::decode_workspace_target(args).map(Args::WorkspaceFocus)
+            }
             Operation::WindowFocus => Ok(Args::WindowFocus {
-                window_id: json::int(args, "window_id")?,
+                window_id: window_id()?,
             }),
             Operation::WindowFullscreen => Ok(Args::WindowFullscreen {
-                window_id: json::int(args, "window_id")?,
-                enabled: json::boolean(args, "enabled")?,
+                window_id: window_id()?,
+                enabled: enabled()?,
+            }),
+            Operation::WindowMove => Ok(Args::WindowMove {
+                window_id: window_id()?,
+                target: decode::decode_workspace_target(args)?,
+            }),
+            Operation::WindowFloating => Ok(Args::WindowFloating {
+                window_id: window_id()?,
+                enabled: enabled()?,
+            }),
+            Operation::WindowLayout => Ok(Args::WindowLayout {
+                window_id: window_id()?,
+                layout: decode::decode_layout(args)?,
+            }),
+            Operation::WindowScratchpad => Ok(Args::WindowScratchpad {
+                window_id: window_id()?,
+            }),
+            Operation::ScratchpadShow => Ok(Args::ScratchpadShow {
+                window_id: window_id()?,
+            }),
+            Operation::SessionLock => Ok(Args::SessionLock),
+            Operation::WindowClose => Ok(Args::WindowClose {
+                window_id: window_id()?,
+            }),
+            Operation::KeepAwakeSet => decode::decode_keep_awake(args).map(Args::KeepAwakeSet),
+            Operation::AudioSetVolume => audio(AudioChange::decode_volume(args)?),
+            Operation::AudioSetMute => audio(AudioChange::decode_mute(args)?),
+            Operation::AudioSetDefault => audio(AudioChange::Default),
+            Operation::MediaPlayPause => media(MediaCommand::PlayPause),
+            Operation::MediaNext => media(MediaCommand::Next),
+            Operation::MediaPrevious => media(MediaCommand::Previous),
+            Operation::AppLaunch => Ok(Args::AppLaunch {
+                entry_id: EntryId::decode(args, ENTRY_ID)?,
+                number: decode::decode_launch_number(args)?,
+            }),
+            Operation::LauncherOpen => Ok(Args::LauncherOpen),
+            Operation::InputText => Ok(Args::InputText {
+                target: InputTarget::decode(args)?,
+                text: InputText::decode(args)?,
+            }),
+            Operation::InputKey => Ok(Args::InputKey {
+                target: InputTarget::decode(args)?,
+                press: KeyPress::decode(args)?,
             }),
         }
     }
@@ -119,6 +397,20 @@ impl Args {
             Args::WorkspaceFocus(_) => Operation::WorkspaceFocus,
             Args::WindowFocus { .. } => Operation::WindowFocus,
             Args::WindowFullscreen { .. } => Operation::WindowFullscreen,
+            Args::WindowMove { .. } => Operation::WindowMove,
+            Args::WindowFloating { .. } => Operation::WindowFloating,
+            Args::WindowLayout { .. } => Operation::WindowLayout,
+            Args::WindowScratchpad { .. } => Operation::WindowScratchpad,
+            Args::ScratchpadShow { .. } => Operation::ScratchpadShow,
+            Args::SessionLock => Operation::SessionLock,
+            Args::WindowClose { .. } => Operation::WindowClose,
+            Args::KeepAwakeSet(_) => Operation::KeepAwakeSet,
+            Args::Audio { change, .. } => change.operation(),
+            Args::Media { command, .. } => command.operation(),
+            Args::AppLaunch { .. } => Operation::AppLaunch,
+            Args::LauncherOpen => Operation::LauncherOpen,
+            Args::InputText { .. } => Operation::InputText,
+            Args::InputKey { .. } => Operation::InputKey,
         }
     }
 
@@ -133,260 +425,79 @@ impl Args {
 
     fn encode(&self) -> Option<JsonObject> {
         match self {
-            Args::Ping => None,
+            Args::Ping | Args::SessionLock | Args::LauncherOpen => None,
             Args::StateSubscribe { topics } => Some(object_of([("topics", topics.clone().into())])),
             Args::IconGet { hashes } => {
                 let hashes: Vec<Value> = hashes.iter().map(|hash| hash.encode_value()).collect();
                 Some(object_of([("hashes", hashes.into())]))
             }
-            Args::WorkspaceFocus(WorkspaceTarget::Id(id)) => {
-                Some(object_of([("workspace_id", (*id).into())]))
-            }
-            Args::WorkspaceFocus(WorkspaceTarget::Number(number)) => {
-                Some(object_of([("number", (*number).into())]))
-            }
-            Args::WindowFocus { window_id } => {
+            Args::WorkspaceFocus(target) => Some(object_of([target.member()])),
+            Args::WindowFocus { window_id }
+            | Args::WindowScratchpad { window_id }
+            | Args::ScratchpadShow { window_id }
+            | Args::WindowClose { window_id } => {
                 Some(object_of([("window_id", (*window_id).into())]))
             }
-            Args::WindowFullscreen { window_id, enabled } => Some(object_of([
+            Args::WindowFullscreen { window_id, enabled }
+            | Args::WindowFloating { window_id, enabled } => Some(object_of([
                 ("window_id", (*window_id).into()),
                 ("enabled", (*enabled).into()),
             ])),
+            Args::WindowMove { window_id, target } => Some(object_of([
+                ("window_id", (*window_id).into()),
+                target.member(),
+            ])),
+            Args::WindowLayout { window_id, layout } => Some(object_of([
+                ("window_id", (*window_id).into()),
+                ("layout", layout.as_str().into()),
+            ])),
+            Args::KeepAwakeSet(keep_awake) => Some(keep_awake.encode()),
+            Args::Audio { device_id, change } => {
+                let mut object = object_of([(DEVICE_ID, (*device_id).into())]);
+                if let Some((name, value)) = change.member() {
+                    object.insert(name.to_owned(), value);
+                }
+                Some(object)
+            }
+            Args::Media { player_id, .. } => Some(object_of([(PLAYER_ID, (*player_id).into())])),
+            Args::AppLaunch { entry_id, number } => {
+                let mut object = object_of([(ENTRY_ID, entry_id.as_str().into())]);
+                json::insert_present(&mut object, "number", number.map(Value::from));
+                Some(object)
+            }
+            Args::InputText { target, text } => {
+                Some(object_of([target.member(), ("text", text.as_str().into())]))
+            }
+            Args::InputKey { target, press } => {
+                let mut object = object_of([target.member()]);
+                press.encode_into(&mut object);
+                Some(object)
+            }
         }
     }
 }
 
-/// 1 to 16 topic names, no duplicates.
-fn decode_topics(args: &JsonObject) -> Member<Vec<String>> {
-    const NAME: &str = "topics";
-    let topics = json::string_array(args, NAME)?;
-    if (1..=MAX_TOPICS_PER_SUBSCRIBE).contains(&topics.len()) && !has_duplicate(&topics) {
-        Ok(topics)
-    } else {
-        Err(InvalidMember(NAME))
+impl WorkspaceTarget {
+    fn member(self) -> (&'static str, Value) {
+        match self {
+            WorkspaceTarget::Id(id) => ("workspace_id", id.into()),
+            WorkspaceTarget::Number(number) => ("number", number.into()),
+        }
     }
 }
 
-/// 1 to 8 distinct canonical hashes (17.5). A string that is not one is a bad request; a
-/// well-formed hash the server never issued is answered in `missing`.
-fn decode_hashes(args: &JsonObject) -> Member<Vec<IconHash>> {
-    const NAME: &str = "hashes";
-    let hashes = json::array(args, NAME)?
-        .iter()
-        .map(|hash| IconHash::decode_value(hash, NAME))
-        .collect::<Member<Vec<IconHash>>>()?;
-    if (1..=MAX_ICON_HASHES).contains(&hashes.len()) && !has_duplicate(&hashes) {
-        Ok(hashes)
-    } else {
-        Err(InvalidMember(NAME))
+impl KeepAwake {
+    fn encode(self) -> JsonObject {
+        let mut object = object_of([("enabled", matches!(self, KeepAwake::On { .. }).into())]);
+        if let KeepAwake::On {
+            duration_s: Some(duration_s),
+        } = self
+        {
+            object.insert(DURATION_S.to_owned(), duration_s.into());
+        }
+        object
     }
-}
-
-fn has_duplicate<T: PartialEq>(entries: &[T]) -> bool {
-    entries
-        .iter()
-        .enumerate()
-        .any(|(index, entry)| entries[..index].contains(entry))
-}
-
-fn decode_workspace_target(args: &JsonObject) -> Member<WorkspaceTarget> {
-    match (args.get("workspace_id"), args.get("number")) {
-        (Some(id), None) => json::as_int(id)
-            .map(WorkspaceTarget::Id)
-            .ok_or(InvalidMember("workspace_id")),
-        (None, Some(number)) => json::as_int(number)
-            .and_then(|number| u16::try_from(number).ok())
-            .filter(|number| *number <= MAX_FOCUS_NUMBER)
-            .map(WorkspaceTarget::Number)
-            .ok_or(InvalidMember("number")),
-        (Some(_), Some(_)) | (None, None) => Err(InvalidMember("workspace_id")),
-    }
-}
-
-/// One topic state with its revision: an entry of the `state.subscribe` result and the `data`
-/// of a `state.changed` event (spec 7.2, 8.1).
-#[derive(Debug, Clone, PartialEq)]
-pub struct TopicState {
-    pub topic: String,
-    pub rev: u64,
-    pub data: JsonObject,
-}
-
-impl TopicState {
-    pub fn encode(&self) -> JsonObject {
-        object_of([
-            ("topic", self.topic.as_str().into()),
-            ("rev", self.rev.into()),
-            ("data", self.data.clone().into()),
-        ])
-    }
-
-    pub fn decode(object: &JsonObject) -> Result<TopicState, InvalidMember> {
-        Ok(TopicState {
-            topic: json::string(object, "topic")?.to_owned(),
-            rev: json::int(object, "rev")?,
-            data: json::object(object, "data")?.clone(),
-        })
-    }
-}
-
-/// The `result` of `state.subscribe`: one entry per requested topic, in request order.
-pub fn encode_subscribe_result(states: &[TopicState]) -> JsonObject {
-    let states: Vec<Value> = states
-        .iter()
-        .map(|state| Value::Object(state.encode()))
-        .collect();
-    object_of([("states", states.into())])
-}
-
-pub fn decode_subscribe_result(result: &JsonObject) -> Result<Vec<TopicState>, InvalidMember> {
-    json::object_array(result, "states", TopicState::decode)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn args_of(text: &str) -> Value {
-        serde_json::from_str(text).expect("test JSON")
-    }
-
-    #[test]
-    fn absent_args_mean_an_empty_object() {
-        assert_eq!(Operation::Ping.decode_args(None), Ok(Args::Ping));
-        assert!(Operation::WindowFocus.decode_args(None).is_err());
-    }
-
-    #[test]
-    fn args_that_are_not_an_object_are_refused_for_every_operation() {
-        for bad in ["null", "5", "[]", "\"x\""] {
-            assert_eq!(
-                Operation::Ping.decode_args(Some(&args_of(bad))),
-                Err(InvalidMember("args")),
-                "{bad}"
-            );
-        }
-    }
-
-    #[test]
-    fn subscribe_topics_limits() {
-        let decode = |text: &str| Operation::StateSubscribe.decode_args(Some(&args_of(text)));
-        assert!(decode(r#"{"topics":["desktop"]}"#).is_ok());
-        let sixteen: Vec<String> = (0..16).map(|index| format!("t{index}")).collect();
-        let seventeen: Vec<String> = (0..17).map(|index| format!("t{index}")).collect();
-        assert!(decode(&serde_json::json!({ "topics": sixteen }).to_string()).is_ok());
-        assert!(decode(&serde_json::json!({ "topics": seventeen }).to_string()).is_err());
-        for bad in [
-            r#"{}"#,
-            r#"{"topics":[]}"#,
-            r#"{"topics":["desktop","desktop"]}"#,
-            r#"{"topics":[1]}"#,
-            r#"{"topics":"desktop"}"#,
-            r#"{"topics":null}"#,
-        ] {
-            assert!(decode(bad).is_err(), "{bad}");
-        }
-    }
-
-    #[test]
-    fn workspace_number_range_and_types() {
-        let decode = |text: &str| Operation::WorkspaceFocus.decode_args(Some(&args_of(text)));
-        let number = |number| Ok(Args::WorkspaceFocus(WorkspaceTarget::Number(number)));
-        assert_eq!(decode(r#"{"number":0}"#), number(0));
-        assert_eq!(decode(r#"{"number":999}"#), number(999));
-        for bad in [
-            r#"{"number":1000}"#,
-            r#"{"number":-1}"#,
-            r#"{"number":2.0}"#,
-            r#"{"number":1e2}"#,
-            r#"{"number":"2"}"#,
-            r#"{"number":null}"#,
-            r#"{"number":2,"workspace_id":null}"#,
-            r#"{"workspace_id":9007199254740992}"#,
-        ] {
-            assert!(decode(bad).is_err(), "{bad}");
-        }
-    }
-
-    #[test]
-    fn icon_hashes_count_duplicates_and_form() {
-        let decode = |hashes: Value| {
-            Operation::IconGet.decode_args(Some(&serde_json::json!({ "hashes": hashes })))
-        };
-        let hash = |index: u8| IconHash::of(&[index]).to_string();
-        let eight: Vec<String> = (0..8).map(hash).collect();
-        let nine: Vec<String> = (0..9).map(hash).collect();
-        assert!(decode(eight.into()).is_ok());
-        let refused = [
-            nine.into(),
-            Value::Array(Vec::new()),
-            serde_json::json!([hash(1), hash(1)]),
-            serde_json::json!(["firefox"]),
-            serde_json::json!([null]),
-            Value::Null,
-            hash(1).into(),
-        ];
-        for bad in refused {
-            assert_eq!(decode(bad.clone()), Err(InvalidMember("hashes")), "{bad}");
-        }
-        assert!(Operation::IconGet.decode_args(None).is_err());
-    }
-
-    #[test]
-    fn fullscreen_needs_a_real_boolean() {
-        let decode = |text: &str| Operation::WindowFullscreen.decode_args(Some(&args_of(text)));
-        assert!(decode(r#"{"window_id":5,"enabled":false}"#).is_ok());
-        assert!(decode(r#"{"window_id":5,"enabled":0}"#).is_err());
-        assert!(decode(r#"{"window_id":5}"#).is_err());
-    }
-
-    #[test]
-    fn every_args_value_survives_request_encoding() {
-        let all = [
-            Args::Ping,
-            Args::StateSubscribe {
-                topics: vec![TOPIC_DESKTOP.to_owned()],
-            },
-            Args::IconGet {
-                hashes: vec![IconHash::of(b"a"), IconHash::of(b"b")],
-            },
-            Args::WorkspaceFocus(WorkspaceTarget::Id(9)),
-            Args::WorkspaceFocus(WorkspaceTarget::Number(2)),
-            Args::WindowFocus { window_id: 5 },
-            Args::WindowFullscreen {
-                window_id: 5,
-                enabled: true,
-            },
-        ];
-        for args in all {
-            let req = args.to_req(1);
-            let operation = Operation::from_wire(&req.op).expect("known operation");
-            assert_eq!(operation.decode_args(req.args.as_ref()), Ok(args));
-        }
-    }
-
-    #[test]
-    fn scopes_and_actions_follow_the_operation_table() {
-        assert_eq!(Operation::Ping.required_scope(), None);
-        assert_eq!(
-            Operation::StateSubscribe.required_scope(),
-            Some(Scope::StateRead)
-        );
-        assert_eq!(Operation::IconGet.required_scope(), Some(Scope::StateRead));
-        for read in [
-            Operation::Ping,
-            Operation::StateSubscribe,
-            Operation::IconGet,
-        ] {
-            assert!(!read.is_action(), "{read:?}");
-        }
-        for action in [
-            Operation::WorkspaceFocus,
-            Operation::WindowFocus,
-            Operation::WindowFullscreen,
-        ] {
-            assert_eq!(action.required_scope(), Some(Scope::Control));
-            assert!(action.is_action());
-        }
-    }
-}
+mod tests;

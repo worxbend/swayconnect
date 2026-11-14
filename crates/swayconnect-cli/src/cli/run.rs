@@ -1,18 +1,23 @@
 //! Runs one command against the server of the stored profile.
 
+mod controls;
+
 use std::io::{BufRead, Write};
 use std::path::Path;
 use std::time::Duration;
 
 use serde_json::{Value, json};
 use swayconnect_protocol::limits::PAIRING_CONFIRMATION_DEADLINE_MS;
-use swayconnect_protocol::ops::{Args, TOPIC_DESKTOP, WorkspaceTarget};
+use swayconnect_protocol::ops::{Args, KeepAwake, TOPIC_DESKTOP, WorkspaceTarget};
 use swayconnect_protocol::text::{escape_for_terminal, is_display_name};
 use swayconnect_protocol::uri::PairingUri;
-use swayconnect_protocol::{IconGetResult, IconHash, InvalidMember, JsonObject};
+use swayconnect_protocol::{
+    AudioChange, IconGetResult, IconHash, InvalidMember, JsonObject, KeepAwakeResult, LockResult,
+};
 use tokio::time::{Instant, timeout, timeout_at};
 
-use super::args::{Cli, Command, Switch};
+use super::args::{AwakeSwitch, Cli, Command, Switch};
+use super::duration::remaining_text;
 use super::error::CliError;
 use super::state::DesktopState;
 use super::store::ProfileStore;
@@ -70,6 +75,53 @@ pub async fn run(cli: &Cli, context: Context<'_>) -> Result<(), CliError> {
             };
             app.act(&action).await
         }
+        Command::Move {
+            window_id,
+            number,
+            id,
+        } => {
+            let target = workspace_target(*number, *id)?;
+            let window_id = *window_id;
+            app.act(&Args::WindowMove { window_id, target }).await
+        }
+        Command::Float { window_id, switch } => {
+            let action = Args::WindowFloating {
+                window_id: *window_id,
+                enabled: *switch == Switch::On,
+            };
+            app.act(&action).await
+        }
+        Command::Close { window_id, yes } => {
+            // Spec 17.7: a client asks before it sends `window.close`.
+            if !yes {
+                return Err(CliError::Usage(
+                    "close lets the app close the window and may lose unsaved work: add --yes",
+                ));
+            }
+            let window_id = *window_id;
+            app.act(&Args::WindowClose { window_id }).await
+        }
+        Command::Lock => app.lock().await,
+        Command::Awake { switch } => app.keep_awake(keep_awake_args(*switch)).await,
+        Command::Volume(volume) => {
+            let change = AudioChange::Volume(volume.volume_pct);
+            app.audio(volume.device, change).await
+        }
+        Command::Mute(mute) => {
+            let change = AudioChange::Mute(mute.switch == Switch::On);
+            app.audio(mute.device, change).await
+        }
+        Command::Play(play) => app.play_pause(play.player_id).await,
+        Command::Launch(launch) => app.launch(launch).await,
+        Command::Type(typed) => {
+            if !typed.text_arguments.is_empty() {
+                return Err(CliError::Usage(
+                    "the text is read from stdin: other local users can read arguments",
+                ));
+            }
+            app.type_text(typed.target.window_id).await
+        }
+        Command::Key(key) => app.press_key(key).await,
         Command::Layout { number, id } => app.layout(*number, *id).await,
         Command::Icon { hash, output } => app.icon(*hash, output).await,
         Command::Raw { payload } => app.raw(payload).await,
@@ -81,9 +133,16 @@ fn workspace_target(number: Option<u16>, id: Option<u64>) -> Result<WorkspaceTar
     match (number, id) {
         (Some(number), None) => Ok(WorkspaceTarget::Number(number)),
         (None, Some(id)) => Ok(WorkspaceTarget::Id(id)),
-        (Some(_), Some(_)) | (None, None) => Err(CliError::Usage(
-            "workspace takes a number or --id, not both",
-        )),
+        (Some(_), Some(_)) | (None, None) => {
+            Err(CliError::Usage("a workspace is a number or --id, not both"))
+        }
+    }
+}
+
+fn keep_awake_args(switch: AwakeSwitch) -> KeepAwake {
+    match switch {
+        AwakeSwitch::On { duration_s } => KeepAwake::On { duration_s },
+        AwakeSwitch::Off => KeepAwake::Off,
     }
 }
 
@@ -262,15 +321,57 @@ impl App<'_> {
     /// Success means that sway accepted the command; the new state is not part of the answer
     /// (spec 7.2).
     async fn act(&mut self, action: &Args) -> Result<(), CliError> {
-        let mut session = self.connect().await?;
-        let result = within(self.answer_timeout, session.request(action)).await?;
-        if self.prints_json {
-            self.print(&render::server_json(&Value::Object(result)))?;
+        let result = self.request(action).await?;
+        self.print_result(result, "ok")
+    }
+
+    /// Success means that the server started its lock command, or that it found the screen
+    /// locked or its lock command still running (spec 17.6).
+    async fn lock(&mut self) -> Result<(), CliError> {
+        let result = self.request(&Args::SessionLock).await?;
+        let lock = LockResult::decode(&result).map_err(CliError::InvalidResult)?;
+        let text = if lock.already_locked {
+            "already locked"
         } else {
-            self.print("ok")?;
-        }
+            "lock started"
+        };
+        self.print_result(result, text)
+    }
+
+    /// Prints the time left that the server answered: it may be shorter than asked (17.8).
+    async fn keep_awake(&mut self, switch: KeepAwake) -> Result<(), CliError> {
+        let result = self.request(&Args::KeepAwakeSet(switch)).await?;
+        let keep_awake = KeepAwakeResult::decode(&result).map_err(CliError::InvalidResult)?;
+        let text = keep_awake.remaining_ms.map_or_else(
+            || "keep awake off".to_owned(),
+            |remaining_ms| format!("keep awake on for {}", remaining_text(remaining_ms)),
+        );
+        self.print_result(result, &text)
+    }
+
+    /// One request on its own connection, closed before the caller prints.
+    async fn request(&mut self, action: &Args) -> Result<JsonObject, CliError> {
+        let session = self.connect().await?;
+        self.request_on(session, action).await
+    }
+
+    /// The last request of `session`, which is closed before the caller prints.
+    async fn request_on(
+        &self,
+        mut session: Session,
+        action: &Args,
+    ) -> Result<JsonObject, CliError> {
+        let result = within(self.answer_timeout, session.request(action)).await?;
         finish(session).await;
-        Ok(())
+        Ok(result)
+    }
+
+    fn print_result(&mut self, result: JsonObject, text: &str) -> Result<(), CliError> {
+        if self.prints_json {
+            self.print(&render::server_json(&Value::Object(result)))
+        } else {
+            self.print(text)
+        }
     }
 
     /// Prints every frame of the reply window, of any type. A server that closes the

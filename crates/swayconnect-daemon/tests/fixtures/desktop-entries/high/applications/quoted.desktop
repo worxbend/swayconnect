@@ -1,0 +1,4 @@
+[Desktop Entry]
+Type=Application
+Name=Quoted Tool
+Exec="/opt/My Tools/run" --title "a \\"b\\" c" --file=%f %%done

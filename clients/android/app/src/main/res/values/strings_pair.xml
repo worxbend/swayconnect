@@ -41,6 +41,8 @@
     <string name="pair_done_locked_mark">off</string>
     <string name="pair_done_nothing">Nothing yet.</string>
     <string name="pair_done_read_only">The computer is set to look only.</string>
+    <string name="pair_done_can_run_code">This phone can type and start apps on the computer. Remove it there if the phone is lost:</string>
+    <string name="pair_done_revoke_command" translatable="false">swayconnectd revoke</string>
     <string name="pair_done_ask">Ask at the computer to turn more on.</string>
     <string name="pair_done_button">Done</string>
 

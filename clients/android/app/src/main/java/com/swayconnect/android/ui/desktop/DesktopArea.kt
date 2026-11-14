@@ -54,6 +54,7 @@ import com.swayconnect.android.ui.state.Sheet
 import com.swayconnect.android.ui.state.UiState
 import com.swayconnect.android.ui.state.isDriving
 import com.swayconnect.android.ui.state.shownPageIndex
+import com.swayconnect.android.ui.state.workspaceIdIn
 import com.swayconnect.android.ui.theme.LocalHaptics
 import com.swayconnect.android.ui.theme.LocalReduceMotion
 import com.swayconnect.android.ui.theme.LocalSwayMotion
@@ -111,6 +112,25 @@ private fun pageActions(viewModel: MainViewModel, smallWindowIds: MutableState<L
         },
         onOpenLaunch = { viewModel.selectArea(Area.Launch) },
         onLocked = { viewModel.openSheet(Sheet.Locked(it)) },
+        window = windowOps(viewModel),
+    )
+
+private fun windowOps(viewModel: MainViewModel) =
+    WindowOps(
+        onToggleFloating = { window -> if (window.floating) viewModel.tileWindow(window.id) else viewModel.floatWindow(window.id) },
+        onOpenMove = { viewModel.openSheet(Sheet.MoveTo(it)) },
+        onMoveToWorkspace = viewModel::moveWindow,
+        onMoveToNumber = viewModel::moveWindowToNumber,
+        onLayout = viewModel::setWindowLayout,
+        onScratchpad = viewModel::sendToScratchpad,
+        // The hold is the yes: the view model sends window.close only through its confirm sheet, so the held
+        // button opens that sheet and confirms it in one step; it is never drawn.
+        onCloseHeld = { id ->
+            viewModel.askToCloseWindow(id)
+            viewModel.confirmClose()
+        },
+        onAskClose = viewModel::askToCloseWindow,
+        onConfirmClose = viewModel::confirmClose,
     )
 
 @Composable
@@ -244,7 +264,8 @@ private fun DesktopPager(state: UiState, desktop: Desktop, facts: PageFacts, act
             val title = remember(workspace.id, current) { liveTitle }
             // Only the current page is in the semantics tree: TalkBack never walks into a neighbour (UX 15).
             val semantics = if (current) Modifier.semantics { paneTitle = title } else Modifier.clearAndSetSemantics {}
-            WorkspacePage(desktop, workspace, facts, actions, padding, semantics)
+            val ghost = state.pendingLaunch?.takeIf { it.target.workspaceIdIn(desktop) == workspace.id }
+            WorkspacePage(desktop, workspace, facts, actions, padding, semantics, ghost)
         }
     }
 }

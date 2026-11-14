@@ -23,6 +23,10 @@
     <string name="status_refused">Not connected</string>
     <string name="status_open_computer">Show computer details</string>
     <string name="status_drive_paused">Drive paused</string>
+    <string name="status_locked">Locked</string>
+    <string name="status_awake">Awake</string>
+    <string name="status_awake_minutes">Awake %1$d min</string>
+    <string name="status_typing">Typing</string>
 
     <!-- Context pill and round buttons -->
     <string name="drive_on">Drive</string>
@@ -40,19 +44,13 @@
     <string name="action_locked">%1$s, off for this phone</string>
     <string name="action_read_only">%1$s, the computer is set to look only</string>
 
-    <!-- Areas that M1 does not fill (UX 2 rule 4) -->
-    <string name="area_later">This part comes in a later version.</string>
-    <string name="area_locked_how">This part is off for this phone. Show how to turn it on</string>
-    <string name="area_more_later">Quick settings come in a later version.</string>
-    <string name="area_computer">Computer</string>
+    <!-- Now-playing capsule and volume keys (UX 4.3, 7.2) -->
+    <string name="capsule_open_audio">Open Audio</string>
+    <string name="capsule_hide">Hide until next track</string>
+    <string name="volume_key_pill">PC %1$d %%</string>
+    <string name="volume_key_pill_muted">PC %1$d %%, muted</string>
 
-    <!-- Locked sheet (UX 10.4, 10.5) -->
-    <string name="locked_title">Off for this phone</string>
-    <string name="locked_run">To turn it on, run on the computer:</string>
-    <string name="locked_command" translatable="false">swayconnectd devices grant %1$s %2$s</string>
-    <string name="locked_command_unknown_id" translatable="false">swayconnectd devices grant &lt;id&gt; %1$s</string>
-    <string name="locked_device_hint">Use the device id that swayconnectd devices list shows for this phone.</string>
-    <string name="locked_reconnects">The phone reconnects by itself after.</string>
+    <!-- Locked sheet scope sentences (UX 10.5); the rest of the sheet is in strings_common.xml -->
     <string name="scope_control">Lets the phone switch workspaces, move, float or fullscreen windows, and lock the computer.</string>
     <string name="scope_audio">Lets the phone change the volume and the output device, and mute the microphone.</string>
     <string name="scope_audio_capture">Lets the phone turn the microphone on, change its level and pick the input device. Someone with this phone could listen to the room.</string>

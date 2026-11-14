@@ -1,5 +1,6 @@
 package com.swayconnect.android.ui.common
 
+import com.swayconnect.android.R
 import com.swayconnect.android.ui.theme.DarkSwayTokens
 import com.swayconnect.android.ui.theme.LightSwayTokens
 import com.swayconnect.protocol.Window
@@ -63,4 +64,16 @@ class CommonComponentsTest {
         floating = floating,
         fullscreen = fullscreen,
     )
+
+    @Test
+    fun `locked sheet title names the feature of each known scope`() {
+        assertEquals(R.string.locked_title_launch_risky, lockedTitle("launch.risky"))
+        assertEquals(R.string.locked_title_destructive, lockedTitle("destructive"))
+        assertEquals(lockedTitle("input.text"), lockedTitle("input.keys"))
+        val known = listOf("state.titles", "control", "destructive", "idle.inhibit", "audio", "audio.capture", "media", "launch", "launch.risky", "input.text")
+        // Every known scope has its own title; only an unknown one falls back to the plain "Off for this phone".
+        assertEquals(known.size, known.map(::lockedTitle).toSet().size)
+        assertEquals(false, known.any { lockedTitle(it) == R.string.locked_title })
+        assertEquals(R.string.locked_title, lockedTitle("future.scope"))
+    }
 }

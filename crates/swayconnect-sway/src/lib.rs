@@ -11,7 +11,7 @@ pub mod socket;
 mod test_socket;
 pub mod types;
 
-pub use command::{Command, WorkspaceNumber};
+pub use command::{Command, LayoutKind, WorkspaceNumber};
 pub use connection::{Connection, Error, REQUEST_TIMEOUT};
 pub use events::{Event, EventStream};
 pub use socket::{EnvSnapshot, SwayTarget, resolve};

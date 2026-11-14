@@ -14,10 +14,7 @@ use swayconnect_protocol::limits::{
     FIRST_FRAME_DEADLINE_MS, IDLE_TIMEOUT_MS, MAX_FRAME_C2S_BYTES, MAX_FRAME_S2C_BYTES,
     PROTOCOL_VERSION,
 };
-use swayconnect_protocol::ops::{
-    EVENT_PAIRING_CONFIRMED, EVENT_STATE_CHANGED, TOPIC_DESKTOP, TopicState,
-    encode_subscribe_result,
-};
+use swayconnect_protocol::ops::{EVENT_PAIRING_CONFIRMED, encode_subscribe_result};
 use swayconnect_protocol::proof::random_bytes;
 use swayconnect_protocol::{
     Bye, ByeCode, DecodeError, DeviceId, Evt, Hello, IconGetResult, IconHash, JsonObject, Limits,
@@ -27,13 +24,23 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{oneshot, watch};
 use tokio::time::{Instant, sleep_until, timeout};
 
+use self::feeds::{Feeds, Sources};
 use self::wire::{FirstFrameError, Unwritable, Wire};
+use crate::audit::AuditLog;
+use crate::daemon::services::Services;
 use crate::devices;
-use crate::dispatch::{self, Caller, Decision};
+use crate::dispatch::{self, Caller, Decision, Features, Topic};
 use crate::icons::IconService;
+use crate::input::InputConnection;
+use crate::keep_awake::KeepAwake;
+use crate::notify::{self, Notice};
 use crate::security::{Admitted, ConnectionPermit, Handshake, Security};
-use crate::sway_handle::{DesktopInterest, Published, SwayHandle};
+use crate::session_topic::{Locker, SessionTopic};
+use crate::sway_handle::{Published, SwayHandle};
 
+mod answers;
+mod feeds;
+mod services;
 mod wire;
 
 const FIRST_FRAME_DEADLINE: Duration = Duration::from_millis(FIRST_FRAME_DEADLINE_MS);
@@ -53,6 +60,28 @@ pub struct Shared {
     /// Answers `icon.get`. `None`: the daemon runs without icon lookup, so it holds no PNG
     /// and every hash is `missing`.
     pub icons: Option<Arc<IconService>>,
+    pub controls: Controls,
+    /// Audio, media, apps, the launcher and the remote keyboard (M2b).
+    pub services: Services,
+}
+
+/// The M2a services every session shares (`docs/DESIGN.md` 11.6, 11.8). Clones are cheap.
+#[derive(Clone)]
+pub struct Controls {
+    pub keep_awake: KeepAwake,
+    pub session_topic: Arc<SessionTopic>,
+    /// `None` without `[session] lock`: `session.lock` is not offered (spec 17.6 rule 1).
+    pub locker: Option<Arc<Locker>>,
+    /// The daemon's one audit log.
+    pub audit: AuditLog,
+}
+
+impl Controls {
+    pub fn features(&self) -> Features {
+        Features {
+            lock: self.locker.is_some(),
+        }
+    }
 }
 
 /// Resolves when the daemon stops: on `true` and when the sender is gone. Cancel safe.
@@ -80,21 +109,31 @@ where
     } = admitted;
     // `None` for a pending pairing: its scopes stay empty whatever the owner grants.
     let scope_watch = shared.security.scope_watch(&device_id);
+    let feeds = Feeds::new(Sources {
+        desktop: shared.desktop.clone(),
+        sway: Arc::clone(&shared.sway),
+        session_topic: Arc::clone(&shared.controls.session_topic),
+        services: shared.services.clone(),
+    });
     let session = Session {
         wire,
+        peer,
         security: shared.security,
         desktop: shared.desktop,
         sway: shared.sway,
         read_only: shared.read_only,
         shutdown: shared.shutdown,
         icons: shared.icons,
+        controls: shared.controls,
+        input: shared.services.input.connection(device_id.clone()),
+        services: shared.services,
         device_id,
         scopes,
         scope_watch,
         revoked,
         is_unconfirmed_pairing: pending.is_some(),
         confirmed: pending.map(|pending| pending.confirmed),
-        desktop_interest: None,
+        feeds,
     };
     session.run().await;
 }
@@ -153,6 +192,15 @@ where
         .await
         .ok()?;
     permit.welcomed();
+    // In read-only mode no tier 2 op is offered, so the connect is no risk to announce.
+    let can_act = !shared.read_only.load(Ordering::SeqCst);
+    if admitted.pending.is_none() && can_act && notify::holds_tier_2(&admitted.scopes) {
+        let device = admitted.device_id.clone();
+        shared
+            .services
+            .notifier
+            .spawn_show(Notice::RiskyDeviceConnected, device);
+    }
     wire.decoder.set_limit(MAX_FRAME_C2S_BYTES);
     wire.send_limit = MAX_FRAME_S2C_BYTES;
     Some(admitted)
@@ -200,6 +248,7 @@ fn reject(code: RejectCode) -> Reject {
 fn welcome(admitted: &Admitted, shared: &Shared) -> Welcome {
     // Read once, so `ops` and `read_only` agree.
     let is_read_only = shared.read_only.load(Ordering::Relaxed);
+    let features = shared.controls.features();
     Welcome {
         protocol: PROTOCOL_VERSION,
         device_id: admitted.device_id.clone(),
@@ -209,10 +258,10 @@ fn welcome(admitted: &Admitted, shared: &Shared) -> Welcome {
             .as_ref()
             .map(|pending| pending.confirm_code.clone()),
         scopes: admitted.scopes.iter().copied().collect(),
-        ops: dispatch::offered_ops(&admitted.scopes, is_read_only),
+        ops: dispatch::offered_ops(&admitted.scopes, is_read_only, features),
         topics: dispatch::offered_topics(&admitted.scopes),
         known_scopes: Some(dispatch::known_scopes()),
-        known_ops: Some(dispatch::known_ops()),
+        known_ops: Some(dispatch::known_ops(features)),
         read_only: is_read_only,
         server: ServerInfo {
             name: shared.server_name.to_string(),
@@ -229,7 +278,7 @@ fn welcome(admitted: &Admitted, shared: &Shared) -> Welcome {
 /// Why the loop woke up.
 enum Wake {
     Bytes(io::Result<usize>),
-    DesktopChanged,
+    TopicChanged(Topic),
     Revoked,
     ScopesChanged,
     /// The owner's answer arrived; `true` is a yes.
@@ -249,12 +298,17 @@ enum Flow {
 
 struct Session<S> {
     wire: Wire<S>,
+    peer: SocketAddr,
     security: Security,
     desktop: watch::Receiver<Arc<Published>>,
     sway: Arc<SwayHandle>,
     read_only: Arc<AtomicBool>,
     shutdown: watch::Receiver<bool>,
     icons: Option<Arc<IconService>>,
+    controls: Controls,
+    services: Services,
+    /// This connection's remote keyboard. Dropping it ends its input session.
+    input: InputConnection,
     device_id: DeviceId,
     scopes: BTreeSet<Scope>,
     /// The device's scopes as the owner changes them. `None` for a pending pairing.
@@ -265,8 +319,8 @@ struct Session<S> {
     /// `Some` while the owner has not answered a pairing. Dropping it tells the security
     /// half that the client is gone.
     confirmed: Option<oneshot::Receiver<()>>,
-    /// `Some` once the device subscribed to `desktop`: the supervisor polls while one lives.
-    desktop_interest: Option<DesktopInterest>,
+    /// The topics the device subscribed to.
+    feeds: Feeds,
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
@@ -277,7 +331,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
             let flow = match wake {
                 Wake::Bytes(Ok(0) | Err(_)) => Flow::Close,
                 Wake::Bytes(Ok(_)) => self.answer_frames(&mut idle_deadline).await,
-                Wake::DesktopChanged => self.push_desktop().await,
+                Wake::TopicChanged(topic) => self.push(topic).await,
                 Wake::Revoked => Flow::Bye(ByeCode::Revoked),
                 Wake::ScopesChanged => Flow::Bye(ByeCode::ScopesChanged),
                 Wake::PairingAnswered(is_confirmed) => self.end_pending(is_confirmed).await,
@@ -311,12 +365,11 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
                 None => std::future::pending().await,
             }
         };
-        let is_subscribed = self.desktop_interest.is_some();
         tokio::select! {
             read = self.wire.fill() => Wake::Bytes(read),
-            changed = self.desktop.changed(), if is_subscribed => match changed {
-                Ok(()) => Wake::DesktopChanged,
-                // The supervisor only ends when the daemon stops.
+            changed = self.feeds.changed() => match changed {
+                Ok(topic) => Wake::TopicChanged(topic),
+                // A topic's source only ends when the daemon stops.
                 Err(_) => Wake::Shutdown,
             },
             // `true` and a closed channel both mean revoked.
@@ -355,23 +408,32 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
             device: &self.device_id,
             scopes: &self.scopes,
             is_read_only: self.read_only.load(Ordering::Relaxed),
+            features: self.controls.features(),
         };
         let response = match dispatch::decide(&caller, request) {
             Decision::Revoked => return Flow::Bye(ByeCode::Revoked),
             Decision::Refuse(error) => Res::failure(request.id, error),
             Decision::Pong => Res::success(request.id, JsonObject::new()),
-            Decision::SubscribeDesktop => {
-                let sway = &self.sway;
-                self.desktop_interest
-                    .get_or_insert_with(|| sway.watch_desktop());
-                let states = [self.desktop_state()];
+            Decision::Subscribe(topics) => {
+                let states = self.subscribe(&topics);
                 Res::success(request.id, encode_subscribe_result(&states))
             }
             Decision::Icons(hashes) => Res::success(request.id, self.icons(hashes).encode()),
-            Decision::Act(action) => match self.sway.act(action).await {
-                Ok(()) => Res::success(request.id, JsonObject::new()),
-                Err(error) => Res::failure(request.id, dispatch::action_refusal(action, error)),
-            },
+            Decision::Act(action) => self.act(request.id, action).await,
+            Decision::KeepAwake(args) => self.keep_awake(request.id, args).await,
+            Decision::Lock => self.lock(request.id).await,
+            Decision::Audio { device_id, change } => {
+                self.audio(request.id, device_id, change).await
+            }
+            Decision::Media { player_id, command } => {
+                self.media(request.id, player_id, command).await
+            }
+            Decision::Launch { entry_id, number } => {
+                self.launch(request.id, &entry_id, number).await
+            }
+            Decision::OpenLauncher => self.open_launcher(request.id).await,
+            Decision::Type { target, text } => self.type_text(request.id, target, &text).await,
+            Decision::Key { target, press } => self.press_key(request.id, target, &press).await,
         };
         self.send(Message::Res(response)).await
     }
@@ -385,14 +447,6 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
                 missing: hashes,
             },
         }
-    }
-
-    async fn push_desktop(&mut self) -> Flow {
-        let event = Evt {
-            event: EVENT_STATE_CHANGED.to_owned(),
-            data: self.desktop_state().encode(),
-        };
-        self.send(Message::Evt(event)).await
     }
 
     async fn end_pending(&mut self, is_confirmed: bool) -> Flow {
@@ -433,31 +487,15 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Session<S> {
             message: message.to_owned(),
         }
     }
-
-    /// The newest snapshot as this device may see it, marked as seen.
-    fn desktop_state(&mut self) -> TopicState {
-        let published = Arc::clone(&self.desktop.borrow_and_update());
-        let data = if self.scopes.contains(&Scope::StateTitles) {
-            published.desktop.encode()
-        } else {
-            let mut desktop = published.desktop.clone();
-            for window in &mut desktop.windows {
-                window.title = None;
-            }
-            for window in desktop.scratchpad.iter_mut().flatten() {
-                window.title = None;
-            }
-            desktop.encode()
-        };
-        TopicState {
-            topic: TOPIC_DESKTOP.to_owned(),
-            rev: published.rev,
-            data,
-        }
-    }
 }
 
 #[cfg(test)]
 mod ext_tests;
+#[cfg(test)]
+mod harness;
+#[cfg(test)]
+mod m2a_tests;
+#[cfg(test)]
+mod m2b_tests;
 #[cfg(test)]
 mod tests;

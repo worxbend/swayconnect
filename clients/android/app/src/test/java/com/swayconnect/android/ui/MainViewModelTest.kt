@@ -6,14 +6,23 @@ import com.swayconnect.android.data.DesktopCache
 import com.swayconnect.android.data.MemorySecretsStore
 import com.swayconnect.android.data.ProfileStore
 import com.swayconnect.android.data.StoredPairing
+import com.swayconnect.android.ui.state.Area
 import com.swayconnect.android.ui.state.ConnectionStatus
+import com.swayconnect.android.ui.state.Countdown
+import com.swayconnect.android.ui.state.KeepAwakeStatus
+import com.swayconnect.android.ui.state.KeysRefusal
 import com.swayconnect.android.ui.state.PairPhase
+import com.swayconnect.android.ui.state.PendingControl
 import com.swayconnect.android.ui.state.Screen
 import com.swayconnect.android.ui.state.Sheet
+import com.swayconnect.android.ui.state.Typed
+import com.swayconnect.android.ui.state.keepAwake
 import com.swayconnect.protocol.Base64Url
 import com.swayconnect.protocol.Connection
 import com.swayconnect.protocol.FINGERPRINT_BYTES
 import com.swayconnect.protocol.FrameCodec
+import com.swayconnect.protocol.Holder
+import com.swayconnect.protocol.InputTarget
 import com.swayconnect.protocol.Limits
 import com.swayconnect.protocol.PinMismatchException
 import com.swayconnect.protocol.Profile
@@ -44,6 +53,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
@@ -84,11 +95,13 @@ class MainViewModelTest {
         ops: String = DEFAULT_OPS,
         workspaces: String = "[]",
         transport: PipeTransport = PipeTransport(fingerprint),
+        session: String? = null,
+        topics: Map<String, String> = emptyMap(),
     ): Pair<MainViewModel, PipeTransport> {
         store.save(StoredPairing(profile, key))
         val model = modelWith(transport)
         startedActivities.launch { model.connectWhileStarted() }
-        transport.serveSession(profile, key, ops, workspaces)
+        transport.serveSession(profile, key, ops, workspaces, session, topics)
         // Not just Ready: the first state also ends a spinner, and that must not fall into the test.
         withTimeout(TIMEOUT_MS) { model.state.first { it.desktopLive } }
         return model to transport
@@ -255,6 +268,7 @@ class MainViewModelTest {
         val transport = PipeTransport(fingerprint)
         val model = modelWith(transport)
         withTimeout(TIMEOUT_MS) { model.state.first { it.screen == Screen.Pair } }
+        model.selectArea(Area.More)
         model.beginPairingWithLink()
 
         transport.servePairing(ByteArray(SECRET_BYTES) { 9 })
@@ -268,6 +282,7 @@ class MainViewModelTest {
         model.finishPairing()
 
         assertEquals(Screen.Desktop, model.state.value.screen)
+        assertEquals("Done goes to the Desktop area", Area.Desktop, model.state.value.area)
         assertEquals(PairPhase.Editing, model.state.value.pair.phase)
     }
 
@@ -451,13 +466,266 @@ class MainViewModelTest {
         assertEquals(listOf(101L), shown.desktop?.windows?.map { it.id })
     }
 
+    @Test(timeout = TIMEOUT_MS)
+    fun `the session topic is subscribed when offered and its keep-awake counts down`() = runBlocking {
+        val (model, transport) = readySession(session = SESSION_AWAKE)
+
+        assertEquals(listOf("desktop", "session"), transport.subscribedTopics())
+        val awake = withTimeout(TIMEOUT_MS) { model.state.first { it.keepAwake != null } }
+        val status = awake.keepAwake as KeepAwakeStatus.On
+        assertEquals(Holder.THIS_DEVICE, status.holder)
+        assertTrue("counted from remaining_ms", checkNotNull(status.leftMs) in 1..AWAKE_LEFT_MS)
+        assertEquals(Countdown.Minutes(52), Countdown.of(status.leftMs))
+    }
+
+    @Test(timeout = TIMEOUT_MS)
+    fun `a server without the session topic gets a desktop subscription only`() = runBlocking {
+        val (model, transport) = readySession()
+
+        assertEquals(listOf("desktop"), transport.subscribedTopics())
+        assertNull(model.state.value.session)
+    }
+
+    @Test(timeout = TIMEOUT_MS)
+    fun `the session state stays as not live when the connection ends`() = runBlocking {
+        val (model, transport) = readySession(session = SESSION_AWAKE)
+        withTimeout(TIMEOUT_MS) { model.state.first { it.session != null } }
+
+        transport.toClient.close()
+
+        val stale = withTimeout(TIMEOUT_MS) { model.state.first { it.session?.live == false } }
+        assertTrue(stale.keepAwake is KeepAwakeStatus.On)
+    }
+
+    /** docs/UX.md 10.3: `{already_locked: true}` shows one line. */
+    @Test(timeout = TIMEOUT_MS)
+    fun `lock says already locked`() = runBlocking {
+        val (model, transport) = readySession(ops = """["ping","state.subscribe","session.lock"]""", session = SESSION_AWAKE)
+
+        model.lockComputer()
+        val request = transport.readClientFrame()
+        assertEquals("session.lock", request.op())
+        transport.send("""{"type":"res","id":${request.getValue("id")},"ok":true,"result":{"already_locked":true}}""")
+
+        val locked = withTimeout(TIMEOUT_MS) { model.state.first { it.notice != null } }
+        assertEquals("Already locked.", locked.notice)
+    }
+
+    @Test(timeout = TIMEOUT_MS)
+    fun `keep awake sends the chosen duration`() = runBlocking {
+        val (model, transport) = readySession(ops = """["ping","state.subscribe","keep_awake.set"]""", session = SESSION_AWAKE)
+
+        model.keepAwakeOn(durationS = 3_600)
+
+        val request = transport.readClientFrame()
+        assertEquals("keep_awake.set", request.op())
+        val args = request.getValue("args").jsonObject
+        assertEquals(true, args.getValue("enabled").jsonPrimitive.boolean)
+        assertEquals(3_600L, args.getValue("duration_s").jsonPrimitive.long)
+    }
+
+    /** docs/PROTOCOL.md 17.7 and 17.19 item 18: `window.close` only after the user's yes. */
+    @Test(timeout = TIMEOUT_MS)
+    fun `close sends only from an open confirm sheet`() = runBlocking {
+        val (model, transport) = readySession(ops = """["ping","state.subscribe","window.focus","window.close"]""")
+
+        model.askToCloseWindow(101)
+        model.closeSheet()
+        model.confirmClose()
+        assertNextFrameIsMarker(model, transport, 102)
+
+        model.askToCloseWindow(103)
+        model.confirmClose()
+        val close = transport.readClientFrame()
+        assertEquals("window.close", close.op())
+        assertEquals(103L, close.windowId())
+        assertNull(model.state.value.sheet)
+    }
+
+    @Test(timeout = TIMEOUT_MS)
+    fun `audio, media and apps are subscribed when offered and their states shown`() = runBlocking {
+        val (model, transport) = readySession(session = SESSION_AWAKE, topics = mapOf("audio" to AUDIO, "media" to MEDIA, "apps" to APPS))
+
+        assertEquals(listOf("desktop", "session", "audio", "media", "apps"), transport.subscribedTopics())
+        val shown = withTimeout(TIMEOUT_MS) { model.state.first { it.audio != null && it.media != null && it.apps != null } }
+        assertEquals(40, shown.audio?.let { it.shownVolume(it.state.sinks.single()) })
+        assertEquals(3L, shown.media?.activePlayer?.id)
+        assertEquals(listOf("firefox"), shown.apps?.state?.apps?.map { it.entryId })
+    }
+
+    /** docs/UX.md 7.2: at most 10 values a second while dragging, and always the final value. */
+    @Test(timeout = TIMEOUT_MS)
+    fun `a volume drag sends few values and the final one last`() = runBlocking {
+        val (model, transport) = readySession(ops = """["ping","state.subscribe","audio.set_volume"]""", topics = mapOf("audio" to AUDIO))
+        withTimeout(TIMEOUT_MS) { model.state.first { it.audio != null } }
+
+        for (pct in 41..90) model.dragVolume(1, pct)
+        model.finishVolume(1, 140)
+        val sent = mutableListOf<Long>()
+        while (sent.lastOrNull() != 100L) {
+            val request = transport.readClientFrame()
+            assertEquals("audio.set_volume", request.op())
+            sent += request.getValue("args").jsonObject.getValue("volume_pct").jsonPrimitive.long
+            transport.send("""{"type":"res","id":${request.getValue("id")},"ok":true,"result":{}}""")
+        }
+
+        assertTrue("throttled, not one request per value: $sent", sent.size <= 5)
+        assertEquals("cut to max_volume_pct", 100L, sent.last())
+        assertEquals(100, model.state.value.audio?.let { it.shownVolume(it.state.sinks.single()) })
+    }
+
+    /** docs/UX.md 8.2: after `ok` the app shows Desktop on the target page with the ghost tile, until a new window. */
+    @Test(timeout = TIMEOUT_MS)
+    fun `a launch returns to Desktop with the ghost tile until a new window appears there`() = runBlocking {
+        val (model, transport) =
+            readySession(
+                ops = """["ping","state.subscribe","app.launch"]""",
+                workspaces = workspaces(focused = 1, 1, 2),
+                transport = PipeTransport(fingerprint, windows = window(101, workspace = 2)),
+                topics = mapOf("apps" to APPS),
+            )
+        withTimeout(TIMEOUT_MS) { model.state.first { it.apps != null } }
+        model.selectArea(Area.Launch)
+
+        model.launchApp("firefox", number = 2)
+        val request = transport.readClientFrame()
+        assertEquals("app.launch", request.op())
+        assertEquals(2L, request.getValue("args").jsonObject.getValue("number").jsonPrimitive.long)
+        transport.send("""{"type":"res","id":${request.getValue("id")},"ok":true,"result":{}}""")
+
+        val ghost = withTimeout(TIMEOUT_MS) { model.state.first { it.pendingLaunch != null } }
+        assertEquals(Area.Desktop, ghost.area)
+        assertEquals(2L, ghost.selectedWorkspaceId)
+        assertEquals(setOf(101L), ghost.pendingLaunch?.knownWindowIds)
+
+        transport.send(
+            """{"type":"evt","event":"state.changed","data":{"topic":"desktop","rev":2,"data":{"sway":{"online":true,"version":null},""" +
+                """"workspaces":${workspaces(focused = 2, 1, 2)},"windows":[${window(101, 2).trim('[', ']')},${window(102, 2).trim('[', ']')}],"truncated":false}}}"""
+        )
+        val opened = withTimeout(TIMEOUT_MS) { model.state.first { it.desktop?.windows?.size == 2 } }
+        assertNull(opened.pendingLaunch)
+    }
+
+    /** docs/UX.md 9.2 and 17.19 item 19: parts in order, stop at the first error, no Return after a refusal. */
+    @Test(timeout = TIMEOUT_MS)
+    fun `typing stops at the first refusal and records what arrived`() = runBlocking {
+        val (model, transport) =
+            readySession(
+                ops = """["ping","state.subscribe","window.focus","input.text","input.key"]""",
+                workspaces = workspaces(focused = 1, 1),
+                transport = PipeTransport(fingerprint, windows = window(101, workspace = 1, focused = true)),
+            )
+        model.selectArea(Area.Keys)
+        assertEquals(InputTarget.Window(101), model.state.value.keys?.target)
+
+        model.sendText(listOf("abc", "dé", "fgh"), thenReturn = true)
+        val first = transport.readClientFrame()
+        assertEquals("input.text", first.op())
+        assertEquals(101L, first.windowId())
+        transport.send("""{"type":"res","id":${first.getValue("id")},"ok":true,"result":{"delivered_chars":3}}""")
+        val second = transport.readClientFrame()
+        assertEquals("dé", second.getValue("args").jsonObject.getValue("text").jsonPrimitive.content)
+        transport.send(
+            """{"type":"res","id":${second.getValue("id")},"ok":false,"error":{"code":"focus_changed","message":"moved",""" +
+                """"detail":{"delivered_chars":1,"focused_window_id":102}}}"""
+        )
+
+        val stopped = withTimeout(TIMEOUT_MS) { model.state.first { it.keys?.refusal != null } }
+        assertEquals(Typed(1, 4, 8), stopped.keys?.typed)
+        assertEquals(KeysRefusal.FocusChanged(102), stopped.keys?.refusal)
+        withTimeout(TIMEOUT_MS) { model.state.first { it.pendingControl == null } }
+        assertNextFrameIsMarker(model, transport, 103)
+    }
+
+    /** A long paste outlasts the `input_text` burst (17.14): a rate-limited part waits the hint once, then goes again. */
+    @Test(timeout = TIMEOUT_MS)
+    fun `a rate-limited part waits the server hint and is sent again`() = runBlocking {
+        val (model, transport) =
+            readySession(
+                ops = """["ping","state.subscribe","window.focus","input.text","input.key"]""",
+                workspaces = workspaces(focused = 1, 1),
+                transport = PipeTransport(fingerprint, windows = window(101, workspace = 1, focused = true)),
+            )
+        model.selectArea(Area.Keys)
+
+        val parts = listOf("a", "b", "c", "d", "e")
+        model.sendText(parts, thenReturn = false)
+        for (part in parts.take(4)) {
+            val request = transport.readClientFrame()
+            assertEquals(part, request.getValue("args").jsonObject.getValue("text").jsonPrimitive.content)
+            transport.send("""{"type":"res","id":${request.getValue("id")},"ok":true,"result":{"delivered_chars":1}}""")
+        }
+        val limited = transport.readClientFrame()
+        assertEquals("e", limited.getValue("args").jsonObject.getValue("text").jsonPrimitive.content)
+        transport.send(
+            """{"type":"res","id":${limited.getValue("id")},"ok":false,"error":{"code":"rate_limited","message":"slow down",""" +
+                """"detail":{"class":"input_text","retry_after_ms":50}}}"""
+        )
+        assertEquals("the Typing spinner stays during the wait", PendingControl.Typing, model.state.value.pendingControl)
+        val again = transport.readClientFrame()
+        assertEquals("input.text", again.op())
+        assertEquals("e", again.getValue("args").jsonObject.getValue("text").jsonPrimitive.content)
+        transport.send("""{"type":"res","id":${again.getValue("id")},"ok":true,"result":{"delivered_chars":1}}""")
+
+        val done = withTimeout(TIMEOUT_MS) { model.state.first { it.pendingControl == null && it.keys?.typed != null } }
+        assertEquals(Typed(1, 5, 5), done.keys?.typed)
+        assertNull(done.keys?.refusal)
+        assertNull(done.notice)
+    }
+
+    /** docs/UX.md 8.2: the holder of the launcher who may type goes to Keys with the launcher as target. */
+    @Test(timeout = TIMEOUT_MS)
+    fun `opening the launcher as its holder opens Keys on the launcher`() = runBlocking {
+        val (model, transport) = readySession(ops = """["ping","state.subscribe","launcher.open","input.text"]""")
+        model.selectArea(Area.Launch)
+
+        model.openComputerLauncher()
+        val request = transport.readClientFrame()
+        assertEquals("launcher.open", request.op())
+        transport.send("""{"type":"res","id":${request.getValue("id")},"ok":true,"result":{"already_open":false}}""")
+
+        val keys = withTimeout(TIMEOUT_MS) { model.state.first { it.area == Area.Keys } }
+        assertEquals(InputTarget.Launcher, keys.keys?.target)
+    }
+
+    @Test(timeout = TIMEOUT_MS)
+    fun `a launcher another device holds says it is open`() = runBlocking {
+        val (model, transport) = readySession(ops = """["ping","state.subscribe","launcher.open","input.text"]""")
+
+        model.openComputerLauncher()
+        val request = transport.readClientFrame()
+        transport.send("""{"type":"res","id":${request.getValue("id")},"ok":true,"result":{"already_open":true}}""")
+
+        val notice = withTimeout(TIMEOUT_MS) { model.state.first { it.notice != null } }
+        assertEquals("Fuzzel is open on the computer.", notice.notice)
+        assertEquals(Area.Desktop, notice.area)
+    }
+
     private companion object {
         const val TIMEOUT_MS = 10_000L
+        const val AWAKE_LEFT_MS = 3_120_000L
+        const val SESSION_AWAKE =
+            """{"keep_awake":{"active":true,"remaining_ms":$AWAKE_LEFT_MS,"holder":"this_device","default_duration_s":3600,""" +
+                """"max_duration_s":7200,"max_continuous_s":14400,"cooldown_remaining_ms":null},"windows_inhibiting":0,"locked":false}"""
         const val HOLD_WAIT_MS = 600L
         const val RECONNECT_WAIT_MS = 700L
         const val POLL_MS = 50L
         const val DEFAULT_OPS = """["ping","state.subscribe","window.focus"]"""
         const val DRIVE_OPS = """["ping","state.subscribe","workspace.focus","window.focus"]"""
+        const val AUDIO =
+            """{"available":true,"max_volume_pct":100,"default_sink":1,"default_source":null,""" +
+                """"sinks":[{"id":1,"description":"Line out","kind":"speaker","volume_pct":40,"muted":false,"available":true}],""" +
+                """"sources":[],"truncated":false}"""
+        const val MEDIA =
+            """{"players":[{"id":3,"name":"Chromium","app_id":null,"icon":null,"status":"playing","title":"Song","artist":null,""" +
+                """"album":null,"can_play":true,"can_pause":true,"can_next":true,"can_previous":true}],"active_player_id":3,"truncated":false}"""
+        const val APPS =
+            """{"apps":[{"entry_id":"firefox","name":"Firefox","generic_name":null,"keywords":[],"icon":null,"terminal":false,""" +
+                """"risky":false}],"recent":[],"truncated":false}"""
+
+        fun window(id: Long, workspace: Long, focused: Boolean = false): String =
+            """[{"id":$id,"workspace_id":$workspace,"app_id":"foot","title":null,"focused":$focused,"urgent":false,""" +
+                """"floating":false,"fullscreen":false}]"""
 
         fun workspaces(focused: Long, vararg ids: Long): String =
             ids.joinToString(",", "[", "]") { id ->
@@ -552,21 +820,41 @@ private class PipeTransport(private val fingerprint: ByteArray, private val wind
     private fun desktop(workspaces: String) =
         """{"sway":{"online":true,"version":null},"workspaces":$workspaces,"windows":$windows,"truncated":false}"""
 
-    /** The server side up to a ready session: `hello`, a `welcome` with the right proof and [ops], the first desktop. */
-    fun serveSession(profile: Profile, key: ByteArray, ops: String, workspaces: String) {
+    /** The `state.subscribe` request of [serveSession]. */
+    private var subscribe: JsonObject? = null
+
+    fun subscribedTopics(): List<String> =
+        checkNotNull(subscribe).getValue("args").jsonObject.getValue("topics").jsonArray.map { it.jsonPrimitive.content }
+
+    /**
+     * The server side up to a ready session: `hello`, a `welcome` with the right proof and [ops], the first desktop.
+     * With [session] the server also offers topic `session` and answers its subscription with that state; so it does
+     * for each topic of [topics] with its state.
+     */
+    fun serveSession(
+        profile: Profile,
+        key: ByteArray,
+        ops: String,
+        workspaces: String,
+        session: String? = null,
+        topics: Map<String, String> = emptyMap(),
+    ) {
         FrameCodec.write(toClient, hello(), Limits.MAX_FRAME_S2C_UNTIL_WELCOME)
         val auth = readClientFrame()
         val clientNonce = checkNotNull(Base64Url.decode(auth.getValue("nonce").jsonPrimitive.content, Proofs.NONCE_BYTES))
         val proof = Proofs.serverProof(key, Proofs.context(fingerprint, serverNonce, clientNonce), profile.deviceId)
+        val offered = (session?.let { mapOf("session" to it) }.orEmpty() + topics)
+        val topicNames = (listOf("desktop") + offered.keys).joinToString(",", "[", "]") { "\"$it\"" }
         send(
             """{"type":"welcome","protocol":1,"device_id":"${profile.deviceId}","server_proof":"${Base64Url.encode(proof)}",""" +
-                """"scopes":["state.read","control"],"ops":$ops,"topics":["desktop"],""" +
+                """"scopes":["state.read","control"],"ops":$ops,"topics":$topicNames,""" +
                 """"read_only":false,"server":{"name":"desk","version":"0.1.0"},""" +
                 """"limits":{"max_frame_c2s":16384,"max_frame_s2c":1048576,"idle_timeout_ms":90000}}"""
         )
-        val subscribe = readClientFrame()
-        val states = """[{"topic":"desktop","rev":1,"data":${desktop(workspaces)}}]"""
-        send("""{"type":"res","id":${subscribe.getValue("id")},"ok":true,"result":{"states":$states}}""")
+        val request = readClientFrame().also { subscribe = it }
+        val more = offered.entries.joinToString("") { (topic, state) -> """,{"topic":"$topic","rev":1,"data":$state}""" }
+        val states = """[{"topic":"desktop","rev":1,"data":${desktop(workspaces)}}$more]"""
+        send("""{"type":"res","id":${request.getValue("id")},"ok":true,"result":{"states":$states}}""")
     }
 
     /** The server side of `pair` up to `pairing.confirmed`: the owner answered yes at the desktop. */

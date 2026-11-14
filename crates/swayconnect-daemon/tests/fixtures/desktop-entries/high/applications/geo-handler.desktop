@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Geo Handler
+Exec=geo-handler --fallback "https://example.org" %u
+MimeType=x-scheme-handler/geo;

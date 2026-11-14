@@ -10,10 +10,12 @@ use swayconnect_protocol::limits::ICON_BURST;
 use swayconnect_protocol::{DecodeError, Message};
 use tokio::time::Instant;
 
-use super::tests::assert_detail_matches;
+use super::tests::{LOCK, assert_detail_matches, mode};
 use super::*;
 use crate::icons::IconKey;
 use crate::icons::store::Store;
+use crate::keep_awake::KeepAwakeError;
+use crate::session_topic::LockError;
 use crate::throttle::Rate;
 
 const EXT_VECTORS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../protocol/vectors/v1/ext");
@@ -80,6 +82,114 @@ fn each_served_operation_has_its_scope_rate_class_and_action_flag() {
             Some(RateClass::Actions),
             true,
         ),
+        (
+            Operation::WindowMove,
+            Some(Scope::Control),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::WindowFloating,
+            Some(Scope::Control),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::WindowLayout,
+            Some(Scope::Control),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::WindowScratchpad,
+            Some(Scope::Control),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::ScratchpadShow,
+            Some(Scope::Control),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::SessionLock,
+            Some(Scope::Control),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::WindowClose,
+            Some(Scope::Destructive),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::KeepAwakeSet,
+            Some(Scope::IdleInhibit),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::AudioSetVolume,
+            Some(Scope::Audio),
+            Some(RateClass::Continuous),
+            true,
+        ),
+        (
+            Operation::AudioSetMute,
+            Some(Scope::Audio),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::AudioSetDefault,
+            Some(Scope::Audio),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::MediaPlayPause,
+            Some(Scope::Media),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::MediaNext,
+            Some(Scope::Media),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::MediaPrevious,
+            Some(Scope::Media),
+            Some(RateClass::Actions),
+            true,
+        ),
+        (
+            Operation::AppLaunch,
+            Some(Scope::Launch),
+            Some(RateClass::Launch),
+            true,
+        ),
+        (
+            Operation::LauncherOpen,
+            Some(Scope::Launch),
+            Some(RateClass::Launch),
+            true,
+        ),
+        (
+            Operation::InputText,
+            Some(Scope::InputText),
+            Some(RateClass::InputText),
+            true,
+        ),
+        (
+            Operation::InputKey,
+            Some(Scope::InputKeys),
+            Some(RateClass::Input),
+            true,
+        ),
     ];
     let served: BTreeSet<&str> = SERVED_OPERATIONS.iter().map(|op| op.as_str()).collect();
     let tabled: BTreeSet<&str> = table.iter().map(|(op, ..)| op.as_str()).collect();
@@ -99,18 +209,164 @@ fn each_served_operation_has_its_scope_rate_class_and_action_flag() {
 
 #[test]
 fn known_ops_and_scopes_name_everything_this_daemon_serves_and_knows() {
-    let ops = known_ops();
     let every_scope: BTreeSet<Scope> = KNOWN_SCOPES.into_iter().collect();
-    assert_eq!(ops, offered_ops(&every_scope, false));
+    let ops = known_ops(LOCK);
+    assert_eq!(ops, offered_ops(&every_scope, false, LOCK));
+    assert_eq!(ops.len(), SERVED_OPERATIONS.len());
+    let file = ext_vector_file("welcome.json");
+    let spec_example = file["frames"]
+        .as_array()
+        .expect("frames")
+        .iter()
+        .find(|frame| frame["name"] == "01-spec-example")
+        .expect("the spec example");
+    let welcome: Value = serde_json::from_str(spec_example["payload"].as_str().expect("payload"))
+        .expect("welcome JSON");
+    assert_eq!(json!(known_scopes()), welcome["known_scopes"]);
+    let server_ops = &file["server_ops"][0];
+    assert_eq!(server_ops["name"], "01-spec-example");
+    let ours: BTreeSet<String> = ops.iter().cloned().collect();
     assert_eq!(
-        known_scopes(),
-        ["state.read", "state.titles", "control"].map(str::to_owned)
+        ours,
+        names(&server_ops["known_ops"]),
+        "every op of the spec"
     );
     // Breaks the build when a scope is added without a place in `KNOWN_SCOPES`.
     let is_listed = |scope: Scope| match scope {
-        Scope::StateRead | Scope::StateTitles | Scope::Control => KNOWN_SCOPES.contains(&scope),
+        Scope::StateRead
+        | Scope::StateTitles
+        | Scope::Control
+        | Scope::IdleInhibit
+        | Scope::Destructive
+        | Scope::Audio
+        | Scope::AudioCapture
+        | Scope::Media
+        | Scope::Launch
+        | Scope::LaunchRisky
+        | Scope::InputKeys
+        | Scope::InputText => KNOWN_SCOPES.contains(&scope),
     };
     assert!(KNOWN_SCOPES.into_iter().all(is_listed));
+}
+
+#[test]
+fn without_a_lock_command_session_lock_is_neither_known_nor_offered_nor_served() {
+    let no_lock = Features { lock: false };
+    let every_scope: BTreeSet<Scope> = KNOWN_SCOPES.into_iter().collect();
+    let lock = Operation::SessionLock.as_str().to_owned();
+    assert!(!known_ops(no_lock).contains(&lock));
+    assert!(!offered_ops(&every_scope, false, no_lock).contains(&lock));
+    assert!(known_ops(LOCK).contains(&lock));
+
+    let mode = Mode {
+        is_read_only: false,
+        features: no_lock,
+    };
+    let take_token = |_| panic!("an unknown operation takes no token");
+    let error = check(
+        &every_scope,
+        mode,
+        take_token,
+        &request("session.lock", json!({})),
+    )
+    .expect_err("not served");
+    assert_eq!(error.code, ErrorCode::UnknownOp);
+}
+
+#[test]
+fn the_m2a_requests_leave_as_their_typed_decisions() {
+    let every_scope: BTreeSet<Scope> = KNOWN_SCOPES.into_iter().collect();
+    let table = [
+        (
+            request("window.move", json!({"window_id": 6, "number": 2})),
+            Decision::Act(Action::MoveWindow {
+                window_id: 6,
+                to: WorkspaceTarget::Number(2),
+            }),
+        ),
+        (
+            request("window.move", json!({"window_id": 6, "workspace_id": 4})),
+            Decision::Act(Action::MoveWindow {
+                window_id: 6,
+                to: WorkspaceTarget::Id(4),
+            }),
+        ),
+        (
+            request("window.floating", json!({"window_id": 6, "enabled": false})),
+            Decision::Act(Action::Floating {
+                window_id: 6,
+                enabled: false,
+            }),
+        ),
+        (
+            request("window.layout", json!({"window_id": 6, "layout": "tabbed"})),
+            Decision::Act(Action::Layout {
+                window_id: 6,
+                layout: ops::ContainerLayout::Tabbed,
+            }),
+        ),
+        (
+            request("window.scratchpad", json!({"window_id": 6})),
+            Decision::Act(Action::MoveToScratchpad(6)),
+        ),
+        (
+            request("scratchpad.show", json!({"window_id": 9})),
+            Decision::Act(Action::ScratchpadShow(9)),
+        ),
+        (
+            request("window.close", json!({"window_id": 6})),
+            Decision::Act(Action::Close(6)),
+        ),
+        (request("session.lock", json!({})), Decision::Lock),
+        (
+            request(
+                "keep_awake.set",
+                json!({"enabled": true, "duration_s": 600}),
+            ),
+            Decision::KeepAwake(KeepAwake::On {
+                duration_s: Some(600),
+            }),
+        ),
+        (
+            request("keep_awake.set", json!({"enabled": false})),
+            Decision::KeepAwake(KeepAwake::Off),
+        ),
+        (
+            request("state.subscribe", json!({"topics": ["session", "desktop"]})),
+            Decision::Subscribe(vec![Topic::Session, Topic::Desktop]),
+        ),
+    ];
+    for (request, decision) in table {
+        let outcome = check(&every_scope, mode(false), |_| Ok(()), &request);
+        assert_eq!(outcome, Ok(decision), "{request:?}");
+    }
+}
+
+#[test]
+fn the_keep_awake_and_lock_refusals_carry_their_codes_and_fixed_words() {
+    let limited = KeepAwakeError::LimitReached {
+        retry_after: Duration::from_secs(540),
+    };
+    let refusal = keep_awake_refusal(&limited);
+    assert_eq!(refusal.code, ErrorCode::LimitReached);
+    assert_eq!(
+        Value::Object(refusal.detail.expect("detail")),
+        json!({"retry_after_ms": 540_000})
+    );
+    let failed = || crate::proc::ProcError::Spawn {
+        program: "/opt/secret/path".into(),
+        source: std::io::Error::from(std::io::ErrorKind::NotFound),
+    };
+    let refusal = keep_awake_refusal(&KeepAwakeError::Spawn(failed()));
+    assert_eq!(refusal.code, ErrorCode::SpawnFailed);
+    assert!(!refusal.message.contains("/opt"), "{}", refusal.message);
+    assert_eq!(refusal.detail, None);
+    let stopped = keep_awake_refusal(&KeepAwakeError::Stopped);
+    assert_eq!(stopped.code, ErrorCode::BackendUnavailable);
+
+    let refusal = lock_refusal(&LockError(failed()));
+    assert_eq!(refusal.code, ErrorCode::SpawnFailed);
+    assert!(!refusal.message.contains("/opt"), "{}", refusal.message);
 }
 
 #[test]
@@ -118,13 +374,18 @@ fn read_only_refuses_every_action_and_still_answers_icon_get() {
     let every_scope: BTreeSet<Scope> = KNOWN_SCOPES.into_iter().collect();
     let hash = encode_base64url(&[0; 16]);
     let icon_get = request("icon.get", json!({"hashes": [hash]}));
-    let outcome = check(&every_scope, true, |_| Ok(()), &icon_get);
+    let outcome = check(&every_scope, mode(true), |_| Ok(()), &icon_get);
     assert!(matches!(outcome, Ok(Decision::Icons(_))));
 
     for operation in SERVED_OPERATIONS.into_iter().filter(|op| op.is_action()) {
+        assert!(
+            operation.required_scope().is_some(),
+            "{}",
+            operation.as_str()
+        );
         let request = request(operation.as_str(), json!({}));
         let take_token = |_| panic!("read-only is checked before the rate limit");
-        let error = check(&every_scope, true, take_token, &request).expect_err("refused");
+        let error = check(&every_scope, mode(true), take_token, &request).expect_err("refused");
         assert_eq!(error.code, ErrorCode::ReadOnly, "{}", operation.as_str());
     }
 }
@@ -139,12 +400,12 @@ fn icon_get_takes_a_token_from_the_icons_bucket_only() {
         classes.push(class);
         Ok(())
     };
-    check(&scopes, false, take_token, &icon_get).expect("answered");
+    check(&scopes, mode(false), take_token, &icon_get).expect("answered");
     assert_eq!(classes, [RateClass::Icons]);
 
     let error = check(
         &scopes,
-        false,
+        mode(false),
         |_| Err(Duration::from_millis(500)),
         &icon_get,
     )
@@ -157,21 +418,24 @@ fn icon_get_takes_a_token_from_the_icons_bucket_only() {
 fn the_server_ops_vectors_of_this_milestone_match_the_offered_ops() {
     let file = ext_vector_file("welcome.json");
     let cases = file["server_ops"].as_array().expect("server_ops");
-    let ours: BTreeSet<String> = known_ops().into_iter().collect();
+    let ours: BTreeSet<String> = known_ops(LOCK).into_iter().collect();
     let mut replayed = 0;
     for case in cases {
         let name = case["name"].as_str().expect("name");
-        // Cases of later milestones name operations this daemon does not serve yet.
-        if names(&case["known_ops"]) != ours {
-            continue;
-        }
+        let theirs = names(&case["known_ops"]);
+        // An earlier server is this one restricted to the operations it knows.
+        assert!(theirs.is_subset(&ours), "{name}");
         let read_only = case["read_only"].as_bool().expect("read_only");
-        let offered = offered_ops(&scopes_of(&case["scopes"]), read_only);
-        let offered: BTreeSet<String> = offered.into_iter().collect();
+        let offered = offered_ops(&scopes_of(&case["scopes"]), read_only, LOCK);
+        let offered: BTreeSet<String> = offered
+            .into_iter()
+            .filter(|op| theirs.contains(op))
+            .collect();
         assert_eq!(offered, names(&case["expect_ops"]), "{name}");
         replayed += 1;
     }
-    assert_eq!(replayed, 5, "cases 03 to 07 are the M1 cases");
+    assert_eq!(replayed, cases.len(), "every case, the M2b ones too");
+    assert!(replayed >= 8);
 }
 
 /// The icon store of `icons.json`: its PNGs and no others.
@@ -215,7 +479,7 @@ fn replay_icons(store: &Store, vector: &Value) -> Value {
         assert_eq!(class, RateClass::Icons);
         Rate::ICONS.take(&mut full_again_at, now)
     };
-    match check(&scopes, is_read_only, take_token, &request) {
+    match check(&scopes, mode(is_read_only), take_token, &request) {
         Ok(Decision::Icons(hashes)) => {
             let result = store.icons(&hashes);
             for icon in &result.icons {

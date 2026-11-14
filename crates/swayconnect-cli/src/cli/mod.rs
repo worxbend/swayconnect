@@ -4,6 +4,8 @@
 //! connector and the standard streams in.
 
 mod args;
+mod control_args;
+mod duration;
 mod error;
 mod layout_map;
 mod render;
@@ -11,7 +13,11 @@ mod run;
 mod state;
 mod store;
 
-pub use args::{Cli, Command, RefusedUri, Switch};
+pub use args::{AwakeSwitch, Cli, Command, RefusedUri, Switch};
+pub use control_args::{
+    DeviceArg, KeyArgs, LaunchArgs, MuteArgs, PlayArgs, RefusedText, TypeArgs, VolumeArgs,
+    WindowTarget,
+};
 pub use error::CliError;
 pub use run::{Context, run};
 pub use store::{DirectoryInputs, ProfileStore, StoreError, client_directory};

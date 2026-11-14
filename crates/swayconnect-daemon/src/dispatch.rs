@@ -1,33 +1,141 @@
 //! Operation table and request checks, in the order of `docs/PROTOCOL.md` 10.2.
 //!
 //! Steps 2 to 6 are decided here, with the rate classes of 17.14 and the additions of 17.16.
-//! An action that passes them leaves as [`Decision::Act`]; steps 7 to 9 belong to the sway
-//! half (`actions.rs`, `supervisor.rs`).
+//! A sway action that passes them leaves as [`Decision::Act`]; steps 7 to 9 belong to the sway
+//! half (`actions.rs`, `supervisor.rs`). Keep awake, lock and the M2b operations leave as
+//! their own decisions; their services do step 8 and the checks 8a to 8c of 17.16.
 
 use std::collections::BTreeSet;
 use std::time::Duration;
 
 use serde_json::Value;
 use swayconnect_protocol::limits::MAX_INT;
-use swayconnect_protocol::ops::{Args, Operation, TOPIC_DESKTOP, WorkspaceTarget};
-use swayconnect_protocol::{DeviceId, ErrorBody, ErrorCode, IconHash, JsonObject, Req, Scope};
+use swayconnect_protocol::ops::{
+    self, Args, KeepAwake, Operation, TOPIC_APPS, TOPIC_AUDIO, TOPIC_DESKTOP, TOPIC_MEDIA,
+    TOPIC_SESSION, WorkspaceTarget,
+};
+use swayconnect_protocol::{
+    AudioChange, DeviceId, EntryId, ErrorBody, ErrorCode, IconHash, InputTarget, InputText,
+    JsonObject, KeyPress, MediaCommand, Req, Scope,
+};
 
 use crate::security::Security;
-use crate::sway_handle::{Action, ActionError};
+use crate::sway_handle::Action;
 use crate::throttle::RateClass;
 
-/// In the order of `welcome.ops`: the version 1 operations first, `icon.get` after them.
-const SERVED_OPERATIONS: [Operation; 6] = [
+mod refusals;
+
+pub use self::refusals::{
+    action_refusal, audio_refusal, keep_awake_refusal, launch_refusal, launcher_refusal,
+    lock_refusal, media_refusal, read_only_refusal, sway_unavailable, volume_refusal,
+};
+
+/// In the order of `welcome.ops`: the version 1 operations first, `icon.get` after them,
+/// then the M2a operations of spec 17.6 to 17.8, then the M2b ones of 17.9 to 17.13.
+const SERVED_OPERATIONS: [Operation; 24] = [
     Operation::Ping,
     Operation::StateSubscribe,
     Operation::WorkspaceFocus,
     Operation::WindowFocus,
     Operation::WindowFullscreen,
     Operation::IconGet,
+    Operation::WindowMove,
+    Operation::WindowFloating,
+    Operation::WindowLayout,
+    Operation::WindowScratchpad,
+    Operation::ScratchpadShow,
+    Operation::SessionLock,
+    Operation::WindowClose,
+    Operation::KeepAwakeSet,
+    Operation::AudioSetVolume,
+    Operation::AudioSetMute,
+    Operation::AudioSetDefault,
+    Operation::MediaPlayPause,
+    Operation::MediaNext,
+    Operation::MediaPrevious,
+    Operation::AppLaunch,
+    Operation::LauncherOpen,
+    Operation::InputText,
+    Operation::InputKey,
 ];
 
-/// Every scope this version knows (`welcome.known_scopes`).
-const KNOWN_SCOPES: [Scope; 3] = [Scope::StateRead, Scope::StateTitles, Scope::Control];
+/// Every scope this version knows (`welcome.known_scopes`), in the order of spec 17.2.
+const KNOWN_SCOPES: [Scope; 12] = [
+    Scope::StateRead,
+    Scope::StateTitles,
+    Scope::Control,
+    Scope::IdleInhibit,
+    Scope::Destructive,
+    Scope::Audio,
+    Scope::AudioCapture,
+    Scope::Media,
+    Scope::Launch,
+    Scope::LaunchRisky,
+    Scope::InputKeys,
+    Scope::InputText,
+];
+
+/// Every topic, in the order of `welcome.topics`.
+const TOPICS: [Topic; 5] = [
+    Topic::Desktop,
+    Topic::Session,
+    Topic::Audio,
+    Topic::Media,
+    Topic::Apps,
+];
+
+/// What the owner configured beyond the fixed operation table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Features {
+    /// `[session] lock` is set, so `session.lock` is served (spec 17.6 rule 1).
+    pub lock: bool,
+}
+
+impl Features {
+    fn serves(self, operation: Operation) -> bool {
+        SERVED_OPERATIONS.contains(&operation) && (operation != Operation::SessionLock || self.lock)
+    }
+
+    fn served(self) -> impl Iterator<Item = Operation> {
+        SERVED_OPERATIONS
+            .into_iter()
+            .filter(move |operation| self.serves(*operation))
+    }
+}
+
+/// A topic of `state.subscribe`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Topic {
+    Desktop,
+    /// Spec 17.8, built per device.
+    Session,
+    /// Spec 17.9 to 17.11.
+    Audio,
+    Media,
+    Apps,
+}
+
+impl Topic {
+    fn from_wire(name: &str) -> Option<Topic> {
+        TOPICS.into_iter().find(|topic| topic.as_str() == name)
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Topic::Desktop => TOPIC_DESKTOP,
+            Topic::Session => TOPIC_SESSION,
+            Topic::Audio => TOPIC_AUDIO,
+            Topic::Media => TOPIC_MEDIA,
+            Topic::Apps => TOPIC_APPS,
+        }
+    }
+
+    /// Every topic needs `state.read`; these also need their own scope (spec 17.2).
+    fn is_granted(self, scopes: &BTreeSet<Scope>) -> bool {
+        let extra = ops::topic_scope(self.as_str());
+        scopes.contains(&Scope::StateRead) && extra.is_none_or(|scope| scopes.contains(&scope))
+    }
+}
 
 /// What the session does with one request.
 #[derive(Debug, PartialEq)]
@@ -36,11 +144,45 @@ pub enum Decision {
     Revoked,
     Refuse(ErrorBody),
     Pong,
-    SubscribeDesktop,
+    /// The topics in request order, each once (the protocol crate refuses duplicates).
+    Subscribe(Vec<Topic>),
     /// Answer `icon.get` from the icon store, in request order.
     Icons(Vec<IconHash>),
     /// Hand the action to the sway half; answer with its outcome.
     Act(Action),
+    /// `keep_awake.set`. The upper end of `duration_s` is checked by the keep-awake task,
+    /// which owns `max_duration_s` (still step 6: nothing runs in between).
+    KeepAwake(KeepAwake),
+    /// `session.lock`.
+    Lock,
+    /// `audio.*`. The upper end of `volume_pct` is checked against the audio service's
+    /// `max_volume_pct` before anything else (still step 6).
+    Audio {
+        device_id: u64,
+        change: AudioChange,
+    },
+    /// `media.*`.
+    Media {
+        player_id: u64,
+        command: MediaCommand,
+    },
+    /// `app.launch`.
+    Launch {
+        entry_id: EntryId,
+        number: Option<u16>,
+    },
+    /// `launcher.open`.
+    OpenLauncher,
+    /// `input.text`. Its characters were taken from the device's budget per minute.
+    Type {
+        target: InputTarget,
+        text: InputText,
+    },
+    /// `input.key`.
+    Key {
+        target: InputTarget,
+        press: KeyPress,
+    },
 }
 
 /// Who sends the request, and what the daemon allows right now.
@@ -49,12 +191,17 @@ pub struct Caller<'a> {
     pub device: &'a DeviceId,
     pub scopes: &'a BTreeSet<Scope>,
     pub is_read_only: bool,
+    pub features: Features,
 }
 
 /// `welcome.ops` for a device with `scopes`. A read-only daemon offers no action.
-pub fn offered_ops(scopes: &BTreeSet<Scope>, is_read_only: bool) -> Vec<String> {
-    SERVED_OPERATIONS
-        .into_iter()
+pub fn offered_ops(
+    scopes: &BTreeSet<Scope>,
+    is_read_only: bool,
+    features: Features,
+) -> Vec<String> {
+    features
+        .served()
         .filter(|operation| is_granted(*operation, scopes))
         .filter(|operation| !(is_read_only && operation.is_action()))
         .map(|operation| operation.as_str().to_owned())
@@ -63,9 +210,9 @@ pub fn offered_ops(scopes: &BTreeSet<Scope>, is_read_only: bool) -> Vec<String> 
 
 /// `welcome.known_ops`: the operations a device with every scope gets when the daemon is not
 /// read-only (spec 17.3).
-pub fn known_ops() -> Vec<String> {
-    SERVED_OPERATIONS
-        .into_iter()
+pub fn known_ops(features: Features) -> Vec<String> {
+    features
+        .served()
         .map(|operation| operation.as_str().to_owned())
         .collect()
 }
@@ -78,24 +225,28 @@ pub fn known_scopes() -> Vec<String> {
         .collect()
 }
 
-/// The rate class of spec 17.14 whose bucket `operation` takes a token from (step 5).
+/// The rate class of spec 17.14 whose bucket `operation` takes a token from (step 5): the
+/// protocol crate's table, as the daemon's bucket kinds.
 pub const fn rate_class(operation: Operation) -> Option<RateClass> {
-    match operation {
-        Operation::Ping | Operation::StateSubscribe => None,
-        Operation::IconGet => Some(RateClass::Icons),
-        Operation::WorkspaceFocus | Operation::WindowFocus | Operation::WindowFullscreen => {
-            Some(RateClass::Actions)
-        }
+    match operation.rate_class() {
+        None => None,
+        Some(ops::RateClass::Actions) => Some(RateClass::Actions),
+        Some(ops::RateClass::Icons) => Some(RateClass::Icons),
+        Some(ops::RateClass::Continuous) => Some(RateClass::Continuous),
+        Some(ops::RateClass::Launch) => Some(RateClass::Launch),
+        Some(ops::RateClass::Input) => Some(RateClass::Input),
+        Some(ops::RateClass::InputText) => Some(RateClass::InputText),
     }
 }
 
-/// `welcome.topics` for a device with `scopes`.
+/// `welcome.topics` for a device with `scopes`: every topic needs `state.read`, `audio`,
+/// `media` and `apps` also their own scope.
 pub fn offered_topics(scopes: &BTreeSet<Scope>) -> Vec<String> {
-    if scopes.contains(&Scope::StateRead) {
-        vec![TOPIC_DESKTOP.to_owned()]
-    } else {
-        Vec::new()
-    }
+    TOPICS
+        .into_iter()
+        .filter(|topic| topic.is_granted(scopes))
+        .map(|topic| topic.as_str().to_owned())
+        .collect()
 }
 
 pub fn decide(caller: &Caller<'_>, request: &Req) -> Decision {
@@ -104,41 +255,60 @@ pub fn decide(caller: &Caller<'_>, request: &Req) -> Decision {
         return Decision::Revoked;
     }
     let take_token = |class| caller.security.take_token(device, class);
-    let decision = check(caller.scopes, caller.is_read_only, take_token, request)
+    let mode = Mode {
+        is_read_only: caller.is_read_only,
+        features: caller.features,
+    };
+    let decision = check(caller.scopes, mode, take_token, request)
+        .and_then(|decision| spend_text_budget(caller, decision))
         .unwrap_or_else(Decision::Refuse);
-    // `take_token` logs an empty action bucket itself.
-    if let Decision::Act(action) = &decision {
-        tracing::info!(device = device.as_str(), ?action, "action accepted");
+    // `take_token` logs an empty action bucket itself. A request is never logged as a whole:
+    // its arguments can hold typed text.
+    match &decision {
+        Decision::Act(action) => {
+            tracing::info!(device = device.as_str(), ?action, "action accepted");
+        }
+        Decision::KeepAwake(args) => {
+            tracing::info!(
+                device = device.as_str(),
+                ?args,
+                "keep-awake request accepted"
+            );
+        }
+        Decision::Lock => tracing::info!(device = device.as_str(), "lock request accepted"),
+        Decision::Audio { .. }
+        | Decision::Media { .. }
+        | Decision::Launch { .. }
+        | Decision::OpenLauncher
+        | Decision::Type { .. }
+        | Decision::Key { .. } => {
+            // A served operation name by now, not free client text.
+            tracing::info!(
+                device = device.as_str(),
+                op = request.op,
+                "request accepted"
+            );
+        }
+        _ => {}
     }
     decision
 }
 
-/// The `res.error` for `action`, which the sway half refused (steps 7 to 9 of spec 10.2).
-pub fn action_refusal(action: Action, error: ActionError) -> ErrorBody {
-    match error {
-        ActionError::NotFound => refusal(ErrorCode::NotFound, &missing_target(action), None),
-        ActionError::UnsupportedTarget => refusal(
-            ErrorCode::UnsupportedTarget,
-            "the workspace cannot be addressed by its number",
-            None,
-        ),
-        ActionError::SwayUnavailable => {
-            refusal(ErrorCode::SwayUnavailable, "sway is offline", None)
-        }
-        ActionError::SwayError(sway_text) => refusal(ErrorCode::SwayError, &sway_text, None),
-        ActionError::Timeout => refusal(ErrorCode::Timeout, "sway did not answer in time", None),
+/// The second limit of class `input_text` (spec 17.14), once the text is known to be valid.
+fn spend_text_budget(caller: &Caller<'_>, decision: Decision) -> Result<Decision, ErrorBody> {
+    if let Decision::Type { text, .. } = &decision {
+        let chars = text.as_str().chars().count();
+        caller
+            .security
+            .take_text_budget(caller.device, chars)
+            .map_err(|retry_after| rate_limited(RateClass::InputText, retry_after))?;
     }
+    Ok(decision)
 }
 
-/// The `message` of `not_found`, in the words of transcript T3 (spec 15.5).
-fn missing_target(action: Action) -> String {
-    match action {
-        Action::FocusWorkspaceNumber(number) => format!("no workspace with number {number}"),
-        Action::FocusWorkspaceId(id) => format!("no workspace with id {id}"),
-        Action::FocusWindow(window_id) | Action::Fullscreen { window_id, .. } => {
-            format!("no window with id {window_id}")
-        }
-    }
+/// `unknown_op` (step 2): not served by this daemon, as configured.
+pub fn unknown_op() -> ErrorBody {
+    refusal(ErrorCode::UnknownOp, "unknown operation", None)
 }
 
 fn is_granted(operation: Operation, scopes: &BTreeSet<Scope>) -> bool {
@@ -147,34 +317,36 @@ fn is_granted(operation: Operation, scopes: &BTreeSet<Scope>) -> bool {
         .is_none_or(|scope| scopes.contains(&scope))
 }
 
+/// The daemon's state that steps 2 and 4 read.
+#[derive(Debug, Clone, Copy)]
+struct Mode {
+    is_read_only: bool,
+    features: Features,
+}
+
 /// Steps 2 to 6 of spec 10.2. `take_token` is called for an operation with a rate class
 /// that reaches step 5, and only then.
 fn check(
     scopes: &BTreeSet<Scope>,
-    is_read_only: bool,
+    mode: Mode,
     take_token: impl FnOnce(RateClass) -> Result<(), Duration>,
     request: &Req,
 ) -> Result<Decision, ErrorBody> {
+    let Mode {
+        is_read_only,
+        features,
+    } = mode;
     let operation = Operation::from_wire(&request.op)
-        .filter(|operation| SERVED_OPERATIONS.contains(operation))
-        .ok_or_else(|| refusal(ErrorCode::UnknownOp, "unknown operation", None))?;
+        .filter(|operation| features.serves(*operation))
+        .ok_or_else(unknown_op)?;
     if let Some(scope) = operation
         .required_scope()
         .filter(|scope| !scopes.contains(scope))
     {
-        let detail = detail("scope", scope.as_str());
-        return Err(refusal(
-            ErrorCode::Forbidden,
-            "the device lacks the scope",
-            detail,
-        ));
+        return Err(forbidden(scope));
     }
     if is_read_only && operation.is_action() {
-        return Err(refusal(
-            ErrorCode::ReadOnly,
-            "the daemon is in read-only mode",
-            None,
-        ));
+        return Err(read_only_refusal());
     }
     if let Some(class) = rate_class(operation) {
         take_token(class).map_err(|retry_after| rate_limited(class, retry_after))?;
@@ -185,16 +357,7 @@ fn check(
     match args {
         Args::Ping => Ok(Decision::Pong),
         Args::IconGet { hashes } => Ok(Decision::Icons(hashes)),
-        Args::StateSubscribe { topics } => {
-            match topics.iter().find(|topic| *topic != TOPIC_DESKTOP) {
-                Some(topic) => Err(refusal(
-                    ErrorCode::UnknownTopic,
-                    "unknown topic",
-                    detail("topic", topic.as_str()),
-                )),
-                None => Ok(Decision::SubscribeDesktop),
-            }
-        }
+        Args::StateSubscribe { topics } => subscription(scopes, &topics).map(Decision::Subscribe),
         Args::WorkspaceFocus(WorkspaceTarget::Number(number)) => {
             Ok(Decision::Act(Action::FocusWorkspaceNumber(number)))
         }
@@ -205,6 +368,53 @@ fn check(
         Args::WindowFullscreen { window_id, enabled } => {
             Ok(Decision::Act(Action::Fullscreen { window_id, enabled }))
         }
+        Args::WindowMove { window_id, target } => Ok(Decision::Act(Action::MoveWindow {
+            window_id,
+            to: target,
+        })),
+        Args::WindowFloating { window_id, enabled } => {
+            Ok(Decision::Act(Action::Floating { window_id, enabled }))
+        }
+        Args::WindowLayout { window_id, layout } => {
+            Ok(Decision::Act(Action::Layout { window_id, layout }))
+        }
+        Args::WindowScratchpad { window_id } => {
+            Ok(Decision::Act(Action::MoveToScratchpad(window_id)))
+        }
+        Args::ScratchpadShow { window_id } => Ok(Decision::Act(Action::ScratchpadShow(window_id))),
+        Args::WindowClose { window_id } => Ok(Decision::Act(Action::Close(window_id))),
+        Args::SessionLock => Ok(Decision::Lock),
+        Args::KeepAwakeSet(args) => Ok(Decision::KeepAwake(args)),
+        Args::Audio { device_id, change } => Ok(Decision::Audio { device_id, change }),
+        Args::Media { player_id, command } => Ok(Decision::Media { player_id, command }),
+        Args::AppLaunch { entry_id, number } => Ok(Decision::Launch { entry_id, number }),
+        Args::LauncherOpen => Ok(Decision::OpenLauncher),
+        Args::InputText { target, text } => Ok(Decision::Type { target, text }),
+        Args::InputKey { target, press } => Ok(Decision::Key { target, press }),
+    }
+}
+
+/// The topics of `state.subscribe`: every name must be known (`unknown_topic`), then each
+/// topic's own scope held (`forbidden`, spec 17.2), both over the whole list in that order.
+fn subscription(scopes: &BTreeSet<Scope>, names: &[String]) -> Result<Vec<Topic>, ErrorBody> {
+    let topics = names
+        .iter()
+        .map(|name| {
+            Topic::from_wire(name).ok_or_else(|| {
+                refusal(
+                    ErrorCode::UnknownTopic,
+                    "unknown topic",
+                    detail("topic", name.as_str()),
+                )
+            })
+        })
+        .collect::<Result<Vec<Topic>, _>>()?;
+    let missing = topics
+        .iter()
+        .find_map(|topic| ops::topic_scope(topic.as_str()).filter(|scope| !scopes.contains(scope)));
+    match missing {
+        Some(scope) => Err(forbidden(scope)),
+        None => Ok(topics),
     }
 }
 
@@ -216,11 +426,24 @@ fn rate_limited(class: RateClass, retry_after: Duration) -> ErrorBody {
     let message = match class {
         RateClass::Actions => "too many actions from this device",
         RateClass::Icons => "too many icon requests from this device",
+        RateClass::Continuous => "too many volume changes from this device",
+        RateClass::Launch => "too many launches from this device",
+        RateClass::Input => "too many key presses from this device",
+        RateClass::InputText => "too much typed text from this device",
     };
     refusal(
         ErrorCode::RateLimited,
         message,
         detail("retry_after_ms", retry_after_ms),
+    )
+}
+
+/// `forbidden` naming the missing scope (step 3, and 8a/8b of spec 17.16).
+fn forbidden(scope: Scope) -> ErrorBody {
+    refusal(
+        ErrorCode::Forbidden,
+        "the device lacks the scope",
+        detail("scope", scope.as_str()),
     )
 }
 
@@ -240,5 +463,9 @@ fn detail(member: &str, content: impl Into<Value>) -> Option<JsonObject> {
 
 #[cfg(test)]
 mod ext_tests;
+#[cfg(test)]
+mod m2a_tests;
+#[cfg(test)]
+mod m2b_tests;
 #[cfg(test)]
 mod tests;

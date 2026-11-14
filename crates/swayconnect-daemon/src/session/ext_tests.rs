@@ -9,7 +9,7 @@ use swayconnect_protocol::fingerprint::encode_base64url;
 use swayconnect_protocol::{IconHash, ScratchpadWindow};
 use swayconnect_testkit::fixtures::{NOTES_APP_ID, NOTES_ICON_PNG};
 
-use super::tests::{Daemon, EVERY_SCOPE, ping, published, subscribe};
+use super::harness::{Daemon, EVERY_SCOPE, ping, published, subscribe};
 use super::*;
 use crate::devices::ScopeChange;
 use crate::icons::raster::ChildRasteriser;
@@ -29,7 +29,7 @@ fn icon_get(id: u64, hashes: &[String]) -> Value {
 
 #[tokio::test]
 async fn a_grant_ends_the_session_with_bye_scopes_changed_and_the_next_welcome_has_new_ops() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&[Scope::StateRead]).await;
     let (mut client, welcome) = daemon.ready(&device).await;
     assert!(!ops_of(&welcome).contains(&"window.focus"));
@@ -53,7 +53,7 @@ async fn a_grant_ends_the_session_with_bye_scopes_changed_and_the_next_welcome_h
 
 #[tokio::test]
 async fn a_grant_that_changes_nothing_leaves_the_session_open() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;
     let held = BTreeSet::from([Scope::Control]);
@@ -69,7 +69,7 @@ async fn a_grant_that_changes_nothing_leaves_the_session_open() {
 
 #[tokio::test]
 async fn without_an_icon_service_every_hash_is_missing() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     let device = daemon.paired_device(&[Scope::StateRead]).await;
     let (mut client, _) = daemon.ready(&device).await;
     let hash = IconHash::of(NOTES_ICON_PNG).to_string();
@@ -80,7 +80,7 @@ async fn without_an_icon_service_every_hash_is_missing() {
 
 #[tokio::test]
 async fn icon_get_answers_from_the_icon_service_in_request_order() {
-    let mut daemon = Daemon::start();
+    let mut daemon = Daemon::start().await;
     let dirs = &daemon.dirs;
     let settings = IconSettings {
         search_dirs: vec![dirs.data_home(), dirs.data_dirs()],
@@ -130,7 +130,7 @@ fn published_with_scratchpad(rev: u64) -> Arc<Published> {
 
 #[tokio::test]
 async fn scratchpad_titles_reach_only_a_device_with_state_titles() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     daemon.desktop.send_replace(published_with_scratchpad(2));
     let reader = daemon.paired_device(&[Scope::StateRead]).await;
     let titled = daemon.paired_device(&EVERY_SCOPE).await;
@@ -149,7 +149,7 @@ async fn scratchpad_titles_reach_only_a_device_with_state_titles() {
 
 #[tokio::test(start_paused = true)]
 async fn icon_get_has_its_own_bucket_per_device_also_in_read_only_mode() {
-    let daemon = Daemon::start();
+    let daemon = Daemon::start().await;
     daemon.shared.read_only.store(true, Ordering::Relaxed);
     let device = daemon.paired_device(&EVERY_SCOPE).await;
     let (mut client, _) = daemon.ready(&device).await;

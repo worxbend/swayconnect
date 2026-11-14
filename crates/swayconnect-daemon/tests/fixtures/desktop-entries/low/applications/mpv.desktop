@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=mpv Media Player
+GenericName=Multimedia player
+Keywords=video;movie;
+Icon=mpv
+Exec=mpv --player-operation-mode=pseudo-gui -- %U
+MimeType=video/webm;

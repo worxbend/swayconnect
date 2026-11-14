@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=TryExec Path
+TryExec=swayconnect-fixture-tool
+Exec=swayconnect-fixture-tool --start

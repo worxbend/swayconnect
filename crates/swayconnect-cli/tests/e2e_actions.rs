@@ -156,11 +156,36 @@ async fn a_read_only_daemon_serves_the_state_and_refuses_every_action() {
     assert!(info.contains("read-only:  yes"), "{info}");
     assert_eq!(harness.client_output(&["workspaces"]).lines().count(), 3);
 
-    let errors = harness.client_failure(&["focus", "6"], EXIT_SERVER_ERROR);
+    let actions: [&[&str]; 11] = [
+        &["focus", "6"],
+        &["move", "6", "3"],
+        &["float", "6", "on"],
+        &["lock"],
+        &["awake", "on"],
+        &["awake", "off"],
+        &["volume", "30", "--device", "1"],
+        &["mute", "on", "--device", "1"],
+        &["play", "--player", "1"],
+        &["launch", "notes"],
+        &["key", "Return", "--window", "6"],
+    ];
+    for arguments in actions {
+        let errors = harness.client_failure(arguments, EXIT_SERVER_ERROR);
+        assert!(
+            errors.contains("the server does not offer operation"),
+            "{arguments:?}: {errors}"
+        );
+    }
+    let typed = harness.client_with_stdin(&["type", "--window", "6"], "hello");
+    let errors = e2e_support::stderr(&typed);
+    assert_eq!(typed.status.code(), Some(EXIT_SERVER_ERROR), "{errors}");
     assert!(
-        errors.contains("the server does not offer operation"),
+        errors.contains("does not offer operation `input.text`"),
         "{errors}"
     );
+    for program in ["lock.sh", "systemd-inhibit", "systemd-run"] {
+        assert_eq!(harness.programs.calls(program), Vec::<Vec<String>>::new());
+    }
     let replies = harness.raw_replies(FOCUS_WINDOW_6_REQUEST);
     let [reply] = replies.as_slice() else {
         panic!("one reply, got {replies:?}");

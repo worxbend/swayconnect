@@ -2,7 +2,7 @@
 
 use swayconnect_protocol::text::escape_for_terminal;
 use swayconnect_protocol::uri::UriError;
-use swayconnect_protocol::{ByeCode, ErrorBody, ErrorCode, InvalidMember};
+use swayconnect_protocol::{ByeCode, ErrorBody, ErrorCode, InputRefusal, InvalidMember};
 
 use super::store::StoreError;
 use crate::client::ClientError;
@@ -31,6 +31,30 @@ pub enum CliError {
     NoDesktopState,
     #[error("the server sent an invalid desktop state: member `{}`", .0.0)]
     InvalidState(InvalidMember),
+    #[error("the server sent an invalid result: member `{}`", .0.0)]
+    InvalidResult(InvalidMember),
+    #[error("the server sent no state of topic `{0}`")]
+    NoState(&'static str),
+    #[error("the server sent an invalid `{topic}` state: member `{}`", .member.0)]
+    InvalidTopicState {
+        topic: &'static str,
+        member: InvalidMember,
+    },
+    /// No device was named and the `audio` state has no default sink to use.
+    #[error("no default sink: {0}")]
+    NoDefaultSink(&'static str),
+    #[error("no active media player: choose one with --player")]
+    NoActivePlayer,
+    /// Entry ids are checked to be ASCII letters, digits and `._-`, so printing is safe.
+    #[error("the server lists no app {0}")]
+    NoApp(String),
+    /// A check of spec 17.13 rule 2 stopped `type`; `typed_chars` counts every request.
+    #[error("{}", typing_stopped_text(*.refusal, .message, *.typed_chars))]
+    TypingStopped {
+        refusal: InputRefusal,
+        message: String,
+        typed_chars: u64,
+    },
     /// The state has no workspace with this number or id.
     #[error("no workspace {0} in the desktop state")]
     NoWorkspace(String),
@@ -60,10 +84,17 @@ impl CliError {
             CliError::NoWorkspace(_)
             | CliError::SeveralWorkspaces(_)
             | CliError::NoLayout(_)
-            | CliError::NoIcon => EXIT_SERVER_ERROR,
+            | CliError::NoIcon
+            | CliError::NoDefaultSink(_)
+            | CliError::NoActivePlayer
+            | CliError::NoApp(_)
+            | CliError::TypingStopped { .. } => EXIT_SERVER_ERROR,
             CliError::Timeout(_)
             | CliError::NoDesktopState
             | CliError::InvalidState(_)
+            | CliError::InvalidResult(_)
+            | CliError::NoState(_)
+            | CliError::InvalidTopicState { .. }
             | CliError::InvalidIcon(_)
             | CliError::Io { .. } => EXIT_CONNECTION,
         }
@@ -109,16 +140,37 @@ fn client_text(error: &ClientError) -> String {
     format!("{error}: {server_message}{retry_hint}")
 }
 
-/// `rate_limited` says when an action can succeed again (spec 10.1). Empty for every other
-/// error, and for a server that left the delay out.
+/// Empty for an error without a retry delay.
 fn retry_hint(body: &ErrorBody) -> String {
-    let retry_after_ms = body
-        .detail
+    retry_after_ms(body).map_or_else(String::new, |delay| format!(" (retry after {delay} ms)"))
+}
+
+/// `rate_limited` and `limit_reached` say when an action can succeed again (spec 10.1, 17.8).
+/// `None` for every other error, and for a server that left the delay out.
+pub(super) fn retry_after_ms(body: &ErrorBody) -> Option<u64> {
+    body.detail
         .as_ref()
-        .filter(|_| body.code == ErrorCode::RateLimited)
+        .filter(|_| matches!(body.code, ErrorCode::RateLimited | ErrorCode::LimitReached))
         .and_then(|detail| detail.get("retry_after_ms"))
-        .and_then(serde_json::Value::as_u64);
-    retry_after_ms.map_or_else(String::new, |delay| format!(" (retry after {delay} ms)"))
+        .and_then(serde_json::Value::as_u64)
+}
+
+/// Spec 17.19 rule 19: says how much was typed, and the new focus after `focus_changed`.
+fn typing_stopped_text(refusal: InputRefusal, message: &str, typed_chars: u64) -> String {
+    let focus = match refusal {
+        InputRefusal::FocusChanged {
+            focused_window_id: Some(window_id),
+            ..
+        } => format!("; window {window_id} has the focus now"),
+        InputRefusal::FocusChanged {
+            focused_window_id: None,
+            ..
+        } => "; no window has the focus now".to_owned(),
+        _other_refusal => String::new(),
+    };
+    let code = refusal.code().as_str();
+    let message = escape_for_terminal(message);
+    format!("typing stopped: {code}: {message} ({typed_chars} characters typed{focus})")
 }
 
 #[cfg(test)]
@@ -171,6 +223,22 @@ mod tests {
             (CliError::NoLayout("dropped"), 1),
             (CliError::NoIcon, 1),
             (CliError::InvalidIcon("hash".to_owned()), 3),
+            (CliError::InvalidResult(InvalidMember("already_locked")), 3),
+            (CliError::NoState("audio"), 3),
+            (
+                CliError::InvalidTopicState {
+                    topic: "apps",
+                    member: InvalidMember("risky"),
+                },
+                3,
+            ),
+            (CliError::NoDefaultSink("none"), 1),
+            (CliError::NoActivePlayer, 1),
+            (CliError::NoApp("notes.desktop".to_owned()), 1),
+            (
+                typing_stopped(InputRefusal::Locked { delivered_chars: 0 }),
+                1,
+            ),
         ];
         for (error, exit_code) in cases {
             assert_eq!(error.exit_code(), exit_code, "{error}");
@@ -200,6 +268,16 @@ mod tests {
     }
 
     #[test]
+    fn limit_reached_prints_the_retry_delay() {
+        let text = failed_with_detail(ErrorCode::LimitReached, json!({"retry_after_ms": 900}));
+
+        assert_eq!(
+            text,
+            "the request failed: limit_reached: slow down (retry after 900 ms)"
+        );
+    }
+
+    #[test]
     fn a_delay_of_the_wrong_type_or_on_another_error_is_not_printed() {
         let expected = "the request failed: rate_limited: slow down";
         for detail in [
@@ -221,5 +299,43 @@ mod tests {
             text,
             "the request failed: forbidden: no \\u{1b}[31mscope\\u{202e}"
         );
+    }
+
+    fn typing_stopped(refusal: InputRefusal) -> CliError {
+        CliError::TypingStopped {
+            refusal,
+            message: "stopped \u{1b}[2J".to_owned(),
+            typed_chars: 1040,
+        }
+    }
+
+    #[test]
+    fn typing_stopped_prints_what_was_typed_and_the_new_focus() {
+        let cases = [
+            (
+                InputRefusal::FocusChanged {
+                    delivered_chars: 16,
+                    focused_window_id: Some(7),
+                },
+                "focus_changed: stopped \\u{1b}[2J (1040 characters typed; window 7 has the focus now)",
+            ),
+            (
+                InputRefusal::FocusChanged {
+                    delivered_chars: 16,
+                    focused_window_id: None,
+                },
+                "focus_changed: stopped \\u{1b}[2J (1040 characters typed; no window has the focus now)",
+            ),
+            (
+                InputRefusal::KeyboardGrabbed {
+                    delivered_chars: 16,
+                },
+                "keyboard_grabbed: stopped \\u{1b}[2J (1040 characters typed)",
+            ),
+        ];
+        for (refusal, expected) in cases {
+            let text = typing_stopped(refusal).to_string();
+            assert_eq!(text, format!("typing stopped: {expected}"));
+        }
     }
 }
